@@ -1,0 +1,9 @@
+{
+  // Only for editors: lets test files use Node typings (the engine's own tsconfig forbids them on purpose).
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": ["node"]
+  },
+  "include": ["."]
+}
