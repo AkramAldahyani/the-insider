@@ -288,7 +288,6 @@ export function cancelInput(world: World, id: string): TerminalResult {
     }
     const session = topSession(world, terminal);
     if (session) session.lastExit = 130;
-    run.out.push('\n');
     syncScreen(run);
   });
 }

@@ -5,7 +5,7 @@
  *   pnpm server         (only this)
  *
  * Settings come from environment variables, all optional:
- *   PORT=2567           port to listen on
+ *   GAME_PORT=2567      port to listen on (not PORT: hosting tools often set PORT for the web page)
  *   SCENARIO=nexora-small
  *   MAP=office-small
  *   SEED=1              random seed of the simulated world
@@ -22,7 +22,7 @@ const options: AppOptions = {
   seed: process.env.SEED ? Number(process.env.SEED) : undefined,
   speed: process.env.TIME_SPEED ? Number(process.env.TIME_SPEED) : undefined,
 };
-const port = Number(process.env.PORT ?? SERVER_PORT);
+const port = Number(process.env.GAME_PORT ?? SERVER_PORT);
 
 try {
   // Build one game now, only to check the files: a map that does not match
