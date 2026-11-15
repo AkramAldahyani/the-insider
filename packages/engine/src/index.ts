@@ -22,8 +22,10 @@ export { validateScenario } from './core/scenario';
 export { createWorld } from './core/world';
 export { advanceTime, advanceTo } from './core/clock';
 export { parseDuration, dateStamp } from './core/time';
-export { openTerminal, leaveTerminal, sendInput, currentPrompt } from './terminal';
-export type { TerminalResult, OpenResult } from './terminal';
+export {
+  openTerminal, leaveTerminal, sendInput, currentPrompt, cancelInput, switchUser, refreshTerminal, touchTerminal, screenState,
+} from './terminal';
+export type { TerminalResult, OpenResult, ScreenKind, ScreenState } from './terminal';
 export { queryEvents } from './events/log';
 export type { EventFilter } from './events/log';
 export { dhcpRequest, dhcpRelease, leaseHistory, leaseHolderAt, activeLease } from './net/dhcp';

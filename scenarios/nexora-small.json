@@ -1,9 +1,10 @@
 {
   "id": "nexora-small",
   "name": "Nexora Corp - Small Office",
-  "description": "Five workstations and one admin server. The flag is /root/flag.txt on ADMIN-SRV-01.",
+  "description": "Ten workstations and one admin server. The flag is /root/flag.txt on ADMIN-SRV-01.",
   "domain": "nexora.local",
   "startTime": "2026-03-02T09:00:00Z",
+  "autoLockSeconds": 60,
 
   "dhcp": {
     "server": "ADMIN-SRV-01",
@@ -23,7 +24,12 @@
     { "username": "r.mansour", "fullName": "Rami Mansour", "title": "Financial Analyst", "department": "Finance", "password": "football7", "strength": 15 },
     { "username": "l.haddad", "fullName": "Lina Haddad", "title": "HR Specialist", "department": "HR", "password": "Lina@HR#2025", "strength": 60 },
     { "username": "o.farouk", "fullName": "Omar Farouk", "title": "Marketing Coordinator", "department": "Marketing", "password": "summer2025", "strength": 20 },
-    { "username": "k.nasser", "fullName": "Khalid Nasser", "title": "System Administrator", "department": "IT", "password": "Tr0ub4dor&3xK9", "strength": 85 }
+    { "username": "k.nasser", "fullName": "Khalid Nasser", "title": "System Administrator", "department": "IT", "password": "Tr0ub4dor&3xK9", "strength": 85 },
+    { "username": "n.saleh", "fullName": "Noor Saleh", "title": "HR Manager", "department": "HR", "password": "Noor!Saleh#88", "strength": 65 },
+    { "username": "y.khalil", "fullName": "Yousef Khalil", "title": "Graphic Designer", "department": "Marketing", "password": "pixel1234", "strength": 12 },
+    { "username": "d.aziz", "fullName": "Dana Aziz", "title": "IT Helpdesk", "department": "IT", "password": "H3lpdesk-Dana-42", "strength": 75 },
+    { "username": "m.yousef", "fullName": "Maha Yousef", "title": "Receptionist", "department": "Reception", "password": "welcome2026", "strength": 18 },
+    { "username": "t.omar", "fullName": "Tariq Omar", "title": "Security Guard", "department": "Security", "password": "Falcon-Gate-7", "strength": 55 }
   ],
 
   "players": [
@@ -31,7 +37,12 @@
     { "id": "p2", "name": "Rami Mansour", "account": "r.mansour", "desk": "FIN-LT-04", "role": "employee" },
     { "id": "p3", "name": "Lina Haddad", "account": "l.haddad", "desk": "HR-LT-03", "role": "employee" },
     { "id": "p4", "name": "Omar Farouk", "account": "o.farouk", "desk": "MKT-LT-11", "role": "employee" },
-    { "id": "p5", "name": "Khalid Nasser", "account": "k.nasser", "desk": "IT-WS-02", "role": "sysadmin" }
+    { "id": "p5", "name": "Khalid Nasser", "account": "k.nasser", "desk": "IT-WS-02", "role": "sysadmin" },
+    { "id": "p6", "name": "Noor Saleh", "account": "n.saleh", "desk": "HR-LT-05", "role": "employee" },
+    { "id": "p7", "name": "Yousef Khalil", "account": "y.khalil", "desk": "MKT-LT-09", "role": "employee" },
+    { "id": "p8", "name": "Dana Aziz", "account": "d.aziz", "desk": "IT-WS-01", "role": "helpdesk" },
+    { "id": "p9", "name": "Maha Yousef", "account": "m.yousef", "desk": "REC-PC-01", "role": "employee" },
+    { "id": "p10", "name": "Tariq Omar", "account": "t.omar", "desk": "SEC-WS-01", "role": "guard" }
   ],
 
   "hosts": [
@@ -255,6 +266,7 @@
       "users": ["l.haddad", "k.nasser"],
       "sudoers": ["k.nasser"],
       "uptimeMinutes": 4400,
+      "autoLockSeconds": 0,
       "console": { "user": "l.haddad", "state": "unlocked", "loginMinutesAgo": 22 },
       "bashHistory": {
         "l.haddad": ["ls", "cat Documents/onboarding_checklist.txt", "ls -la Documents"]
@@ -323,6 +335,160 @@
           "Apparently DHCP hands them out again - an IP is not a person!"
         ] }
       ]
+    },
+
+    {
+      "hostname": "HR-LT-05",
+      "kind": "workstation",
+      "department": "HR",
+      "location": "HR, desk 5",
+      "mac": "52:54:00:b2:05:05",
+      "owner": "n.saleh",
+      "users": ["n.saleh", "k.nasser"],
+      "sudoers": ["k.nasser"],
+      "uptimeMinutes": 4400,
+      "console": { "user": "n.saleh", "state": "locked", "loginMinutesAgo": 40 },
+      "bashHistory": {
+        "n.saleh": ["ls Documents", "cat Documents/hiring_plan_2026.txt"]
+      },
+      "files": [
+        { "path": "/home/n.saleh/todo.txt", "ageMinutes": 700, "content": [
+          "[ ] interview shortlist for the analyst role",
+          "[ ] ask Lina (again) to switch her screen lock back on",
+          "[ ] sign off March leave requests"
+        ] },
+        { "path": "/home/n.saleh/Documents/hiring_plan_2026.txt", "mode": "600", "ageMinutes": 5200, "content": [
+          "HIRING PLAN 2026 - CONFIDENTIAL",
+          "Q1: Financial Analyst (Finance) - offer stage",
+          "Q2: Junior Designer (Marketing)",
+          "Q3: SOC Analyst (IT) - budget pending"
+        ] },
+        { "path": "/home/n.saleh/Documents/salary_bands.csv", "mode": "600", "ageMinutes": 9000, "content": [
+          "band,min_sar,max_sar",
+          "A,9000,13000",
+          "B,13000,19000",
+          "C,19000,28000"
+        ] }
+      ]
+    },
+
+    {
+      "hostname": "MKT-LT-09",
+      "kind": "workstation",
+      "department": "Marketing",
+      "location": "Marketing, desk 9",
+      "mac": "52:54:00:c3:09:09",
+      "owner": "y.khalil",
+      "users": ["y.khalil", "k.nasser"],
+      "sudoers": ["k.nasser"],
+      "uptimeMinutes": 4400,
+      "autoLockSeconds": 600,
+      "console": { "user": "y.khalil", "state": "unlocked", "loginMinutesAgo": 12 },
+      "bashHistory": {
+        "y.khalil": ["ls designs", "cat notes.txt"]
+      },
+      "files": [
+        { "path": "/home/y.khalil/notes.txt", "ageMinutes": 2100, "content": [
+          "Asked IT for a 10 minute screen lock - renders take forever and I hate typing my password.",
+          "Brand colours: #0B3954 #BFD7EA #FF6663"
+        ] },
+        { "path": "/home/y.khalil/designs/spring_banner_v3.txt", "ageMinutes": 1300, "content": [
+          "[placeholder for spring_banner_v3.psd - 48 MB]",
+          "Sizes: 1200x628, 1080x1080, 1080x1920"
+        ] },
+        { "path": "/home/y.khalil/todo.txt", "ageMinutes": 600, "content": [
+          "[ ] banner v4 after Omar's copy review",
+          "[ ] export logo pack for the printer"
+        ] }
+      ]
+    },
+
+    {
+      "hostname": "IT-WS-01",
+      "kind": "workstation",
+      "department": "IT",
+      "location": "IT department, desk 1",
+      "mac": "52:54:00:17:01:01",
+      "owner": "d.aziz",
+      "users": ["d.aziz", "k.nasser"],
+      "sudoers": ["k.nasser"],
+      "uptimeMinutes": 4400,
+      "bashHistory": {
+        "d.aziz": ["cat ~/helpdesk/queue.txt", "ping -c 2 REC-PC-01", "ssh d.aziz@ADMIN-SRV-01"]
+      },
+      "files": [
+        { "path": "/home/d.aziz/helpdesk/queue.txt", "ageMinutes": 90, "content": [
+          "#1042  HR-LT-03   printer driver keeps resetting   -> with Khalid",
+          "#1048  REC-PC-01  visitor badge printer offline",
+          "#1049  MKT-LT-09  wants a longer screen-lock timer (granted: 10 min)"
+        ] },
+        { "path": "/home/d.aziz/helpdesk/how-to.md", "ageMinutes": 15000, "content": [
+          "# Helpdesk how-to",
+          "- Password reset: verify the person FACE TO FACE first. Never by email.",
+          "- Force-lock a forgotten screen:  sudo loginctl lock-session   (on that PC, over ssh)",
+          "- Who had an IP: ask Khalid for the dhcpd.leases history on ADMIN-SRV-01"
+        ] }
+      ]
+    },
+
+    {
+      "hostname": "REC-PC-01",
+      "kind": "workstation",
+      "department": "Reception",
+      "location": "Reception desk",
+      "mac": "52:54:00:d4:01:01",
+      "owner": "m.yousef",
+      "users": ["m.yousef", "k.nasser"],
+      "sudoers": ["k.nasser"],
+      "uptimeMinutes": 4400,
+      "console": { "user": "m.yousef", "state": "locked", "loginMinutesAgo": 55 },
+      "bashHistory": {
+        "m.yousef": ["cat visitors/2026-03-02.txt", "ls visitors"]
+      },
+      "files": [
+        { "path": "/home/m.yousef/visitors/2026-03-02.txt", "ageMinutes": 30, "content": [
+          "08:41  courier (Red Sea Logistics)   parcel for Finance",
+          "08:55  candidate interview           host: Noor Saleh (HR)"
+        ] },
+        { "path": "/home/m.yousef/visitors/2026-02-27.txt", "ageMinutes": 4300, "content": [
+          "10:12  Falcon Security Systems technician   badge reader maintenance, escorted by Khalid",
+          "14:30  catering delivery"
+        ] },
+        { "path": "/home/m.yousef/todo.txt", "ageMinutes": 500, "content": [
+          "[ ] ticket #1048: badge printer",
+          "[ ] order visitor lanyards"
+        ] }
+      ]
+    },
+
+    {
+      "hostname": "SEC-WS-01",
+      "kind": "workstation",
+      "department": "Security",
+      "location": "Security office",
+      "mac": "52:54:00:e5:01:01",
+      "owner": "t.omar",
+      "users": ["t.omar", "k.nasser"],
+      "sudoers": ["k.nasser"],
+      "uptimeMinutes": 4400,
+      "console": { "user": "t.omar", "state": "locked", "loginMinutesAgo": 65 },
+      "bashHistory": {
+        "t.omar": ["cat rounds/checklist.txt", "who"]
+      },
+      "files": [
+        { "path": "/home/t.omar/rounds/checklist.txt", "ageMinutes": 8000, "content": [
+          "ROUNDS CHECKLIST",
+          "1. Server room door closed and badge reader green",
+          "2. No unlocked screens on empty desks (report to helpdesk)",
+          "3. Camera feeds: reception, corridor, server room door",
+          "Blind spots: printer room, storage, bathrooms"
+        ] },
+        { "path": "/home/t.omar/rounds/log_2026-02-27.txt", "ageMinutes": 4200, "content": [
+          "09:10 all clear",
+          "13:05 HR-LT-03 screen left unlocked - told Lina",
+          "16:40 all clear"
+        ] }
+      ]
     }
   ],
 
@@ -332,6 +498,11 @@
     { "type": "console-session", "host": "FIN-LT-04", "user": "r.mansour", "minutesAgo": 4280, "durationMinutes": 465 },
     { "type": "console-session", "host": "HR-LT-03", "user": "l.haddad", "minutesAgo": 4275, "durationMinutes": 440 },
     { "type": "console-session", "host": "MKT-LT-11", "user": "o.farouk", "minutesAgo": 4260, "durationMinutes": 400 },
+    { "type": "console-session", "host": "HR-LT-05", "user": "n.saleh", "minutesAgo": 4270, "durationMinutes": 430 },
+    { "type": "console-session", "host": "MKT-LT-09", "user": "y.khalil", "minutesAgo": 4250, "durationMinutes": 410 },
+    { "type": "console-session", "host": "IT-WS-01", "user": "d.aziz", "minutesAgo": 4305, "durationMinutes": 480 },
+    { "type": "console-session", "host": "REC-PC-01", "user": "m.yousef", "minutesAgo": 4320, "durationMinutes": 510 },
+    { "type": "console-session", "host": "SEC-WS-01", "user": "t.omar", "minutesAgo": 4325, "durationMinutes": 520 },
 
     { "type": "ssh-session", "from": "IT-WS-02", "host": "ADMIN-SRV-01", "user": "k.nasser", "minutesAgo": 4200, "durationMinutes": 35,
       "commands": ["sudo systemctl status isc-dhcp-server", "tail -n 20 /var/log/syslog", "cat /var/lib/dhcp/dhcpd.leases"] },

@@ -18,14 +18,21 @@ import { materialize } from './materialize';
  * module variable is safe.
  */
 let currentActor: string | null = null;
+/**
+ * The machine whose physical keyboard that input is being typed on (null when
+ * nothing is being typed, e.g. while the clock runs background jobs). Comparing
+ * it with the host an event happens on tells "physical" from "remote" input.
+ */
+let currentKeyboard: string | null = null;
 
-export function withActor<T>(actor: string | null, fn: () => T): T {
-  const previous = currentActor;
+export function withActor<T>(actor: string | null, fn: () => T, keyboardHost: string | null = null): T {
+  const previous = [currentActor, currentKeyboard] as const;
   currentActor = actor;
+  currentKeyboard = keyboardHost;
   try {
     return fn();
   } finally {
-    currentActor = previous;
+    [currentActor, currentKeyboard] = previous;
   }
 }
 
@@ -47,6 +54,7 @@ export function emit(world: World, input: EmitInput): GameEvent {
     type: input.type,
     details: input.details ?? {},
     actor: currentActor,
+    origin: currentKeyboard === null ? 'system' : currentKeyboard === input.host ? 'physical' : 'remote',
   };
   world.events.push(event);
   materialize(world, event);
@@ -60,6 +68,7 @@ export interface EventFilter {
   type?: string;
   sourceIp?: string;
   actor?: string;
+  origin?: GameEvent['origin'];
   since?: number;
   until?: number;
 }
@@ -71,6 +80,7 @@ export function queryEvents(world: World, filter: EventFilter = {}): GameEvent[]
     if (filter.user && e.user !== filter.user) return false;
     if (filter.sourceIp && e.sourceIp !== filter.sourceIp) return false;
     if (filter.actor && e.actor !== filter.actor) return false;
+    if (filter.origin && e.origin !== filter.origin) return false;
     if (filter.since !== undefined && e.time < filter.since) return false;
     if (filter.until !== undefined && e.time > filter.until) return false;
     if (filter.type) {

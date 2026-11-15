@@ -51,6 +51,8 @@ export interface ScenarioHost {
   rootPassword?: { password: string; strength: number };
   /** How long the machine has been running at scenario start. Default 3 days. */
   uptimeMinutes?: number;
+  /** Auto-lock time for this machine only (overrides the scenario's). 0 = this screen never locks itself. */
+  autoLockSeconds?: number;
   /** Who is logged in at the physical screen when the game starts. Omit for "nobody". */
   console?: { user: string; state: 'locked' | 'unlocked'; loginMinutesAgo: number };
   files?: ScenarioFile[];
@@ -104,6 +106,11 @@ export interface Scenario {
     /** Old leases, to practise "who had this IP last week?". */
     history?: { hostname: string; ip: string; fromMinutesAgo: number; toMinutesAgo: number }[];
   };
+  /**
+   * A screen locks itself after this many seconds without input at its own
+   * keyboard. Default 60. 0 = never. A host can override it.
+   */
+  autoLockSeconds?: number;
   /** Hostname of the DNS server. Defaults to the DHCP server. */
   dnsServer?: string;
   accounts: ScenarioAccount[];

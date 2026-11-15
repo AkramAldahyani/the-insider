@@ -110,8 +110,8 @@ export function materialize(world: World, e: GameEvent): void {
       logind(`New session ${str(d.logindId)} of user ${e.user}.`);
       break;
     case 'login.fail':
-      auth('login', pid, `pam_unix(login:auth): authentication failure; logname=LOGIN uid=0 euid=0 tty=/dev/tty1 ruser= rhost=  user=${e.user}`);
-      auth('login', pid, `FAILED LOGIN (${str(d.attempt)}) on '/dev/tty1' FOR '${e.user}', Authentication failure`);
+      auth('login', pid, `pam_unix(login:auth): authentication failure; logname=LOGIN uid=0 euid=0 tty=/dev/${str(d.tty)} ruser= rhost=  user=${e.user}`);
+      auth('login', pid, `FAILED LOGIN (${str(d.attempt)}) on '/dev/${str(d.tty)}' FOR '${e.user}', Authentication failure`);
       break;
     case 'logout':
       auth('login', pid, `pam_unix(login:session): session closed for user ${e.user}`);
@@ -120,12 +120,27 @@ export function materialize(world: World, e: GameEvent): void {
       break;
 
     // ── Screen lock ──
+    // Three ways a screen gets locked/unlocked, each with its own evidence:
+    //  - by password at the keyboard  -> the gdm line (only for unlock);
+    //  - by the idle timer            -> "(idle timeout ...)";
+    //  - by `loginctl` over ssh       -> an extra line naming WHO asked and
+    //    FROM WHICH ADDRESS. Real systemd does not log that address; we add it
+    //    on purpose so a remote lock/unlock can always be traced.
     case 'session.lock':
-      logind(`Session ${str(d.logindId)} of user ${e.user} locked.`);
+      logind(`Session ${str(d.logindId)} of user ${e.user} locked${d.via === 'idle' ? ` (idle timeout, ${str(d.idleSeconds)}s without keyboard input)` : ''}.`);
+      if (e.sourceIp) auth('loginctl', null, `REMOTE lock-session: session ${str(d.logindId)} of user ${e.user} locked by ${str(d.by)} from ${e.sourceIp} (${str(d.tty)})`);
       break;
     case 'session.unlock':
-      auth('gdm-password]', pid, 'gkr-pam: unlocked login keyring');
-      logind(`Session ${str(d.logindId)} of user ${e.user} unlocked.`);
+      if (d.via === 'loginctl') {
+        logind(`Session ${str(d.logindId)} of user ${e.user} unlocked by request of ${str(d.by)} (no password entered).`);
+        if (e.sourceIp) auth('loginctl', null, `REMOTE unlock-session: session ${str(d.logindId)} of user ${e.user} unlocked by ${str(d.by)} from ${e.sourceIp} (${str(d.tty)})`);
+      } else {
+        auth('gdm-password]', pid, 'gkr-pam: unlocked login keyring');
+        logind(`Session ${str(d.logindId)} of user ${e.user} unlocked.`);
+      }
+      break;
+    case 'session.switch':
+      logind(`Session ${str(d.logindId)} of user ${e.user} moved to the background (switch user).`);
       break;
     case 'unlock.fail':
       auth('gdm-password]', pid, `pam_unix(gdm-password:auth): authentication failure; logname= uid=0 euid=0 tty=/dev/tty1 ruser= rhost=  user=${e.user}`);

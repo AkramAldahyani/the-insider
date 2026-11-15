@@ -89,6 +89,7 @@ function buildHost(world: World, scenario: Scenario, sh: ScenarioHost, uids: Map
     wtmp: [],
     journal: [],
     consoleSessionId: null,
+    autoLockMs: 0, // switched on at the end of createWorld, see there
   };
   const dir = (path: string, mode = 0o755, owner = 'root', group = 'root') => sysMkdir(host, path, { owner, group, mode, time: t0 });
   const file = (path: string, content: string, mode = 0o644, owner = 'root', group = 'root', time = t0) =>
@@ -254,9 +255,9 @@ export function createWorld(scenario: Scenario, seed = 1): World {
       at(c.loginMinutesAgo, () => {
         const session = openSession(world, { host, user: c.user, kind: 'console' });
         const id = `term-${host.hostname}`;
-        world.terminals[id] = { id, host: host.hostname, playerId: null, stack: [session.id], pending: null, notice: '' };
+        world.terminals[id] = { id, host: host.hostname, playerId: null, stack: [session.id], parked: [], pending: null, notice: '', lastPhysicalInput: world.time };
       });
-      if (c.state === 'locked') at(Math.max(0, c.loginMinutesAgo - 3), () => lockConsole(world, host, c.user));
+      if (c.state === 'locked') at(Math.max(0, c.loginMinutesAgo - 3), () => lockConsole(world, host, { by: c.user, via: 'scenario' }));
     }
   }
 
@@ -298,5 +299,13 @@ export function createWorld(scenario: Scenario, seed = 1): World {
     action.run();
   }
   advanceTo(world, start);
+
+  // Auto-lock starts counting only now. During the replay above it was off, so
+  // a PC the scenario wants UNLOCKED at the start really is unlocked: its owner
+  // "just walked away" and the idle timer begins at the first second of play.
+  for (const sh of scenario.hosts) {
+    world.hosts[sh.hostname].autoLockMs = (sh.autoLockSeconds ?? scenario.autoLockSeconds ?? 60) * 1000;
+  }
+  for (const terminal of Object.values(world.terminals)) terminal.lastPhysicalInput = start;
   return world;
 }

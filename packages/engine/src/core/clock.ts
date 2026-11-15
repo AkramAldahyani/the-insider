@@ -7,8 +7,12 @@
  * While time moves forward, a few background things happen at their exact
  * moments so logs get correct timestamps:
  *  - every hour at :17 cron runs its hourly job on each machine (log noise);
- *  - online machines renew their DHCP lease halfway through it.
+ *  - online machines renew their DHCP lease halfway through it;
+ *  - a screen that got no PHYSICAL keyboard input for the machine's auto-lock
+ *    time locks itself (typing over ssh happens on another keyboard and does
+ *    not count).
  */
+import { lockConsole } from '../auth/sessions';
 import { syslog, pidOf } from '../events/journal';
 import { dhcpRequest, expireLeases } from '../net/dhcp';
 import { allocPid } from '../proc/processes';
@@ -45,6 +49,16 @@ export function advanceTo(world: World, target: number): void {
       if (renewAt < when) {
         when = Math.max(renewAt, world.time);
         action = () => dhcpRequest(world, host);
+      }
+    }
+    for (const terminal of Object.values(world.terminals)) {
+      const host = world.hosts[terminal.host];
+      const session = terminal.stack[0] ? world.sessions[terminal.stack[0]] : undefined;
+      if (!host.autoLockMs || !session || session.locked) continue;
+      const lockAt = Math.max(terminal.lastPhysicalInput + host.autoLockMs, world.time);
+      if (lockAt < when) {
+        when = lockAt;
+        action = () => lockConsole(world, host, { by: 'idle-timer', via: 'idle' });
       }
     }
     if (when > target) break;

@@ -21,7 +21,7 @@ describe('DHCP', () => {
       expect(activeLease(world, host.mac)?.ip).toBe(host.ip);
       ips.add(host.ip);
     }
-    expect(ips.size).toBe(5);
+    expect(ips.size).toBe(10);
   });
 
   it('keeps lease HISTORY: the same IP belonged to different machines at different times', () => {

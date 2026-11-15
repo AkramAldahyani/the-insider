@@ -1,9 +1,7 @@
 /** Commands about login sessions: who is/was logged in, history, lock, exit. */
 import { uidOf } from '../auth/accounts';
-import { closeSession, lockConsole } from '../auth/sessions';
+import { closeSession, lockConsole, unlockConsole } from '../auth/sessions';
 import { hhmm, isoMinute, lastStamp, fullStamp, DAY, HOUR, MINUTE } from '../core/time';
-import { emit } from '../events/log';
-import { allocPid } from '../proc/processes';
 import { uptimeLine } from './identity';
 import type { Handler } from './types';
 import { fail } from './types';
@@ -99,6 +97,11 @@ const exit: Handler = (c) => {
 /**
  * loginctl lock-session: lock the screen of this machine's console session.
  * After that, the physical keyboard only accepts that user's password.
+ *
+ * It also works over ssh (by the same user, or by root). That is a real
+ * helpdesk feature and a real risk: `unlock-session` typed remotely opens the
+ * PC for whoever is standing at it. So both leave a clear line in auth.log on
+ * this machine, naming who asked and from which address.
  */
 const loginctl: Handler = (c, args) => {
   const sub = args[0] ?? 'list-sessions';
@@ -108,16 +111,13 @@ const loginctl: Handler = (c, args) => {
   if (sub === 'lock-session' || sub === 'lock-sessions') {
     if (!consoleSession) return fail('Failed to lock session: No graphical session found on seat0');
     if (!allowed) return fail('Failed to lock session: Access denied');
-    lockConsole(c.world, c.host, c.cred.user);
+    lockConsole(c.world, c.host, { by: c.session.user, via: 'loginctl', sourceIp: c.session.sourceIp, tty: c.session.tty });
     return {};
   }
   if (sub === 'unlock-session' || sub === 'unlock-sessions') {
     if (!consoleSession) return fail('Failed to unlock session: No graphical session found on seat0');
     if (!allowed) return fail('Failed to unlock session: Access denied');
-    if (consoleSession.locked) {
-      consoleSession.locked = false;
-      emit(c.world, { host: c.host.hostname, user: consoleSession.user, sourceIp: c.session.sourceIp, type: 'session.unlock', details: { logindId: consoleSession.logindId, pid: allocPid(c.world, c.host), via: 'loginctl' } });
-    }
+    unlockConsole(c.world, c.host, { by: c.session.user, via: 'loginctl', sourceIp: c.session.sourceIp, tty: c.session.tty });
     return {};
   }
   if (sub === 'list-sessions') {
