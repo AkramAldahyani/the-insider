@@ -1,8 +1,185 @@
-# TESTING — Phase 1 manual walkthrough
+# TESTING
 
-Type the commands in order and compare with the expected results. The whole tour takes about ten minutes.
+Manual checks for the current state of the game. Two parts:
 
-Start with the default seed so the IP addresses match this document:
+- **Phase 2 — the office in the browser** (about ten minutes)
+- **Phase 1 — the simulation in the text CLI** (about ten minutes)
+
+Both use the same scenario. With the default seed the machines are:
+
+| Host | Room | IP | Owner | Password | Screen at start |
+|---|---|---|---|---|---|
+| FIN-LT-07 | Finance | 10.0.2.58 | s.alharbi | `Riyadh2024!` | locked |
+| FIN-LT-04 | Finance | 10.0.2.167 | r.mansour | `football7` | login prompt |
+| HR-LT-03 | HR | 10.0.2.146 | l.haddad | `Lina@HR#2025` | **unlocked**, never locks itself |
+| HR-LT-05 | HR | 10.0.2.67 | n.saleh | `Noor!Saleh#88` | locked |
+| MKT-LT-09 | Marketing | 10.0.2.77 | y.khalil | `pixel1234` | **unlocked**, locks after 10 min |
+| MKT-LT-11 | Marketing | 10.0.2.71 | o.farouk | `summer2025` | locked |
+| IT-WS-01 | IT | 10.0.2.84 | d.aziz (helpdesk) | `H3lpdesk-Dana-42` | login prompt |
+| IT-WS-02 | IT | 10.0.2.43 | k.nasser (sysadmin) | `Tr0ub4dor&3xK9` | locked |
+| REC-PC-01 | Reception | 10.0.2.179 | m.yousef | `welcome2026` | locked |
+| SEC-WS-01 | Security office | 10.0.2.33 | t.omar | `Falcon-Gate-7` | locked |
+| ADMIN-SRV-01 | Server room | 10.0.1.10 | — | root: `N3x0ra-R00t-Vault!92` | login prompt |
+
+k.nasser has an account (with sudo) on every machine. Everyone has an account on ADMIN-SRV-01.
+
+Passwords show as `*` while you type them, in the browser and in the CLI.
+
+---
+
+# Phase 2 — the office in the browser
+
+Start the game server and the web page:
+
+```bash
+pnpm dev
+```
+
+Open http://localhost:5173. To start from a clean office at any time, stop `pnpm dev` (Ctrl+C) and start it again.
+
+## A. Start screen and onboarding card
+
+| Do | Expect |
+|---|---|
+| Open the page | "THE INSIDER" and ten employees grouped by department, each with a title and a desk. No passwords are shown. |
+| Click **Sara Alharbi** | The office appears. You are a blue circle labelled "Sara Alharbi (you)" in Finance, below desk FIN-LT-07. |
+| Look at the card on the right | Username `s.alharbi`, password `Riyadh2024!`, PC `FIN-LT-07`, IP `10.0.2.58`, MAC `52:54:00:f1:07:07`. |
+| Press `C` twice | The card hides, then comes back. |
+| Look at the top bar | A running clock starting at Mon 2 Mar 2026 09:00 (one game second per real second) and the room name "Finance". |
+
+## B. Walking
+
+| Do | Expect |
+|---|---|
+| Hold `W`, `A`, `S`, `D` or the arrow keys | You walk; the white triangle on your circle points where you face; the view follows you. |
+| Walk into a wall or a desk | You stop. Holding two keys slides you along the wall. |
+| Walk down through the gap in Finance's bottom wall | The room name changes to "Corridor". |
+| Visit the other rooms | Each is labelled: HR, Marketing, IT department, Server room (inside IT, top right), Reception, Security office, Cafeteria / meeting room, Printer room, Storage, Bathrooms. |
+| Look for the markers | Orange strips are doors, red triangles are cameras (CAM-01…05), small green boxes are badge readers. None of them does anything yet; the server room door is open. |
+| Look at the monitors | Green + "UNLOCKED", amber + "LOCKED username", grey + "LOGIN". |
+
+## C. Your own PC
+
+| Do | Expect |
+|---|---|
+| Stand far from any desk and press `E` | Nothing. |
+| Walk to the chair of FIN-LT-07 | "Press E to use FIN-LT-07" at the bottom. |
+| Press `E` | A terminal window opens: `*** FIN-LT-07: screen locked by s.alharbi ***` and `Password:`. You cannot walk while it is open. |
+| Type `wrong` then Enter | Stars while typing, then `Sorry, that password is incorrect.` |
+| Type `Riyadh2024!` then Enter | Prompt `s.alharbi@FIN-LT-07:~$`. The badge in the title bar says "shell". |
+| `whoami` | `s.alharbi` |
+| `ls -la`, `cat todo.txt`, `ip a` | Same output as in the CLI. |
+| Press ↑ | The previous command comes back. ← → Home End and Backspace edit the line. |
+| Type `rm -rf nothing` and press Ctrl+C | `^C` and a fresh prompt; nothing ran. |
+| `ssh k.nasser@ADMIN-SRV-01`, then Ctrl+C at the password | Back at `s.alharbi@FIN-LT-07:~$`. |
+| `clear` | The window is wiped. Scroll with the mouse wheel to see older text. |
+
+## D. Standing up does not lock
+
+| Do | Expect |
+|---|---|
+| Press `Esc` | The terminal closes. The monitor of FIN-LT-07 is **green (UNLOCKED)**. |
+| Press `E` again within a minute | Your shell is still there. No password. |
+| Type `loginctl lock-session` | The lock screen. Press `Esc`: the monitor is amber, "LOCKED s.alharbi". |
+
+## E. Auto-lock
+
+| Do | Expect |
+|---|---|
+| Unlock FIN-LT-07 again, then do not touch the keyboard for 60 seconds | The lock screen appears by itself. |
+| Unlock, press `Esc`, wait 60 seconds while watching the monitor | It turns from green to amber. |
+| Unlock and keep typing slowly (a key every few seconds) for more than a minute | It does not lock: typing at this keyboard counts. |
+
+## F. Someone else's unlocked PC
+
+| Do | Expect |
+|---|---|
+| Walk to HR (next room to the right) and to desk HR-LT-03 | Its monitor is green. |
+| Press `E` | **No password.** Prompt `l.haddad@HR-LT-03:~$`. |
+| `whoami` | `l.haddad` |
+| `touch /tmp/sara-was-here`, then `Esc` | You acted as Lina. Step I shows how the engine recorded it. |
+
+## G. A PC with nobody logged in
+
+| Do | Expect |
+|---|---|
+| Walk to FIN-LT-04 and press `E` | `Ubuntu 22.04.4 LTS FIN-LT-04 tty1` and `FIN-LT-04 login:`. |
+| `r.mansour`, then `football7` | `r.mansour@FIN-LT-04:~$` |
+| `exit` | The login prompt again. |
+
+## H. Switch user
+
+| Do | Expect |
+|---|---|
+| Reload the page and choose **Khalid Nasser** | You start in IT. Password on the card: `Tr0ub4dor&3xK9`. |
+| Walk to FIN-LT-07 (it must be locked; lock it first if not) and press `E` | Sara's lock screen, with a **Switch user (F2)** button in the title bar. |
+| Click it or press `F2` | `(still logged in and locked: s.alharbi)` and `FIN-LT-07 login:`. |
+| `k.nasser`, then his password | `k.nasser@FIN-LT-07:~$` |
+| `who` | Two lines: `s.alharbi tty1` and `k.nasser tty2`. |
+| `sudo grep background /var/log/auth.log` | `Session … of user s.alharbi moved to the background (switch user).` |
+| `exit` | Sara's lock screen is back. Her session was never touched. |
+| On the lock screen press `F2`, then Ctrl+C | Back to the lock screen. |
+
+## I. Remote unlock leaves a trace (as Khalid)
+
+| Do | Expect |
+|---|---|
+| Sit at IT-WS-02 and unlock it | `k.nasser@IT-WS-02:~$` |
+| `ssh k.nasser@HR-LT-05` and the password | `k.nasser@HR-LT-05:~$` |
+| `sudo loginctl unlock-session` and the password | No output. |
+| `sudo grep REMOTE /var/log/auth.log` | `REMOTE unlock-session: session … of user n.saleh unlocked by k.nasser from 10.0.2.43 (pts/0)` |
+| `exit`, `Esc`, look at HR-LT-05 | Green for a minute, then it locks itself again. |
+
+## J. Developer panel (development only)
+
+| Do | Expect |
+|---|---|
+| Press the backtick key `` ` `` (left of `1`) | A panel with a dashed amber border. |
+| Click **×60** | The clock runs a minute per second; "×60" shows next to it. Click **×1** to return. |
+| Jump `+1h`, **go** | The clock is one hour later. |
+| **show last** | The last 15 master events. Lines from step F show `l.haddad … [physical p1]`: the account was Lina's, the person was Sara. Lines typed over ssh show `[remote …]`. |
+| Teleport to `ADMIN-SRV-01`, **go** | You are in the server room. |
+| **dump to dumps/** | A file path. The file is the whole world as JSON (it stays on the server). |
+
+## K. The developer panel does not exist in production
+
+Stop `pnpm dev`, then:
+
+```bash
+pnpm build
+```
+
+```bash
+NODE_ENV=production pnpm server
+```
+
+(PowerShell: `$env:NODE_ENV="production"; pnpm server`.) In a second terminal:
+
+```bash
+pnpm --filter @insider/client preview
+```
+
+Open http://localhost:5173, pick an employee and press the backtick key: nothing happens, and the top bar no longer mentions the dev panel. The server prints `dev=false`.
+
+## Automated tests
+
+```bash
+pnpm test
+```
+
+Expected: `Test Files 12 passed (12)` and `Tests 135 passed (135)`.
+
+```bash
+pnpm e2e
+```
+
+Expected: `2 passed`. This drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes nine screenshots to `e2e/screenshots/`.
+
+---
+
+# Phase 1 — the simulation in the text CLI
+
+Type the commands in order and compare with the expected results.
 
 ```bash
 pnpm cli
@@ -12,28 +189,18 @@ Things that will differ from the text below, and are fine:
 
 - **Times.** Game time starts at Mon Mar 2 2026 09:00 UTC and follows the real time you take.
 - **Process ids and port numbers.**
-
-Passwords are not shown while you type them. The addresses for seed 1 are:
-
-| Host | IP | Owner | Password |
-|---|---|---|---|
-| FIN-LT-07 | 10.0.2.58 | s.alharbi | `Riyadh2024!` |
-| FIN-LT-04 | 10.0.2.182 | r.mansour | `football7` |
-| HR-LT-03 | 10.0.2.88 | l.haddad | `Lina@HR#2025` |
-| MKT-LT-11 | 10.0.2.71 | o.farouk | `summer2025` |
-| IT-WS-02 | 10.0.2.87 | k.nasser (sysadmin) | `Tr0ub4dor&3xK9` |
-| ADMIN-SRV-01 | 10.0.1.10 | — | root: `N3x0ra-R00t-Vault!92` |
+- **Auto-lock.** If you leave a PC alone for 60 seconds its screen locks. The CLI then prints the lock screen instead of running your line; type the password and repeat the command.
 
 ---
 
 ## 1. Start-up
 
-The CLI prints the scenario name, the game time, and a table of five players with usernames and passwords. The prompt is `[p1 standing] > `.
+The CLI prints the scenario name, the game time, and a table of ten players with usernames and passwords. The prompt is `[p1 standing] > `.
 
 | Type | Expect |
 |---|---|
 | `:help` | The list of `:` commands. |
-| `:hosts` | Six machines. FIN-LT-07, IT-WS-02 and MKT-LT-11 are `locked`, HR-LT-03 is `UNLOCKED (l.haddad)`, FIN-LT-04 and ADMIN-SRV-01 show `login prompt`. |
+| `:hosts` | Eleven machines, with the screen states of the table at the top of this file. |
 
 ## 2. Unlock your own PC and look around (as Sara, p1)
 
@@ -100,7 +267,7 @@ The CLI prints the scenario name, the game time, and a table of five players wit
 | `:sit IT-WS-02` | Lock screen for k.nasser. |
 | `Tr0ub4dor&3xK9` | `k.nasser@IT-WS-02:~$ ` |
 | `ssh k.nasser@ADMIN-SRV-01` then the password | `k.nasser@ADMIN-SRV-01:~$ ` |
-| `last -n 4` | First line: you, from `10.0.2.87`, `still logged in`. Second line: `s.alharbi  pts/0  10.0.2.58  Mon Mar  2 09:0x - 09:0x`. |
+| `last -n 4` | First line: you, from `10.0.2.43`, `still logged in`. Second line: `s.alharbi  pts/0  10.0.2.58  Mon Mar  2 09:0x - 09:0x`. |
 | `grep s.alharbi /var/log/auth.log \| tail -n 11` | In order: `Failed password for s.alharbi from 10.0.2.58`, `Accepted password for s.alharbi from 10.0.2.58` (same `sshd[pid]` and port as the failure), `session opened`, `sudo: s.alharbi : user NOT in sudoers ; TTY=pts/0 ; PWD=/home/s.alharbi ; USER=root ; COMMAND=/usr/bin/cat /root/flag.txt`, `session closed`. |
 | `sudo cat /home/s.alharbi/.bash_history` then your password | Sara's commands from step 4, including `cat /root/flag.txt` and `sudo cat /root/flag.txt`, ending with `exit`. Her passwords are not in it. |
 | `grep -B 4 f1:07:07 /var/lib/dhcp/dhcpd.leases` | Two leases for `10.0.2.58` with that MAC: an old one (`binding state free`) and the current one (`binding state active`). This is how an IP is tied to a device. |
@@ -117,7 +284,7 @@ The CLI prints the scenario name, the game time, and a table of five players wit
 | `whoami` | `root` |
 | `exit` | `logout`, back to `k.nasser@ADMIN-SRV-01:~$ ` |
 | `sudo tail -n 4 /var/log/auth.log` | Your own sudo lines: `sudo: k.nasser : TTY=pts/0 ; PWD=/home/k.nasser ; USER=root ; COMMAND=…` |
-| `sudo ss -tnp` | One `ESTAB` line: `10.0.1.10:22` ↔ `10.0.2.87:<port>` with `users:(("sshd",pid=…` |
+| `sudo ss -tnp` | One `ESTAB` line: `10.0.1.10:22` ↔ `10.0.2.43:<port>` with `users:(("sshd",pid=…` |
 | `ps aux \| grep sshd` | The listener plus `sshd: k.nasser [priv]` and `sshd: k.nasser@pts/0`. |
 | `su - s.alharbi` then `wrong` | `su: Authentication failure` |
 | `exit` | Back to `k.nasser@IT-WS-02:~$ ` |
@@ -155,20 +322,25 @@ The CLI prints the scenario name, the game time, and a table of five players wit
 | `:dump` | `World saved to …\dumps\nexora-small-….json` (about 1 MB). Open it: it is readable JSON. |
 | `:quit` | `Bye.` |
 
-## 11. More things to try
+## 11. Switch user in the CLI
+
+| Type | Expect |
+|---|---|
+| `:as p5` then `:sit FIN-LT-07` | Sara's lock screen. |
+| `:switch` | `(still logged in and locked: s.alharbi)` and a login prompt. |
+| `k.nasser` then `Tr0ub4dor&3xK9` | `k.nasser@FIN-LT-07:~$` |
+| `exit` | Sara's lock screen again. |
+
+## 12. More things to try
 
 - `man ssh`, `help`
 - `find / -name "*.csv" 2>/dev/null`
 - `stat todo.txt`, `file /usr/bin/ls`
 - `chmod 600 todo.txt && ls -l todo.txt`
 - `journalctl -u ssh -n 10`, `dmesg`, `crontab -l` (on IT-WS-02 as k.nasser)
-- Pivot: as p1 on FIN-LT-07, `ssh k.nasser@IT-WS-02`, then from there `ssh k.nasser@ADMIN-SRV-01`. On the server, `last -n 1` shows `10.0.2.87` (IT-WS-02), not Sara's `10.0.2.58`.
+- Pivot: as p1 on FIN-LT-07, `ssh k.nasser@IT-WS-02`, then from there `ssh k.nasser@ADMIN-SRV-01`. On the server, `last -n 1` shows `10.0.2.43` (IT-WS-02), not Sara's `10.0.2.58`.
 - Kick an intruder: find their shell with `ps aux` on the server and `sudo kill -9 <pid>`. Their next keypress shows `Connection to ADMIN-SRV-01 closed by remote host.` and their history on the server is not saved.
 
-## Automated tests
+## Automated tests (Phase 1)
 
-```bash
-pnpm test
-```
-
-Expected: `Test Files 9 passed (9)` and `Tests 91 passed (91)`.
+See "Automated tests" in the Phase 2 part above.

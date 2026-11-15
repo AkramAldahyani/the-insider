@@ -43,8 +43,10 @@ export class LineEditor {
   private draft = '';
   /** Screen row of the cursor, counted from the row where the prompt starts. */
   private cursorRow = 0;
-  /** While true, keys are ignored: a line was sent and the answer has not arrived yet. */
+  /** A line was sent and the answer has not arrived yet. */
   private waiting = false;
+  /** Keys pressed while waiting. They are replayed when the answer arrives, so fast typing loses nothing. */
+  private queued: string[] = [];
 
   constructor(
     private screen: Screen,
@@ -66,6 +68,7 @@ export class LineEditor {
     this.cursorRow = 0;
     this.historyAt = this.history.length;
     this.redraw();
+    for (const data of this.queued.splice(0)) this.input(data);
   }
 
   /** What is shown for the typed text: the text itself, or stars for a password. */
@@ -103,6 +106,10 @@ export class LineEditor {
 
   /** Feed with xterm's onData. One call may hold one key, or a whole pasted text. */
   input(data: string): void {
+    if (this.waiting && data !== ESC) {
+      this.queued.push(data);
+      return;
+    }
     // Keys with a multi-character code.
     switch (data) {
       case ESC: return this.events.onEscape();
@@ -118,8 +125,13 @@ export class LineEditor {
     }
     if (data.startsWith(ESC)) return; // any other special key: ignore
     // Plain characters and control keys (a paste arrives as many characters at once).
-    for (const ch of data) {
-      if (this.waiting) return;
+    for (let i = 0; i < data.length; i++) {
+      const ch = data[i];
+      if (this.waiting) {
+        // Enter was in the middle of a paste: the rest waits for the answer.
+        this.queued.push(data.slice(i));
+        return;
+      }
       if (ch === '\r' || ch === '\n') this.submit();
       else if (ch === '\x7f' || ch === '\b') this.erase(this.cursor - 1, this.cursor);
       else if (ch === '\x03') this.cancel();

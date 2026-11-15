@@ -22,3 +22,5 @@ Thumbs.db
 # local environment / secrets (none needed in Phase 1, but never commit them)
 .env
 .env.*
+test-results/
+playwright-report/

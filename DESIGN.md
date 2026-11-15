@@ -60,9 +60,14 @@ Map size scales with lobby size:
 
 - At match start each player receives an **onboarding card**: username, password, hostname, IP (assigned by a simulated DHCP server) and MAC.
 - Walking to **any** desk and pressing `E` opens that PC's screen:
-  - **Locked PC:** a Linux-style login prompt; correct credentials are required.
+  - **Locked PC:** a lock screen asking for the password of the user who locked it. It also offers **switch user**: any valid credentials *for that machine* start a second session. The first session stays logged in and locked underneath, and both logins are logged.
+  - **PC with nobody logged in:** a Linux-style login prompt.
   - **Unlocked PC:** you get that user's shell and act **as that user**.
-- PCs stay unlocked when the owner walks away, until they lock manually (Lock button or `loginctl lock-session`) or auto-lock triggers after 60 seconds idle (configurable).
+- PCs stay unlocked when the owner walks away, until they lock manually (`loginctl lock-session`) or auto-lock triggers after 60 seconds idle. **Standing up never locks.**
+- **Auto-lock** is part of the engine and driven by the game clock. Only **physical** input (keys pressed at that machine's own keyboard) resets the timer; input arriving over ssh does not. The time is set per scenario (`autoLockSeconds`, default 60) and can be overridden per machine (`0` = never), which is how a scenario gets PCs that start unlocked and how the "longer auto-lock timer" vulnerability of §6 will be expressed.
+- **Remote lock/unlock:** `loginctl lock-session` / `unlock-session` also work over ssh for the session's own user and for root (this is what the helpdesk's force-lock will use). Because a remote *unlock* opens a PC for whoever stands at it, each one writes a line to that machine's `auth.log` naming who asked and from which IP.
+- **Time:** the server owns the clock and advances it in real time: 1 game second per real second, with a configurable multiplier. The engine itself never reads a real clock.
+- Every event in the master log records the **account** used, the **player** physically at the keyboard, and whether the input was **physical** (typed at that machine) or **remote** (arrived over ssh).
 - **Defenders may also use unlocked PCs.** Every action is logged under the PC owner's account, and other players can see who is physically standing at which desk. (This is realistic and also gives the hacker cover: "I was just checking his logs!")
 
 ---
@@ -81,6 +86,7 @@ Map size scales with lobby size:
   - Commands appear in the user's `~/.bash_history` unless cleared.
   - USB insertions appear in `dmesg` / `journalctl`.
 - `ssh` between machines works over the simulated network.
+- **Accepted simplifications (decided in Phase 1):** a workstation's owner is in group `adm` on their own machine, so employees can read their own logs (on servers only the sysadmin is); and `dmesg` is readable by everyone (real Ubuntu restricts it to root), so employees can later check their own PC for USB events.
 - A simulated **DHCP server** keeps lease history (which MAC had which IP and when). An IP address is not a person — players must correlate IP → device → user → physical location.
 
 ### Evidence types available in the game
@@ -219,6 +225,10 @@ After each match, show a full timeline replay: every hacker action, the evidence
   - `packages/shared` — shared types and constants (if needed).
 - **Client:** React + Vite, **Phaser 3** for the office map, **xterm.js** for terminals.
 - **Multiplayer:** **Colyseus** (Node.js), server-authoritative. The client never receives logs, files or state its player shouldn't be able to see.
+  - **Visibility rule:** a client receives only (1) public physical state — player positions, who sits at which desk, each monitor's state (login / locked / unlocked) and the username printed on a lock screen; (2) its own onboarding card; (3) the text on the screen of the PC it is sitting at. It never receives `World.credentials`, the master event list or other machines' files. All outgoing data is built in one file (`packages/server/src/visibility.ts`) and tests inspect every message and every byte sent.
+  - One room = one match = one `World`. Movement is decided by the server; clients send only the direction they want to walk and interpolate what comes back.
+  - Developer tools (time speed, jump, master-log view, teleport, dump) exist only when the server runs in development mode and are not included in production builds of the client.
+- **Maps:** Tiled JSON in `maps/`, with object layers `rooms`, `desks`, `furniture`, `doors`, `cameras`, `badge_readers`, `spawns`. Every desk carries a `hostname`; the server refuses to start if desks and scenario hosts do not match.
 - **Persistence:** PostgreSQL (accounts, match history, replays), Redis (matchmaking, presence). docker-compose for local development.
 - **Content:** scenarios, vulnerabilities, tasks and maps are JSON/YAML data files, so content can be added without code changes.
 - **Tests:** Vitest for the engine; at least one automated test that runs a full bot-only match to completion.

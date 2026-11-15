@@ -143,3 +143,12 @@ export function findRoute(map: OfficeMap, fromX: number, fromY: number, toX: num
   }
   return route;
 }
+
+/** Only the turning points of a route: fewer, longer straight walks (kinder to a player steered over a network). */
+export function corners(route: { x: number; y: number }[]): { x: number; y: number }[] {
+  return route.filter((p, i) => {
+    const a = route[i - 1];
+    const b = route[i + 1];
+    return !a || !b || (a.x === p.x) !== (p.x === b.x);
+  });
+}

@@ -2,7 +2,14 @@
 
 A multiplayer social-deduction game that teaches real Linux forensics. The full design is in [DESIGN.md](DESIGN.md).
 
-**Current state: Phase 1 — simulation core.** There are no graphics, multiplayer, bots or hacker tools yet. What exists is a simulated office network (machines, users, files, logs, a shell) and a text CLI to play with it.
+**Current state: Phase 2 — the office in the browser.** You can walk around a top-down office, sit at any PC and use its simulated Linux shell in a real-looking terminal. There are no bots, tasks, hacker tools, roles or meetings yet, and the art is placeholder shapes.
+
+What exists:
+
+- a simulated office network: machines, users, files, logs, a shell (`packages/engine`);
+- a game server that owns that world and the clock (`packages/server`);
+- a browser client: map, movement, PC terminal (`packages/client`);
+- a text CLI to use the simulation without graphics (`packages/cli`).
 
 Everything is simulated. No real commands are run, no real network is touched, and nothing here is a real exploit.
 
@@ -29,6 +36,42 @@ Or leave pnpm uninstalled and put `corepack` in front of every command below (`c
 pnpm install
 ```
 
+## Play in the browser
+
+```bash
+pnpm dev
+```
+
+This starts the game server (port 2567) and the web page. Open http://localhost:5173.
+
+1. Choose an employee. You appear next to their desk with an onboarding card (username, password, PC).
+2. Walk with `WASD` or the arrow keys. Stand at a desk's chair and press `E` to use that PC.
+3. Type in the terminal. `Esc` stands up; the PC stays exactly as you left it.
+
+| Key | Where | What it does |
+|---|---|---|
+| `WASD` / arrows | office | walk |
+| `E` | at a desk | sit down and use the PC |
+| `C` | office | show / hide your onboarding card |
+| `` ` `` (backtick) | office | developer panel (development only) |
+| `Esc` | terminal | stand up |
+| `Ctrl+C` | terminal | cancel the line or the password question |
+| `F2` | lock screen | switch user |
+| `↑` `↓` `←` `→` `Home` `End` | terminal | history and line editing |
+
+On the map, a monitor is green when unlocked, amber when locked (with the user's name) and grey at the login prompt. Orange strips are doors, red triangles are cameras, green boxes are badge readers; in this phase they are only drawn.
+
+Other commands:
+
+| Command | What it does |
+|---|---|
+| `pnpm server` | only the game server |
+| `pnpm client` | only the web page |
+| `pnpm build` | production build of the web page (`packages/client/dist`) |
+| `pnpm map` | regenerate `maps/office-small.json` from `maps/build-office.ts` (overwrites edits made in Tiled) |
+
+Server settings are environment variables: `GAME_PORT` (2567), `SCENARIO` (`nexora-small`), `MAP` (`office-small`), `SEED` (1), `TIME_SPEED` (game seconds per real second, 1), and `NODE_ENV=production` to switch the developer tools off.
+
 ## Run the CLI
 
 ```bash
@@ -43,6 +86,7 @@ The CLI prints the players and their credentials, then waits for input. Lines st
 |---|---|
 | `:sit <hostname>` | Sit at a PC. You get a login prompt, a lock screen, or an open shell, depending on how it was left. |
 | `:leave` | Stand up. The PC stays exactly as it is (locked or unlocked). |
+| `:switch` | On a lock screen: switch user (log in as someone else; the locked session stays). |
 | `:as <player>` | Become another player (`p1`…`p5`). This is who is *physically* at the keyboard. |
 | `:players` / `:hosts` | List players with credentials / machines with IP, MAC and screen state. |
 | `:time` / `:time +5m` | Show / advance game time (`s`, `m`, `h`, `d`, e.g. `+1h30m`). |
@@ -50,7 +94,7 @@ The CLI prints the players and their credentials, then waits for input. Lines st
 | `:dump [file]` | Save the whole world to JSON (default: `dumps/`). |
 | `:help` / `:quit` | Help / exit. |
 
-Passwords are hidden while you type them. Game time also advances by the real time that passes between your inputs.
+Passwords show as `*` while you type them. Game time also advances by the real time that passes between your inputs, so a screen left alone for 60 seconds locks itself.
 
 A step-by-step tour with expected results is in [TESTING.md](TESTING.md).
 
@@ -64,12 +108,36 @@ pnpm test
 pnpm typecheck
 ```
 
-91 Vitest tests cover permissions, ssh logging and source IPs, sudo, su, history, DHCP lease history, lock/unlock, pipes and redirection, and deterministic replay.
+135 Vitest tests cover the engine (permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, auto-lock, switch user, pipes, deterministic replay) and the server (movement, sitting, map checks, and the visibility rule).
+
+```bash
+pnpm e2e
+```
+
+Two Playwright tests drive a real Chromium browser through the game and save screenshots to `e2e/screenshots/`. The first time, download the browser (about 150 MB) with:
+
+```bash
+pnpm exec playwright install chromium
+```
 
 ## Project layout
 
 ```
 scenarios/            office definitions (data only)
+maps/                 office maps in Tiled JSON format, and the script that generated the first one
+e2e/                  Playwright browser tests and their screenshots
+scripts/dev.mjs       starts server + web page together
+packages/shared/      message types, map format and movement rules used by server AND client
+packages/server/      the game server (Colyseus)
+  src/game.ts         one match: world + players' bodies; all rules, no networking
+  src/visibility.ts   the ONLY place that builds data sent to a browser
+  src/OfficeRoom.ts   thin network wrapper around game.ts
+  src/state.ts        the public state synced to every browser
+  src/mapCheck.ts     start-up check: desks on the map = hosts in the scenario
+packages/client/      the browser game
+  src/game/store.ts   connection + the data React, Phaser and xterm share
+  src/game/           Phaser scene (map, players, monitors) and keyboard
+  src/ui/             terminal window, line editor, HUD, start screen, card, dev panel
 packages/engine/      the simulation: pure TypeScript, no I/O, no Node APIs
   src/core/           clock, random numbers, scenario format, world builder
   src/fs/             virtual filesystem and permission checks
@@ -84,7 +152,21 @@ packages/engine/      the simulation: pure TypeScript, no I/O, no Node APIs
 packages/cli/         the terminal REPL (the only place that reads files or the keyboard)
 ```
 
-`packages/server` and `packages/client` will be added in later phases; the workspace already includes `packages/*`.
+## How the browser game fits together
+
+```
+keyboard -> client --(move / sit / line)--> server (OfficeGame) --> engine World
+client <--(state patches: positions, desks, clock)--------+
+client <--(messages: text of the PC I am sitting at)------+
+```
+
+**The server decides everything.** The browser sends what the player wants ("walk left", "sit here", "this line"). The server moves the player, checks walls and the distance to the desk, runs the line in the engine and sends back the result. 20 times a second it advances the game clock by the real time that passed.
+
+**The visibility rule.** The server knows every password and the true identity behind every action. A browser receives only: the public physical state (where people are, who sits where, whether each monitor is locked), its own onboarding card, and the text on the screen of the PC it is sitting at. Every outgoing payload is built field by field in `visibility.ts`; nothing from the engine is passed through whole. Tests record every message, and every byte on a real connection, and check that no other password and no master-log entry is in them.
+
+**The map** is a Tiled JSON file. Open `maps/office-small.json` in [Tiled](https://www.mapeditor.org) to edit it. Each object in the `desks` layer has a `hostname` property naming a scenario host; if the two lists differ, the server stops at start-up and prints every mismatch.
+
+**The developer panel** can show the master event log, so it is locked twice: the server ignores `dev.*` messages unless it runs in development mode, and the production build of the page does not contain the panel.
 
 ## Engine API in one minute
 
@@ -126,6 +208,10 @@ When `awaitingInput` is present, the next `sendInput` is the answer to a questio
 - **`dmesg` is readable by everyone.** Real Ubuntu restricts it to root; it is open here so employees can later check their own PC for USB events.
 - **`last`, `who` and `w` use a 10-character user column** instead of cutting names to 8 like the real tools.
 - **Hourly cron lines and DHCP renewals** are generated as time passes, so logs keep growing.
+- **Auto-lock counts only physical input.** A screen locks after 60 s without keys pressed at its own keyboard; commands arriving over ssh do not keep it awake. `autoLockSeconds` sets it per scenario or per host (`0` = never).
+- **Switch user.** A lock screen accepts any account of that machine as a second login; the locked session stays underneath and returns when the second one logs out.
+- **Remote `loginctl lock-session` / `unlock-session`** write a `REMOTE …` line with the source IP to that machine's `auth.log`.
+- **Every master event has an `origin`**: `physical`, `remote` or `system`.
 
 ## Known simplifications
 
@@ -133,18 +219,21 @@ When `awaitingInput` is present, the next `sendInput` is the answer to a questio
 - `ssh host command` (remote command without logging in) is not supported; `scp` copies single files only.
 - No symlinks, no background jobs (`&`), no shell scripts: files can be read but not executed.
 - `less` prints the file; there is no pager.
-- Only the logged-in user's password unlocks a locked PC (no "switch user").
-- Auto-lock after idle time is not implemented; `lastActivity` is recorded for it.
+- A screen that locks itself while a password question (ssh, sudo) is open drops that question.
+- Movement in the browser is not predicted locally: your character follows the server's position, which is smooth on a local network but would lag on a slow connection.
+- Reloading the page starts you again at the start screen; the PCs keep their state.
 
 ## Adding a scenario
 
 Copy [scenarios/nexora-small.json](scenarios/nexora-small.json) and edit it. The format is documented field by field in [packages/engine/src/core/scenario.ts](packages/engine/src/core/scenario.ts). In short:
 
 - `accounts`: username, full name, password and a `strength` (0–100, for the future password cracker).
-- `hosts`: hostname, MAC, department, which accounts exist there, who has sudo, optional `staticIp`, files, crontabs, and who is logged in at the screen when the game starts (`locked` or `unlocked`).
+- `hosts`: hostname, MAC, department, which accounts exist there, who has sudo, optional `staticIp`, files, crontabs, an optional `autoLockSeconds`, and who is logged in at the screen when the game starts (`locked` or `unlocked`).
 - `dhcp`: the address pool, plus optional old leases.
 - `history`: past logins, failed logins and sudo use. They are replayed through the same code as live actions, so old log lines look exactly like new ones.
 - `players`: who sits where.
+
+For the browser game, every host also needs a desk on the map (an object in the `desks` layer with that `hostname`, and a point in `spawns` with `desk` set to it).
 
 The CLI lists every `.json` file in `scenarios/`. A scenario with mistakes (unknown user, bad MAC…) is rejected at start with a list of problems.
 

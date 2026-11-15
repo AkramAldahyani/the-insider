@@ -14,7 +14,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ROOM_NAME, type PublicState } from '@insider/shared';
 import { createGameServer } from '../src/app';
-import { PW, ROOT_PW, Recorder, findRoute, scenario } from './helpers';
+import { PW, ROOT_PW, Recorder, corners, findRoute, scenario } from './helpers';
 
 /** Every secret in the scenario: all account passwords and the root password. */
 const ALL_SECRETS = [...Object.values(PW), ROOT_PW];
@@ -224,13 +224,23 @@ describe('visibility: what goes over the wire', () => {
       /** Walks with `move` messages, steering by the position the SERVER reports. */
       const sitAt = async (hostname: string, map: Recorder['map']) => {
         const desk = map.desks.find((d) => d.hostname === hostname)!;
-        for (const point of [...findRoute(map, me().x, me().y, desk.seatX, desk.seatY), { x: desk.seatX, y: desk.seatY }]) {
+        for (const point of [...corners(findRoute(map, me().x, me().y, desk.seatX, desk.seatY)), { x: desk.seatX, y: desk.seatY }]) {
           for (let guard = 0; guard < 400; guard++) {
-            const dx = Math.abs(point.x - me().x) > 12 ? Math.sign(point.x - me().x) : 0;
-            const dy = Math.abs(point.y - me().y) > 12 ? Math.sign(point.y - me().y) : 0;
+            const far = (axis: 'x' | 'y') => point[axis] - me()[axis];
+            // Arrive within 6 px: a tile is 32 px and a player 20 px wide, so being
+            // further off-centre than that can snag on a door frame at the next turn.
+            const dx = Math.abs(far('x')) > 6 ? Math.sign(far('x')) : 0;
+            const dy = Math.abs(far('y')) > 6 ? Math.sign(far('y')) : 0;
             if (dx === 0 && dy === 0) break;
             room.send('move', { dx, dy });
-            await wait(25);
+            await wait(60); // at least one server tick (50 ms), or the step might not happen at all
+            // Close to the target: take one short step, stop, and look again.
+            // (Walking on while reading a slightly old position would overshoot,
+            // turn back, and oscillate on a slow machine.)
+            if (Math.max(dx ? Math.abs(far('x')) : 0, dy ? Math.abs(far('y')) : 0) < 40) {
+              room.send('move', { dx: 0, dy: 0 });
+              await wait(130);
+            }
           }
         }
         room.send('move', { dx: 0, dy: 0 });
