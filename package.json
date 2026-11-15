@@ -2,16 +2,23 @@
   "name": "the-insider",
   "private": true,
   "version": "0.1.0",
-  "description": "The Insider - a social-deduction game that teaches Linux forensics. Phase 1: simulation core.",
+  "description": "The Insider - a social-deduction game that teaches Linux forensics.",
   "type": "module",
   "packageManager": "pnpm@12.21.0",
   "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "server": "tsx packages/server/src/index.ts",
+    "client": "node scripts/dev.mjs --client-only",
     "cli": "tsx packages/cli/src/main.ts",
+    "map": "tsx maps/build-office.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -p packages/engine/tsconfig.json && tsc -p packages/cli/tsconfig.json"
+    "e2e": "playwright test",
+    "build": "node scripts/dev.mjs --build",
+    "typecheck": "tsc -p packages/engine/tsconfig.json && tsc -p packages/shared/tsconfig.json && tsc -p packages/cli/tsconfig.json && tsc -p packages/server/tsconfig.json && tsc -p packages/client/tsconfig.json"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@types/node": "^22.10.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",

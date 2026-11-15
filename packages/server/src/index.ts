@@ -1,0 +1,38 @@
+/**
+ * Starts the game server.
+ *
+ *   pnpm dev            (starts this and the web page together)
+ *   pnpm server         (only this)
+ *
+ * Settings come from environment variables, all optional:
+ *   PORT=2567           port to listen on
+ *   SCENARIO=nexora-small
+ *   MAP=office-small
+ *   SEED=1              random seed of the simulated world
+ *   TIME_SPEED=1        game seconds per real second
+ *   NODE_ENV=production switches the developer panel OFF
+ */
+import { OfficeGame } from './game';
+import { SERVER_PORT } from '@insider/shared';
+import { createGameServer, loadGameOptions, type AppOptions } from './app';
+
+const options: AppOptions = {
+  scenario: process.env.SCENARIO,
+  map: process.env.MAP,
+  seed: process.env.SEED ? Number(process.env.SEED) : undefined,
+  speed: process.env.TIME_SPEED ? Number(process.env.TIME_SPEED) : undefined,
+};
+const port = Number(process.env.PORT ?? SERVER_PORT);
+
+try {
+  // Build one game now, only to check the files: a map that does not match
+  // the scenario stops the server here with a clear list of problems,
+  // instead of failing later when the first player joins.
+  const loaded = loadGameOptions(options);
+  new OfficeGame(loaded);
+  await createGameServer(options).listen(port);
+  console.log(`[insider] game server on ws://localhost:${port}  scenario=${loaded.scenario.id} map=${loaded.mapName} dev=${String(loaded.dev)}`);
+} catch (error) {
+  console.error(`[insider] cannot start:\n${(error as Error).message}`);
+  process.exit(1);
+}
