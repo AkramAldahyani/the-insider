@@ -37,16 +37,20 @@ export interface OpenSessionInput {
   conn?: { port: number; pid: number };
 }
 
-/** Lowest free pseudo-terminal number on a host (pts/0, pts/1, ...). */
-function freePts(world: World, host: Host): string {
+/**
+ * Lowest free terminal name on a host: "pts/0, pts/1, ..." for ssh logins and
+ * "tty1, tty2, ..." for people logged in at the screen (a second console
+ * session appears when someone uses "switch user").
+ */
+function freeTty(world: World, host: Host, prefix: 'pts/' | 'tty'): string {
   const used = new Set(
     Object.values(world.sessions)
       .filter((s) => s.host === host.hostname && s.logoutTime === null)
       .map((s) => s.tty),
   );
-  let n = 0;
-  while (used.has(`pts/${n}`)) n++;
-  return `pts/${n}`;
+  let n = prefix === 'tty' ? 1 : 0;
+  while (used.has(`${prefix}${n}`)) n++;
+  return `${prefix}${n}`;
 }
 
 export function openSession(world: World, input: OpenSessionInput): Session {
@@ -64,7 +68,7 @@ export function openSession(world: World, input: OpenSessionInput): Session {
     user,
     kind,
     loginShell,
-    tty: kind === 'console' ? 'tty1' : kind === 'ssh' ? freePts(world, host) : parent!.tty,
+    tty: kind === 'console' ? freeTty(world, host, 'tty') : kind === 'ssh' ? freeTty(world, host, 'pts/') : parent!.tty,
     sourceIp: kind === 'ssh' ? from!.ip : (parent?.sourceIp ?? null),
     sourcePort: kind === 'ssh' ? (input.conn?.port ?? randInt(world, 32768, 60999)) : (parent?.sourcePort ?? null),
     loginTime: now,
@@ -122,12 +126,12 @@ export function openSession(world: World, input: OpenSessionInput): Session {
       details: { port: session.sourcePort, pid: session.authPid, tty: session.tty, logindId: session.logindId, uid, fromHost: from!.hostname },
     });
   } else if (kind === 'console') {
-    session.authPid = own(`/bin/login -p --`, 'root', 'tty1', 'Ss').pid;
-    own('-bash', user, 'tty1');
+    session.authPid = own(`/bin/login -p --`, 'root', session.tty, 'Ss').pid;
+    own('-bash', user, session.tty);
     session.logindId = host.nextLogindId++;
-    host.wtmp.push({ user, tty: 'tty1', from: '', login: now, logout: null, sessionId: id });
+    host.wtmp.push({ user, tty: session.tty, from: '', login: now, logout: null, sessionId: id });
     host.consoleSessionId = id;
-    emit(world, { host: host.hostname, user, type: 'login.success', details: { pid: session.authPid, tty: 'tty1', logindId: session.logindId, uid } });
+    emit(world, { host: host.hostname, user, type: 'login.success', details: { pid: session.authPid, tty: session.tty, logindId: session.logindId, uid } });
   } else {
     session.authPid = own(loginShell ? `su - ${user}` : `su ${user}`, 'root', session.tty, 'S').pid;
     own(loginShell ? '-bash' : 'bash', user, session.tty, 'S');
@@ -180,9 +184,14 @@ export function closeSession(world: World, session: Session, opts: { writeHistor
   }
 }
 
-/** The terminal (physical screen) whose stack contains this session, if any. */
+/** The stack (visible, or parked by "switch user") of a terminal that contains this session. */
+function stackOf(terminal: Terminal, sessionId: string): string[] | undefined {
+  return [terminal.stack, ...terminal.parked].find((stack) => stack.includes(sessionId));
+}
+
+/** The terminal (physical screen) that this session belongs to, if any. */
 export function terminalOf(world: World, sessionId: string): Terminal | undefined {
-  return Object.values(world.terminals).find((t) => t.stack.includes(sessionId));
+  return Object.values(world.terminals).find((t) => stackOf(t, sessionId));
 }
 
 export function topSession(world: World, terminal: Terminal): Session | undefined {
@@ -201,13 +210,16 @@ export function terminateSession(world: World, session: Session, hard: boolean):
     closeSession(world, session, { writeHistory: !hard });
     return;
   }
-  const index = terminal.stack.indexOf(session.id);
-  const dying = terminal.stack.splice(index).reverse();
+  const stack = stackOf(terminal, session.id)!;
+  const visible = stack === terminal.stack;
+  const dying = stack.splice(stack.indexOf(session.id)).reverse();
   for (const id of dying) {
     const s = world.sessions[id];
     // Shells above the killed one get a hang-up signal and still save history.
     closeSession(world, s, { writeHistory: id === session.id ? !hard : true });
   }
+  // A session hidden behind "switch user" is not on screen: nothing to show or reset.
+  if (!visible) return;
   if (session.kind === 'ssh') {
     terminal.notice += `Connection to ${session.host} closed by remote host.\nConnection to ${session.host} closed.\n`;
   } else if (session.kind === 'su') {
@@ -218,13 +230,46 @@ export function terminateSession(world: World, session: Session, hard: boolean):
 
 // ───────────────────────────── Screen lock ─────────────────────────────
 
+/** How a lock or unlock was requested (ends up in the event and in the logs). */
+export interface LockRequest {
+  /** The account that asked, or "idle-timer" for the automatic lock. */
+  by: string;
+  /** "loginctl" (a typed command), "idle" (auto-lock) or "scenario" (how the match starts). */
+  via: 'loginctl' | 'idle' | 'scenario';
+  /** Set when the command was typed in an ssh session: the address it came from. */
+  sourceIp?: string | null;
+  tty?: string;
+}
+
 /** Locks the screen of a host's console session. Returns false if nobody is logged in there. */
-export function lockConsole(world: World, host: Host, by: string): boolean {
+export function lockConsole(world: World, host: Host, req: LockRequest): boolean {
   const session = host.consoleSessionId ? world.sessions[host.consoleSessionId] : undefined;
   if (!session) return false;
   if (!session.locked) {
     session.locked = true;
-    emit(world, { host: host.hostname, user: session.user, type: 'session.lock', details: { logindId: session.logindId, by } });
+    emit(world, {
+      host: host.hostname, user: session.user, sourceIp: req.sourceIp ?? null, type: 'session.lock',
+      details: { logindId: session.logindId, by: req.by, via: req.via, tty: req.tty ?? '', idleSeconds: Math.round(host.autoLockMs / 1000) },
+    });
+  }
+  return true;
+}
+
+/**
+ * Unlocks a console session WITHOUT its password, by command (`loginctl
+ * unlock-session`). This is powerful - anyone who can run it remotely opens a
+ * PC for whoever is standing in front of it - so it always leaves a loud log
+ * line with the source address (see materialize.ts).
+ */
+export function unlockConsole(world: World, host: Host, req: LockRequest): boolean {
+  const session = host.consoleSessionId ? world.sessions[host.consoleSessionId] : undefined;
+  if (!session) return false;
+  if (session.locked) {
+    session.locked = false;
+    emit(world, {
+      host: host.hostname, user: session.user, sourceIp: req.sourceIp ?? null, type: 'session.unlock',
+      details: { logindId: session.logindId, by: req.by, via: req.via, tty: req.tty ?? '' },
+    });
   }
   return true;
 }

@@ -33,15 +33,24 @@ function listScenarios(): { file: string; scenario: Scenario }[] {
 }
 
 // ── Keyboard and screen ──
-// Passwords must not be shown while typing. readline echoes every key to its
-// output stream, so we give it a stream we can "mute": while muted, only the
-// final newline is let through.
+// Passwords must not be readable while typing: each character shows as "*".
+// readline echoes every key to its output stream, so we give it a stream we
+// can "mute". While muted, what readline wants to print is one of:
+//   - an escape sequence (moving the cursor, clearing the line): let it through;
+//   - the Enter key: print the newline;
+//   - the whole line again (after Backspace it redraws "prompt + text"):
+//     print the prompt and stars for the text;
+//   - the character just typed: print a star.
 let muted = false;
+let shownPrompt = '';
+const stars = (textPart: string) => '*'.repeat([...textPart].length);
 const screenOut = new Writable({
   write(chunk, _encoding, done) {
     const textChunk = chunk.toString();
-    if (!muted) process.stdout.write(textChunk);
-    else if (textChunk.includes('\n')) process.stdout.write('\n');
+    if (!muted || textChunk.startsWith('\x1b')) process.stdout.write(textChunk);
+    else if (textChunk.includes('\n') || textChunk.includes('\r')) process.stdout.write('\n');
+    else if (shownPrompt && textChunk.startsWith(shownPrompt)) process.stdout.write(shownPrompt + stars(textChunk.slice(shownPrompt.length)));
+    else process.stdout.write(stars(textChunk));
     done();
   },
 });
@@ -51,9 +60,10 @@ const rl = createInterface({ input: process.stdin, output: screenOut, terminal: 
 
 function ask(prompt: string, masked: boolean): void {
   muted = false;
+  shownPrompt = prompt;
   rl.setPrompt(prompt);
   rl.prompt();
-  muted = masked; // from here on, typed characters are hidden
+  muted = masked; // from here on, typed characters show as stars
 }
 
 function show(screen: Screen): void {
@@ -104,7 +114,7 @@ function chooseScenario(): void {
 rl.on('line', (line) => {
   // When input is piped from a file there is no keyboard echo, so print the
   // line ourselves (hiding passwords). This makes scripted runs readable.
-  if (!process.stdin.isTTY) process.stdout.write(`${muted ? '********' : line}\n`);
+  if (!process.stdin.isTTY) process.stdout.write(`${muted && !line.startsWith(':') ? '********' : line}\n`);
   if (!game) {
     const pick = available[(parseInt(line, 10) || 1) - 1];
     if (pick) start(pick.scenario);
@@ -118,5 +128,5 @@ rl.on('close', () => {
   process.exit(0);
 });
 
-process.stdout.write('THE INSIDER - simulation core (Phase 1)\n');
+process.stdout.write('THE INSIDER - text CLI for the simulation core\n');
 chooseScenario();

@@ -1,8 +1,10 @@
 # Every folder under packages/ is a workspace package.
-# Phase 1 has `engine` and `cli`; `server` and `client` will be added here later.
+# engine, cli, shared, server, client.
 packages:
   - "packages/*"
 
-# esbuild (used by tsx and vitest) is the only dependency allowed to run an install script.
+# esbuild (used by tsx, vitest and vite) is the only dependency allowed to run an install script.
+# msgpackr-extract is an optional speed-up for Colyseus that compiles native code; the game works without it.
 allowBuilds:
   esbuild: true
+  msgpackr-extract: false

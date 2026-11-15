@@ -110,6 +110,11 @@ export interface Host {
   journal: JournalEntry[];
   /** The session currently shown on the physical screen/keyboard, if any. */
   consoleSessionId: string | null;
+  /**
+   * The screen locks itself after this much game time without PHYSICAL input
+   * (someone typing at this machine's own keyboard). 0 = never.
+   */
+  autoLockMs: number;
 }
 
 // ───────────────────────────── Sessions & terminals ─────────────────────────────
@@ -135,7 +140,7 @@ export interface Session {
   logoutTime: number | null;
   /** Only meaningful for console sessions: is the screen locked? */
   locked: boolean;
-  /** Game time of the last input. Kept for the auto-lock feature (later phase). */
+  /** Game time of the last input into THIS shell (shown as idle time by `w`). */
   lastActivity: number;
   cwd: string;
   oldCwd: string;
@@ -182,6 +187,19 @@ export interface Terminal {
   playerId: string | null;
   /** Session ids, bottom = console session, top = the shell receiving input. */
   stack: string[];
+  /**
+   * "Switch user": other people's console sessions that are still logged in
+   * but hidden behind the one in `stack`. Each entry is a whole stack (its
+   * bottom is a LOCKED console session). They are never lost: logging out or
+   * logging in as that user again brings one back.
+   */
+  parked: string[][];
+  /**
+   * Game time of the last key pressed on THIS machine's own keyboard. The
+   * auto-lock timer counts from here. Input that arrives over ssh is typed on
+   * another machine's keyboard and does not move this.
+   */
+  lastPhysicalInput: number;
   pending: Pending | null;
   /** Text to show before the next prompt (e.g. "Connection closed by remote host"). */
   notice: string;
@@ -204,6 +222,13 @@ export interface GameEvent {
   details: Record<string, unknown>;
   /** The PLAYER physically at the keyboard (ground truth, for the debrief). */
   actor: string | null;
+  /**
+   * Where the input that caused this came from:
+   *  - "physical": typed at the keyboard of the machine the event happened on;
+   *  - "remote":   typed at ANOTHER machine's keyboard (it arrived over ssh);
+   *  - "system":   nobody typed anything (boot, DHCP, cron, auto-lock, old history).
+   */
+  origin: 'physical' | 'remote' | 'system';
 }
 
 // ───────────────────────────── Network ─────────────────────────────

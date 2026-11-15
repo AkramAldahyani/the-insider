@@ -1,0 +1,1689 @@
+{
+ "type": "map",
+ "version": "1.10",
+ "tiledversion": "1.11.0",
+ "orientation": "orthogonal",
+ "renderorder": "right-down",
+ "infinite": false,
+ "compressionlevel": -1,
+ "width": 56,
+ "height": 32,
+ "tilewidth": 32,
+ "tileheight": 32,
+ "nextlayerid": 10,
+ "nextobjectid": 72,
+ "tilesets": [
+  {
+   "firstgid": 1,
+   "name": "office-tiles",
+   "image": "office-tiles.png",
+   "imagewidth": 416,
+   "imageheight": 32,
+   "tilewidth": 32,
+   "tileheight": 32,
+   "tilecount": 13,
+   "columns": 13,
+   "margin": 0,
+   "spacing": 0,
+   "tiles": [
+    {
+     "id": 0,
+     "type": "floor-finance",
+     "properties": [
+      {
+       "name": "color",
+       "type": "string",
+       "value": "#3a4d5c"
+      }
+     ]
+    },
+    {
+     "id": 1,
+     "type": "floor-hr",
+     "properties": [
+      {
+       "name": "color",
+       "type": "string",
+       "value": "#5c4654"
+      }
+     ]
+    },
+    {
+     "id": 2,
+     "type": "floor-marketing",
+     "properties": [
+      {
+       "name": "color",
+       "type": "string",
+       "value": "#60523a"
+      }
+     ]
+    },
+    {
+     "id": 3,
+     "type": "floor-it",
+     "properties": [
+      {
+       "name": "color",
+       "type": "string",
+       "value": "#385450"
+      }
+     ]
+    },
+    {
+     "id": 4,
+     "type": "floor-server",
+     "properties": [
+      {
+       "name": "color",
+       "type": "string",
+       "value": "#283042"
+      }
+     ]
+    },
+    {
+     "id": 5,
+     "type": "floor-corridor",
+     "properties": [
+      {
+       "name": "color",
+       "type": "string",
+       "value": "#4a4c52"
+      }
+     ]
+    },
+    {
+     "id": 6,
+     "type": "floor-reception",
+     "properties": [
+      {
+       "name": "color",
+       "type": "string",
+       "value": "#545846"
+      }
+     ]
+    },
+    {
+     "id": 7,
+     "type": "floor-security",
+     "properties": [
+      {
+       "name": "color",
+       "type": "string",
+       "value": "#463e3e"
+      }
+     ]
+    },
+    {
+     "id": 8,
+     "type": "floor-cafeteria",
+     "properties": [
+      {
+       "name": "color",
+       "type": "string",
+       "value": "#625646"
+      }
+     ]
+    },
+    {
+     "id": 9,
+     "type": "floor-printer",
+     "properties": [
+      {
+       "name": "color",
+       "type": "string",
+       "value": "#4e4e46"
+      }
+     ]
+    },
+    {
+     "id": 10,
+     "type": "floor-storage",
+     "properties": [
+      {
+       "name": "color",
+       "type": "string",
+       "value": "#423c34"
+      }
+     ]
+    },
+    {
+     "id": 11,
+     "type": "floor-bathroom",
+     "properties": [
+      {
+       "name": "color",
+       "type": "string",
+       "value": "#465860"
+      }
+     ]
+    },
+    {
+     "id": 12,
+     "type": "wall",
+     "properties": [
+      {
+       "name": "color",
+       "type": "string",
+       "value": "#181a20"
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "layers": [
+  {
+   "id": 1,
+   "name": "floor",
+   "type": "tilelayer",
+   "data": [
+6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6,2,2,2,2,2,2,2,2,2,2,2,6,3,3,3,3,3,3,3,3,3,3,3,3,3,6,4,4,4,4,4,4,4,4,5,5,5,5,5,6,
+6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6,2,2,2,2,2,2,2,2,2,2,2,6,3,3,3,3,3,3,3,3,3,3,3,3,3,6,4,4,4,4,4,4,4,4,5,5,5,5,5,6,
+6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6,2,2,2,2,2,2,2,2,2,2,2,6,3,3,3,3,3,3,3,3,3,3,3,3,3,6,4,4,4,4,4,4,4,4,5,5,5,5,5,6,
+6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6,2,2,2,2,2,2,2,2,2,2,2,6,3,3,3,3,3,3,3,3,3,3,3,3,3,6,4,4,4,4,4,4,4,5,5,5,5,5,5,6,
+6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6,2,2,2,2,2,2,2,2,2,2,2,6,3,3,3,3,3,3,3,3,3,3,3,3,3,6,4,4,4,4,4,4,4,5,5,5,5,5,5,6,
+6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6,2,2,2,2,2,2,2,2,2,2,2,6,3,3,3,3,3,3,3,3,3,3,3,3,3,6,4,4,4,4,4,4,4,4,5,5,5,5,5,6,
+6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6,2,2,2,2,2,2,2,2,2,2,2,6,3,3,3,3,3,3,3,3,3,3,3,3,3,6,4,4,4,4,4,4,4,4,5,5,5,5,5,6,
+6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6,2,2,2,2,2,2,2,2,2,2,2,6,3,3,3,3,3,3,3,3,3,3,3,3,3,6,4,4,4,4,4,4,4,4,4,4,4,4,4,6,
+6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6,2,2,2,2,2,2,2,2,2,2,2,6,3,3,3,3,3,3,3,3,3,3,3,3,3,6,4,4,4,4,4,4,4,4,4,4,4,4,4,6,
+6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6,2,2,2,2,2,2,2,2,2,2,2,6,3,3,3,3,3,3,3,3,3,3,3,3,3,6,4,4,4,4,4,4,4,4,4,4,4,4,4,6,
+6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6,2,2,2,2,2,2,2,2,2,2,2,6,3,3,3,3,3,3,3,3,3,3,3,3,3,6,4,4,4,4,4,4,4,4,4,4,4,4,4,6,
+6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6,2,2,2,2,2,2,2,2,2,2,2,6,3,3,3,3,3,3,3,3,3,3,3,3,3,6,4,4,4,4,4,4,4,4,4,4,4,4,4,6,
+6,6,6,6,6,6,6,1,1,6,6,6,6,6,6,6,6,6,6,6,6,2,2,6,6,6,6,6,6,6,6,6,6,3,3,6,6,6,6,6,6,6,6,6,4,4,6,6,6,6,6,6,6,6,6,6,
+6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+6,6,6,6,6,7,7,6,6,6,6,6,6,6,6,8,8,6,6,6,6,6,6,6,6,6,9,9,6,6,6,6,6,6,6,6,10,10,6,6,6,6,11,11,6,6,6,6,6,6,12,12,6,6,6,6,
+6,7,7,7,7,7,7,7,7,7,7,7,6,8,8,8,8,8,8,8,6,9,9,9,9,9,9,9,9,9,9,9,9,9,6,10,10,10,10,10,6,11,11,11,11,11,6,12,12,12,12,12,12,12,12,6,
+6,7,7,7,7,7,7,7,7,7,7,7,6,8,8,8,8,8,8,8,6,9,9,9,9,9,9,9,9,9,9,9,9,9,6,10,10,10,10,10,6,11,11,11,11,11,6,12,12,12,12,12,12,12,12,6,
+6,7,7,7,7,7,7,7,7,7,7,7,6,8,8,8,8,8,8,8,6,9,9,9,9,9,9,9,9,9,9,9,9,9,6,10,10,10,10,10,6,11,11,11,11,11,6,12,12,12,12,12,12,12,12,6,
+6,7,7,7,7,7,7,7,7,7,7,7,6,8,8,8,8,8,8,8,6,9,9,9,9,9,9,9,9,9,9,9,9,9,6,10,10,10,10,10,6,11,11,11,11,11,6,12,12,12,12,12,12,12,12,6,
+6,7,7,7,7,7,7,7,7,7,7,7,6,8,8,8,8,8,8,8,6,9,9,9,9,9,9,9,9,9,9,9,9,9,6,10,10,10,10,10,6,11,11,11,11,11,6,12,12,12,12,12,12,12,12,6,
+6,7,7,7,7,7,7,7,7,7,7,7,6,8,8,8,8,8,8,8,6,9,9,9,9,9,9,9,9,9,9,9,9,9,6,10,10,10,10,10,6,11,11,11,11,11,6,12,12,12,12,12,12,12,12,6,
+6,7,7,7,7,7,7,7,7,7,7,7,6,8,8,8,8,8,8,8,6,9,9,9,9,9,9,9,9,9,9,9,9,9,6,10,10,10,10,10,6,11,11,11,11,11,6,12,12,12,12,12,12,12,12,6,
+6,7,7,7,7,7,7,7,7,7,7,7,6,8,8,8,8,8,8,8,6,9,9,9,9,9,9,9,9,9,9,9,9,9,6,10,10,10,10,10,6,11,11,11,11,11,6,12,12,12,12,12,12,12,12,6,
+6,7,7,7,7,7,7,7,7,7,7,7,6,8,8,8,8,8,8,8,6,9,9,9,9,9,9,9,9,9,9,9,9,9,6,10,10,10,10,10,6,11,11,11,11,11,6,12,12,12,12,12,12,12,12,6,
+6,7,7,7,7,7,7,7,7,7,7,7,6,8,8,8,8,8,8,8,6,9,9,9,9,9,9,9,9,9,9,9,9,9,6,10,10,10,10,10,6,11,11,11,11,11,6,12,12,12,12,12,12,12,12,6,
+6,7,7,7,7,7,7,7,7,7,7,7,6,8,8,8,8,8,8,8,6,9,9,9,9,9,9,9,9,9,9,9,9,9,6,10,10,10,10,10,6,11,11,11,11,11,6,12,12,12,12,12,12,12,12,6,
+6,7,7,7,7,7,7,7,7,7,7,7,6,8,8,8,8,8,8,8,6,9,9,9,9,9,9,9,9,9,9,9,9,9,6,10,10,10,10,10,6,11,11,11,11,11,6,12,12,12,12,12,12,12,12,6,
+6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6],
+   "width": 56,
+   "height": 32,
+   "opacity": 1,
+   "visible": true,
+   "x": 0,
+   "y": 0
+  },
+  {
+   "id": 2,
+   "name": "walls",
+   "type": "tilelayer",
+   "data": [
+13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,
+13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,13,13,13,13,13,13,
+13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,
+13,13,13,13,13,13,13,0,0,13,13,13,13,13,13,13,13,13,13,13,13,0,0,13,13,13,13,13,13,13,13,13,13,0,0,13,13,13,13,13,13,13,13,13,0,0,13,13,13,13,13,13,13,13,13,13,
+13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,
+13,13,13,13,13,0,0,13,13,13,13,13,13,13,13,0,0,13,13,13,13,13,13,13,13,13,0,0,13,13,13,13,13,13,13,13,0,0,13,13,13,13,0,0,13,13,13,13,13,13,0,0,13,13,13,13,
+13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,0,0,0,13,
+13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,0,0,0,13,
+13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13],
+   "width": 56,
+   "height": 32,
+   "opacity": 1,
+   "visible": true,
+   "x": 0,
+   "y": 0
+  },
+  {
+   "id": 3,
+   "name": "rooms",
+   "type": "objectgroup",
+   "draworder": "topdown",
+   "color": "#ffffff",
+   "opacity": 1,
+   "visible": true,
+   "x": 0,
+   "y": 0,
+   "objects": [
+    {
+     "id": 1,
+     "name": "Corridor",
+     "type": "",
+     "x": 32,
+     "y": 448,
+     "width": 1728,
+     "height": 128,
+     "rotation": 0,
+     "visible": true,
+     "properties": []
+    },
+    {
+     "id": 2,
+     "name": "Finance",
+     "type": "",
+     "x": 32,
+     "y": 32,
+     "width": 448,
+     "height": 384,
+     "rotation": 0,
+     "visible": true,
+     "properties": []
+    },
+    {
+     "id": 3,
+     "name": "HR",
+     "type": "",
+     "x": 512,
+     "y": 32,
+     "width": 352,
+     "height": 384,
+     "rotation": 0,
+     "visible": true,
+     "properties": []
+    },
+    {
+     "id": 4,
+     "name": "Marketing",
+     "type": "",
+     "x": 896,
+     "y": 32,
+     "width": 416,
+     "height": 384,
+     "rotation": 0,
+     "visible": true,
+     "properties": []
+    },
+    {
+     "id": 5,
+     "name": "Server room",
+     "type": "",
+     "x": 1600,
+     "y": 32,
+     "width": 160,
+     "height": 224,
+     "rotation": 0,
+     "visible": true,
+     "properties": []
+    },
+    {
+     "id": 6,
+     "name": "Reception",
+     "type": "",
+     "x": 32,
+     "y": 608,
+     "width": 352,
+     "height": 384,
+     "rotation": 0,
+     "visible": true,
+     "properties": []
+    },
+    {
+     "id": 7,
+     "name": "Security office",
+     "type": "",
+     "x": 416,
+     "y": 608,
+     "width": 224,
+     "height": 384,
+     "rotation": 0,
+     "visible": true,
+     "properties": []
+    },
+    {
+     "id": 8,
+     "name": "Cafeteria / meeting room",
+     "type": "",
+     "x": 672,
+     "y": 608,
+     "width": 416,
+     "height": 384,
+     "rotation": 0,
+     "visible": true,
+     "properties": []
+    },
+    {
+     "id": 9,
+     "name": "Printer room",
+     "type": "",
+     "x": 1120,
+     "y": 608,
+     "width": 160,
+     "height": 384,
+     "rotation": 0,
+     "visible": true,
+     "properties": []
+    },
+    {
+     "id": 10,
+     "name": "Storage",
+     "type": "",
+     "x": 1312,
+     "y": 608,
+     "width": 160,
+     "height": 384,
+     "rotation": 0,
+     "visible": true,
+     "properties": []
+    },
+    {
+     "id": 11,
+     "name": "Bathrooms",
+     "type": "",
+     "x": 1504,
+     "y": 608,
+     "width": 256,
+     "height": 384,
+     "rotation": 0,
+     "visible": true,
+     "properties": []
+    },
+    {
+     "id": 12,
+     "name": "IT department",
+     "type": "",
+     "x": 1344,
+     "y": 32,
+     "width": 224,
+     "height": 384,
+     "rotation": 0,
+     "visible": true,
+     "properties": []
+    },
+    {
+     "id": 13,
+     "name": "IT department",
+     "type": "",
+     "x": 1568,
+     "y": 288,
+     "width": 192,
+     "height": 128,
+     "rotation": 0,
+     "visible": true,
+     "properties": []
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "name": "furniture",
+   "type": "objectgroup",
+   "draworder": "topdown",
+   "color": "#a0a0a4",
+   "opacity": 1,
+   "visible": true,
+   "x": 0,
+   "y": 0,
+   "objects": [
+    {
+     "id": 37,
+     "name": "Server racks",
+     "type": "furniture",
+     "x": 1600,
+     "y": 32,
+     "width": 160,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "rack"
+      }
+     ]
+    },
+    {
+     "id": 38,
+     "name": "IT shelves",
+     "type": "furniture",
+     "x": 1344,
+     "y": 352,
+     "width": 160,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "shelf"
+      }
+     ]
+    },
+    {
+     "id": 39,
+     "name": "Filing cabinets",
+     "type": "furniture",
+     "x": 32,
+     "y": 352,
+     "width": 128,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "shelf"
+      }
+     ]
+    },
+    {
+     "id": 40,
+     "name": "HR cabinets",
+     "type": "furniture",
+     "x": 512,
+     "y": 352,
+     "width": 96,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "shelf"
+      }
+     ]
+    },
+    {
+     "id": 41,
+     "name": "Marketing whiteboard",
+     "type": "furniture",
+     "x": 896,
+     "y": 32,
+     "width": 160,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "board"
+      }
+     ]
+    },
+    {
+     "id": 42,
+     "name": "Reception sofa",
+     "type": "furniture",
+     "x": 288,
+     "y": 672,
+     "width": 64,
+     "height": 128,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "sofa"
+      }
+     ]
+    },
+    {
+     "id": 43,
+     "name": "CCTV monitors",
+     "type": "furniture",
+     "x": 416,
+     "y": 608,
+     "width": 192,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "monitors"
+      }
+     ]
+    },
+    {
+     "id": 44,
+     "name": "Meeting table",
+     "type": "furniture",
+     "x": 768,
+     "y": 704,
+     "width": 224,
+     "height": 64,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "table"
+      }
+     ]
+    },
+    {
+     "id": 45,
+     "name": "Cafeteria table",
+     "type": "furniture",
+     "x": 736,
+     "y": 864,
+     "width": 96,
+     "height": 64,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "table"
+      }
+     ]
+    },
+    {
+     "id": 46,
+     "name": "Cafeteria table",
+     "type": "furniture",
+     "x": 928,
+     "y": 864,
+     "width": 96,
+     "height": 64,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "table"
+      }
+     ]
+    },
+    {
+     "id": 47,
+     "name": "Printer",
+     "type": "furniture",
+     "x": 1120,
+     "y": 640,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "printer"
+      }
+     ]
+    },
+    {
+     "id": 48,
+     "name": "Paper stock",
+     "type": "furniture",
+     "x": 1120,
+     "y": 896,
+     "width": 128,
+     "height": 64,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "shelf"
+      }
+     ]
+    },
+    {
+     "id": 49,
+     "name": "Storage shelves",
+     "type": "furniture",
+     "x": 1312,
+     "y": 672,
+     "width": 32,
+     "height": 256,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "shelf"
+      }
+     ]
+    },
+    {
+     "id": 50,
+     "name": "Storage shelves",
+     "type": "furniture",
+     "x": 1440,
+     "y": 672,
+     "width": 32,
+     "height": 256,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "shelf"
+      }
+     ]
+    },
+    {
+     "id": 51,
+     "name": "Stalls",
+     "type": "furniture",
+     "x": 1504,
+     "y": 864,
+     "width": 256,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "stall"
+      }
+     ]
+    },
+    {
+     "id": 52,
+     "name": "Sinks",
+     "type": "furniture",
+     "x": 1504,
+     "y": 608,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "kind",
+       "type": "string",
+       "value": "sink"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "name": "desks",
+   "type": "objectgroup",
+   "draworder": "topdown",
+   "color": "#00aaff",
+   "opacity": 1,
+   "visible": true,
+   "x": 0,
+   "y": 0,
+   "objects": [
+    {
+     "id": 26,
+     "name": "FIN-LT-04",
+     "type": "desk",
+     "x": 96,
+     "y": 96,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "hostname",
+       "type": "string",
+       "value": "FIN-LT-04"
+      }
+     ]
+    },
+    {
+     "id": 27,
+     "name": "FIN-LT-07",
+     "type": "desk",
+     "x": 288,
+     "y": 96,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "hostname",
+       "type": "string",
+       "value": "FIN-LT-07"
+      }
+     ]
+    },
+    {
+     "id": 28,
+     "name": "HR-LT-03",
+     "type": "desk",
+     "x": 544,
+     "y": 96,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "hostname",
+       "type": "string",
+       "value": "HR-LT-03"
+      }
+     ]
+    },
+    {
+     "id": 29,
+     "name": "HR-LT-05",
+     "type": "desk",
+     "x": 736,
+     "y": 96,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "hostname",
+       "type": "string",
+       "value": "HR-LT-05"
+      }
+     ]
+    },
+    {
+     "id": 30,
+     "name": "MKT-LT-09",
+     "type": "desk",
+     "x": 960,
+     "y": 96,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "hostname",
+       "type": "string",
+       "value": "MKT-LT-09"
+      }
+     ]
+    },
+    {
+     "id": 31,
+     "name": "MKT-LT-11",
+     "type": "desk",
+     "x": 1152,
+     "y": 96,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "hostname",
+       "type": "string",
+       "value": "MKT-LT-11"
+      }
+     ]
+    },
+    {
+     "id": 32,
+     "name": "IT-WS-01",
+     "type": "desk",
+     "x": 1376,
+     "y": 96,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "hostname",
+       "type": "string",
+       "value": "IT-WS-01"
+      }
+     ]
+    },
+    {
+     "id": 33,
+     "name": "IT-WS-02",
+     "type": "desk",
+     "x": 1472,
+     "y": 96,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "hostname",
+       "type": "string",
+       "value": "IT-WS-02"
+      }
+     ]
+    },
+    {
+     "id": 34,
+     "name": "ADMIN-SRV-01",
+     "type": "desk",
+     "x": 1632,
+     "y": 96,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "hostname",
+       "type": "string",
+       "value": "ADMIN-SRV-01"
+      }
+     ]
+    },
+    {
+     "id": 35,
+     "name": "REC-PC-01",
+     "type": "desk",
+     "x": 128,
+     "y": 736,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "hostname",
+       "type": "string",
+       "value": "REC-PC-01"
+      }
+     ]
+    },
+    {
+     "id": 36,
+     "name": "SEC-WS-01",
+     "type": "desk",
+     "x": 480,
+     "y": 736,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "hostname",
+       "type": "string",
+       "value": "SEC-WS-01"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "name": "doors",
+   "type": "objectgroup",
+   "draworder": "topdown",
+   "color": "#ffaa00",
+   "opacity": 1,
+   "visible": true,
+   "x": 0,
+   "y": 0,
+   "objects": [
+    {
+     "id": 14,
+     "name": "Finance door",
+     "type": "",
+     "x": 224,
+     "y": 416,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "room",
+       "type": "string",
+       "value": "Finance"
+      },
+      {
+       "name": "locked",
+       "type": "bool",
+       "value": false
+      },
+      {
+       "name": "badgeRequired",
+       "type": "bool",
+       "value": false
+      }
+     ]
+    },
+    {
+     "id": 15,
+     "name": "HR door",
+     "type": "",
+     "x": 672,
+     "y": 416,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "room",
+       "type": "string",
+       "value": "HR"
+      },
+      {
+       "name": "locked",
+       "type": "bool",
+       "value": false
+      },
+      {
+       "name": "badgeRequired",
+       "type": "bool",
+       "value": false
+      }
+     ]
+    },
+    {
+     "id": 16,
+     "name": "Marketing door",
+     "type": "",
+     "x": 1056,
+     "y": 416,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "room",
+       "type": "string",
+       "value": "Marketing"
+      },
+      {
+       "name": "locked",
+       "type": "bool",
+       "value": false
+      },
+      {
+       "name": "badgeRequired",
+       "type": "bool",
+       "value": false
+      }
+     ]
+    },
+    {
+     "id": 17,
+     "name": "IT department door",
+     "type": "",
+     "x": 1408,
+     "y": 416,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "room",
+       "type": "string",
+       "value": "IT department"
+      },
+      {
+       "name": "locked",
+       "type": "bool",
+       "value": false
+      },
+      {
+       "name": "badgeRequired",
+       "type": "bool",
+       "value": false
+      }
+     ]
+    },
+    {
+     "id": 18,
+     "name": "Server room door",
+     "type": "",
+     "x": 1568,
+     "y": 128,
+     "width": 32,
+     "height": 64,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "room",
+       "type": "string",
+       "value": "Server room"
+      },
+      {
+       "name": "locked",
+       "type": "bool",
+       "value": false
+      },
+      {
+       "name": "badgeRequired",
+       "type": "bool",
+       "value": true
+      }
+     ]
+    },
+    {
+     "id": 19,
+     "name": "Reception door",
+     "type": "",
+     "x": 160,
+     "y": 576,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "room",
+       "type": "string",
+       "value": "Reception"
+      },
+      {
+       "name": "locked",
+       "type": "bool",
+       "value": false
+      },
+      {
+       "name": "badgeRequired",
+       "type": "bool",
+       "value": false
+      }
+     ]
+    },
+    {
+     "id": 20,
+     "name": "Security office door",
+     "type": "",
+     "x": 480,
+     "y": 576,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "room",
+       "type": "string",
+       "value": "Security office"
+      },
+      {
+       "name": "locked",
+       "type": "bool",
+       "value": false
+      },
+      {
+       "name": "badgeRequired",
+       "type": "bool",
+       "value": false
+      }
+     ]
+    },
+    {
+     "id": 21,
+     "name": "Cafeteria / meeting room door",
+     "type": "",
+     "x": 832,
+     "y": 576,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "room",
+       "type": "string",
+       "value": "Cafeteria / meeting room"
+      },
+      {
+       "name": "locked",
+       "type": "bool",
+       "value": false
+      },
+      {
+       "name": "badgeRequired",
+       "type": "bool",
+       "value": false
+      }
+     ]
+    },
+    {
+     "id": 22,
+     "name": "Printer room door",
+     "type": "",
+     "x": 1152,
+     "y": 576,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "room",
+       "type": "string",
+       "value": "Printer room"
+      },
+      {
+       "name": "locked",
+       "type": "bool",
+       "value": false
+      },
+      {
+       "name": "badgeRequired",
+       "type": "bool",
+       "value": false
+      }
+     ]
+    },
+    {
+     "id": 23,
+     "name": "Storage door",
+     "type": "",
+     "x": 1344,
+     "y": 576,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "room",
+       "type": "string",
+       "value": "Storage"
+      },
+      {
+       "name": "locked",
+       "type": "bool",
+       "value": false
+      },
+      {
+       "name": "badgeRequired",
+       "type": "bool",
+       "value": false
+      }
+     ]
+    },
+    {
+     "id": 24,
+     "name": "Bathrooms door",
+     "type": "",
+     "x": 1600,
+     "y": 576,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "room",
+       "type": "string",
+       "value": "Bathrooms"
+      },
+      {
+       "name": "locked",
+       "type": "bool",
+       "value": false
+      },
+      {
+       "name": "badgeRequired",
+       "type": "bool",
+       "value": false
+      }
+     ]
+    },
+    {
+     "id": 25,
+     "name": "Main entrance",
+     "type": "",
+     "x": 160,
+     "y": 992,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "room",
+       "type": "string",
+       "value": "Reception"
+      },
+      {
+       "name": "locked",
+       "type": "bool",
+       "value": true
+      },
+      {
+       "name": "badgeRequired",
+       "type": "bool",
+       "value": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "name": "cameras",
+   "type": "objectgroup",
+   "draworder": "topdown",
+   "color": "#ff0000",
+   "opacity": 1,
+   "visible": true,
+   "x": 0,
+   "y": 0,
+   "objects": [
+    {
+     "id": 65,
+     "name": "CAM-01 Reception",
+     "type": "",
+     "x": 48,
+     "y": 624,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "covers",
+       "type": "string",
+       "value": "Reception"
+      }
+     ]
+    },
+    {
+     "id": 66,
+     "name": "CAM-02 Corridor west",
+     "type": "",
+     "x": 64,
+     "y": 464,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "covers",
+       "type": "string",
+       "value": "Corridor"
+      }
+     ]
+    },
+    {
+     "id": 67,
+     "name": "CAM-03 Corridor east",
+     "type": "",
+     "x": 1728,
+     "y": 464,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "covers",
+       "type": "string",
+       "value": "Corridor"
+      }
+     ]
+    },
+    {
+     "id": 68,
+     "name": "CAM-04 Server room door",
+     "type": "",
+     "x": 1552,
+     "y": 80,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "covers",
+       "type": "string",
+       "value": "IT department"
+      }
+     ]
+    },
+    {
+     "id": 69,
+     "name": "CAM-05 Cafeteria",
+     "type": "",
+     "x": 1072,
+     "y": 624,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "covers",
+       "type": "string",
+       "value": "Cafeteria / meeting room"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "name": "badge_readers",
+   "type": "objectgroup",
+   "draworder": "topdown",
+   "color": "#00ff7f",
+   "opacity": 1,
+   "visible": true,
+   "x": 0,
+   "y": 0,
+   "objects": [
+    {
+     "id": 70,
+     "name": "BR-01 Main entrance",
+     "type": "",
+     "x": 240,
+     "y": 976,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "door",
+       "type": "string",
+       "value": "Main entrance"
+      }
+     ]
+    },
+    {
+     "id": 71,
+     "name": "BR-02 Server room",
+     "type": "",
+     "x": 1552,
+     "y": 208,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "door",
+       "type": "string",
+       "value": "Server room door"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 9,
+   "name": "spawns",
+   "type": "objectgroup",
+   "draworder": "topdown",
+   "color": "#ff00ff",
+   "opacity": 1,
+   "visible": true,
+   "x": 0,
+   "y": 0,
+   "objects": [
+    {
+     "id": 53,
+     "name": "FIN-LT-04 spawn",
+     "type": "",
+     "x": 128,
+     "y": 208,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "desk",
+       "type": "string",
+       "value": "FIN-LT-04"
+      }
+     ]
+    },
+    {
+     "id": 54,
+     "name": "FIN-LT-07 spawn",
+     "type": "",
+     "x": 320,
+     "y": 208,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "desk",
+       "type": "string",
+       "value": "FIN-LT-07"
+      }
+     ]
+    },
+    {
+     "id": 55,
+     "name": "HR-LT-03 spawn",
+     "type": "",
+     "x": 576,
+     "y": 208,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "desk",
+       "type": "string",
+       "value": "HR-LT-03"
+      }
+     ]
+    },
+    {
+     "id": 56,
+     "name": "HR-LT-05 spawn",
+     "type": "",
+     "x": 768,
+     "y": 208,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "desk",
+       "type": "string",
+       "value": "HR-LT-05"
+      }
+     ]
+    },
+    {
+     "id": 57,
+     "name": "MKT-LT-09 spawn",
+     "type": "",
+     "x": 992,
+     "y": 208,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "desk",
+       "type": "string",
+       "value": "MKT-LT-09"
+      }
+     ]
+    },
+    {
+     "id": 58,
+     "name": "MKT-LT-11 spawn",
+     "type": "",
+     "x": 1184,
+     "y": 208,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "desk",
+       "type": "string",
+       "value": "MKT-LT-11"
+      }
+     ]
+    },
+    {
+     "id": 59,
+     "name": "IT-WS-01 spawn",
+     "type": "",
+     "x": 1408,
+     "y": 208,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "desk",
+       "type": "string",
+       "value": "IT-WS-01"
+      }
+     ]
+    },
+    {
+     "id": 60,
+     "name": "IT-WS-02 spawn",
+     "type": "",
+     "x": 1504,
+     "y": 208,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "desk",
+       "type": "string",
+       "value": "IT-WS-02"
+      }
+     ]
+    },
+    {
+     "id": 61,
+     "name": "ADMIN-SRV-01 spawn",
+     "type": "",
+     "x": 1664,
+     "y": 208,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "desk",
+       "type": "string",
+       "value": "ADMIN-SRV-01"
+      }
+     ]
+    },
+    {
+     "id": 62,
+     "name": "REC-PC-01 spawn",
+     "type": "",
+     "x": 160,
+     "y": 848,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "desk",
+       "type": "string",
+       "value": "REC-PC-01"
+      }
+     ]
+    },
+    {
+     "id": 63,
+     "name": "SEC-WS-01 spawn",
+     "type": "",
+     "x": 512,
+     "y": 848,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "desk",
+       "type": "string",
+       "value": "SEC-WS-01"
+      }
+     ]
+    },
+    {
+     "id": 64,
+     "name": "default",
+     "type": "",
+     "x": 208,
+     "y": 896,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": []
+    }
+   ]
+  }
+ ]
+}

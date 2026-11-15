@@ -19,8 +19,15 @@ export const ROOT_PW = scenario.hosts.find((h) => h.hostname === 'ADMIN-SRV-01')
 export const FLAG = 'NEXORA{r00t_0n_adm1n_srv_01}';
 export const SERVER = 'ADMIN-SRV-01';
 
-export function newWorld(seed = 1): World {
-  return createWorld(scenario, seed);
+/**
+ * A fresh world. Auto-lock is switched OFF unless a test asks for it: most
+ * tests are about something else and let minutes pass between commands, which
+ * would otherwise lock the screen in the middle of them.
+ */
+export function newWorld(seed = 1, autoLock = false): World {
+  const world = createWorld(scenario, seed);
+  if (!autoLock) for (const host of Object.values(world.hosts)) host.autoLockMs = 0;
+  return world;
 }
 
 /** A player sitting at a PC. `type()` sends one line (one second of game time passes first). */

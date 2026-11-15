@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Shared code runs in Node AND in the browser, so it may use neither's APIs.
+    "lib": ["ES2022"],
+    "types": []
+  },
+  "include": ["src"]
+}

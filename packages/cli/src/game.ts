@@ -9,12 +9,14 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   advanceTime, createWorld, currentPrompt, dateStamp, leaveTerminal, openTerminal, parseDuration,
-  sendInput, serializeWorld, type GameEvent, type Scenario, type TerminalResult, type World,
+  refreshTerminal, screenState, sendInput, serializeWorld, switchUser,
+  type GameEvent, type Scenario, type TerminalResult, type World,
 } from '@insider/engine';
 
 export const META_HELP = `CLI commands (they start with a colon):
   :sit <hostname>   sit at a PC (login prompt, lock screen, or an open shell)
   :leave            stand up; the PC stays exactly as you left it
+  :switch           on a lock screen: "switch user" (log in as someone else; the locked session stays)
   :as <player>      become another player (who is physically at the keyboard)
   :players          list players, desks and credentials
   :hosts            list machines with their current IP and MAC
@@ -26,7 +28,8 @@ export const META_HELP = `CLI commands (they start with a colon):
   :quit             exit
 
 Anything else is typed into the PC you are sitting at. Type "help" there for shell commands.
-Game time also moves forward by the real time that passes between your inputs.`;
+Game time also moves forward by the real time that passes between your inputs,
+so a screen you leave alone for a minute locks itself.`;
 
 export interface Screen {
   /** Text to print. */
@@ -90,6 +93,13 @@ export class Game {
       return this.screen(line.trim() ? 'You are standing in the office. Use :sit <hostname> to sit at a PC, or :help.\n' : '');
     }
     advanceTime(this.world, elapsed);
+    // If the screen changed while you were away from the keyboard (it locked
+    // itself), show that instead of typing your line into the new screen.
+    const changed = refreshTerminal(this.world, this.terminalId);
+    if (changed) {
+      const screen = this.fromEngine(changed);
+      return { ...screen, output: `(the screen changed while you were idle; your line was not sent)\n${screen.output}` };
+    }
     return this.fromEngine(sendInput(this.world, this.terminalId, line));
   }
 
@@ -137,12 +147,24 @@ export class Game {
         return this.screen(`--- ${this.playerId} leaves ${host} (the screen stays as it was) ---\n`);
       }
 
+      case ':switch': {
+        if (!this.terminalId) return this.screen('You are not sitting anywhere.\n');
+        const result = switchUser(this.world, this.terminalId);
+        if (result.screen !== 'login') return this.screen('Switch user is only possible on a lock screen.\n');
+        return this.fromEngine(result);
+      }
+
       case ':time': {
         if (!args[0]) return this.screen(`Game time: ${dateStamp(this.world.time)}\n`);
         const ms = parseDuration(args[0]);
         if (ms === null) return this.screen('Usage: :time +5m   (units: s, m, h, d)\n');
         advanceTime(this.world, ms);
-        return this.screen(`Game time is now ${dateStamp(this.world.time)}\n`);
+        const note = `Game time is now ${dateStamp(this.world.time)}\n`;
+        // Time passing can lock the screen you are sitting at.
+        const changed = this.terminalId ? refreshTerminal(this.world, this.terminalId) : null;
+        if (!changed) return this.screen(note);
+        const screen = this.fromEngine(changed);
+        return { ...screen, output: note + screen.output };
       }
 
       case ':events': {
@@ -182,8 +204,8 @@ export class Game {
 
   private hostsTable(): string {
     const rows = Object.values(this.world.hosts).map((h) => {
-      const session = h.consoleSessionId ? this.world.sessions[h.consoleSessionId] : undefined;
-      const screen = !session ? 'login prompt' : session.locked ? `locked (${session.user})` : `UNLOCKED (${session.user})`;
+      const s = screenState(this.world, h.hostname);
+      const screen = s.state === 'login' ? 'login prompt' : s.state === 'locked' ? `locked (${s.user})` : `UNLOCKED (${s.user})`;
       return [h.hostname, h.ip, h.mac, h.location, screen];
     });
     return table(['HOSTNAME', 'IP', 'MAC', 'LOCATION', 'SCREEN'], rows);
