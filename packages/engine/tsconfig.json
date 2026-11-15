@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // The engine must stay pure: no DOM and no Node typings are available here,
+    // so accidentally using `fs`, `process`, `window`... is a compile error.
+    "lib": ["ES2022"],
+    "types": []
+  },
+  "include": ["src"]
+}

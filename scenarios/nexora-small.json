@@ -1,0 +1,357 @@
+{
+  "id": "nexora-small",
+  "name": "Nexora Corp - Small Office",
+  "description": "Five workstations and one admin server. The flag is /root/flag.txt on ADMIN-SRV-01.",
+  "domain": "nexora.local",
+  "startTime": "2026-03-02T09:00:00Z",
+
+  "dhcp": {
+    "server": "ADMIN-SRV-01",
+    "subnet": "10.0.2",
+    "rangeStart": 30,
+    "rangeEnd": 200,
+    "leaseHours": 8,
+    "history": [
+      { "hostname": "MKT-LT-11", "ip": "10.0.2.58", "fromMinutesAgo": 14400, "toMinutesAgo": 10080 },
+      { "hostname": "MKT-LT-11", "ip": "10.0.2.71", "fromMinutesAgo": 10080, "toMinutesAgo": 4500 },
+      { "hostname": "FIN-LT-07", "ip": "10.0.2.58", "fromMinutesAgo": 10070, "toMinutesAgo": 4500 }
+    ]
+  },
+
+  "accounts": [
+    { "username": "s.alharbi", "fullName": "Sara Alharbi", "title": "Accountant", "department": "Finance", "password": "Riyadh2024!", "strength": 45 },
+    { "username": "r.mansour", "fullName": "Rami Mansour", "title": "Financial Analyst", "department": "Finance", "password": "football7", "strength": 15 },
+    { "username": "l.haddad", "fullName": "Lina Haddad", "title": "HR Specialist", "department": "HR", "password": "Lina@HR#2025", "strength": 60 },
+    { "username": "o.farouk", "fullName": "Omar Farouk", "title": "Marketing Coordinator", "department": "Marketing", "password": "summer2025", "strength": 20 },
+    { "username": "k.nasser", "fullName": "Khalid Nasser", "title": "System Administrator", "department": "IT", "password": "Tr0ub4dor&3xK9", "strength": 85 }
+  ],
+
+  "players": [
+    { "id": "p1", "name": "Sara Alharbi", "account": "s.alharbi", "desk": "FIN-LT-07", "role": "employee" },
+    { "id": "p2", "name": "Rami Mansour", "account": "r.mansour", "desk": "FIN-LT-04", "role": "employee" },
+    { "id": "p3", "name": "Lina Haddad", "account": "l.haddad", "desk": "HR-LT-03", "role": "employee" },
+    { "id": "p4", "name": "Omar Farouk", "account": "o.farouk", "desk": "MKT-LT-11", "role": "employee" },
+    { "id": "p5", "name": "Khalid Nasser", "account": "k.nasser", "desk": "IT-WS-02", "role": "sysadmin" }
+  ],
+
+  "hosts": [
+    {
+      "hostname": "ADMIN-SRV-01",
+      "kind": "server",
+      "department": "IT",
+      "location": "Server room, rack 1",
+      "mac": "52:54:00:a1:00:01",
+      "staticIp": "10.0.1.10",
+      "users": "*",
+      "sudoers": ["k.nasser"],
+      "logReaders": ["k.nasser"],
+      "rootPassword": { "password": "N3x0ra-R00t-Vault!92", "strength": 95 },
+      "uptimeMinutes": 17400,
+      "crontabs": {
+        "root": [
+          "# m h  dom mon dow   command",
+          "30 2 * * * /opt/backup/backup.sh >> /var/log/backup.log 2>&1"
+        ]
+      },
+      "files": [
+        { "path": "/root/flag.txt", "mode": "400", "ageMinutes": 43200, "content": ["NEXORA{r00t_0n_adm1n_srv_01}"] },
+        { "path": "/root/notes.txt", "mode": "600", "ageMinutes": 8000, "content": [
+          "- rotate the root password after the audit",
+          "- dhcpd lease time is 8h, staff laptops renew every 4h",
+          "- reminder: only k.nasser should be in the sudo group on this box"
+        ] },
+        { "path": "/opt/backup/backup.sh", "mode": "750", "ageMinutes": 30000, "content": [
+          "#!/bin/bash",
+          "# Nightly backup of the shared folder. Runs from root's crontab at 02:30.",
+          "set -e",
+          "DEST=/var/backups/shared-$(date +%F).tar.gz",
+          "tar -czf \"$DEST\" /srv/shared",
+          "echo \"$(date) backup written to $DEST\""
+        ] },
+        { "path": "/var/log/backup.log", "mode": "640", "group": "adm", "ageMinutes": 390, "content": [
+          "Fri Feb 27 02:30:04 UTC 2026 backup written to /var/backups/shared-2026-02-27.tar.gz",
+          "Sat Feb 28 02:30:03 UTC 2026 backup written to /var/backups/shared-2026-02-28.tar.gz",
+          "Sun Mar  1 02:30:05 UTC 2026 backup written to /var/backups/shared-2026-03-01.tar.gz",
+          "Mon Mar  2 02:30:04 UTC 2026 backup written to /var/backups/shared-2026-03-02.tar.gz"
+        ] },
+        { "path": "/etc/dhcp/dhcpd.conf", "ageMinutes": 60000, "content": [
+          "# Nexora office network",
+          "default-lease-time 28800;",
+          "max-lease-time 28800;",
+          "authoritative;",
+          "subnet 10.0.2.0 netmask 255.255.255.0 {",
+          "  range 10.0.2.30 10.0.2.200;",
+          "  option routers 10.0.2.1;",
+          "  option domain-name-servers 10.0.1.10;",
+          "  option domain-name \"nexora.local\";",
+          "}"
+        ] },
+        { "path": "/srv/shared/README.txt", "ageMinutes": 50000, "content": [
+          "Nexora Corp shared folder",
+          "=========================",
+          "policies/   company policies (read-only)",
+          "templates/  document templates",
+          "",
+          "Problems? Contact IT: k.nasser@nexora.local"
+        ] },
+        { "path": "/srv/shared/policies/password-policy.txt", "ageMinutes": 50000, "content": [
+          "PASSWORD POLICY (v3)",
+          "1. Minimum 10 characters, mixing letters, digits and symbols.",
+          "2. Never write passwords in files, scripts or sticky notes.",
+          "3. Lock your screen every time you leave your desk.",
+          "4. IT will never ask for your password by email."
+        ] },
+        { "path": "/srv/shared/policies/acceptable-use.txt", "ageMinutes": 50000, "content": [
+          "ACCEPTABLE USE",
+          "Company machines are for company work. All logins are recorded.",
+          "Do not use another employee's account or unlocked computer."
+        ] },
+        { "path": "/srv/shared/templates/expense-claim.csv", "ageMinutes": 41000, "content": [
+          "date,employee,category,amount_sar,approved_by",
+          ",,,,"
+        ] }
+      ]
+    },
+
+    {
+      "hostname": "IT-WS-02",
+      "kind": "workstation",
+      "department": "IT",
+      "location": "IT department, desk 2",
+      "mac": "52:54:00:17:02:02",
+      "owner": "k.nasser",
+      "users": ["k.nasser"],
+      "sudoers": ["k.nasser"],
+      "uptimeMinutes": 4400,
+      "console": { "user": "k.nasser", "state": "locked", "loginMinutesAgo": 35 },
+      "bashHistory": {
+        "k.nasser": ["ssh k.nasser@ADMIN-SRV-01", "ping -c 2 HR-LT-03", "cat ~/tickets/open.txt", "sudo journalctl -u ssh -n 30"]
+      },
+      "crontabs": {
+        "k.nasser": ["# m h  dom mon dow   command", "0 8 * * 1-5 /home/k.nasser/scripts/check-disk.sh"]
+      },
+      "files": [
+        { "path": "/home/k.nasser/tickets/open.txt", "ageMinutes": 70, "content": [
+          "#1042  HR-LT-03   printer driver keeps resetting            (l.haddad)",
+          "#1045  FIN-LT-04  asks for access to the shared templates    (r.mansour)",
+          "#1047  MKT-LT-11  laptop got a new IP again, VPN profile     (o.farouk)"
+        ] },
+        { "path": "/home/k.nasser/tickets/closed.txt", "ageMinutes": 4000, "content": [
+          "#1039  FIN-LT-07  password reset                             (s.alharbi)",
+          "#1040  ADMIN-SRV-01 dhcpd restarted after config change"
+        ] },
+        { "path": "/home/k.nasser/scripts/check-disk.sh", "mode": "755", "ageMinutes": 20000, "content": [
+          "#!/bin/bash",
+          "# Warn when the root filesystem is more than 90% full.",
+          "USED=$(df / | tail -1 | awk '{print $5}' | tr -d '%')",
+          "[ \"$USED\" -gt 90 ] && echo \"disk almost full on $(hostname)\""
+        ] },
+        { "path": "/home/k.nasser/notes/servers.md", "mode": "600", "ageMinutes": 9000, "content": [
+          "# Servers",
+          "- ADMIN-SRV-01  10.0.1.10  DHCP + DNS + shared folder. I have sudo there.",
+          "- root password is in the sealed envelope in the safe, NOT on any disk.",
+          "",
+          "# Handy",
+          "- lease history:  cat /var/lib/dhcp/dhcpd.leases   (on ADMIN-SRV-01)",
+          "- who logged in:  last ; grep sshd /var/log/auth.log"
+        ] },
+        { "path": "/home/k.nasser/todo.txt", "ageMinutes": 1500, "content": [
+          "[ ] close ticket #1045",
+          "[ ] review who is in the sudo group on every laptop",
+          "[x] order replacement badge reader for the server room"
+        ] }
+      ]
+    },
+
+    {
+      "hostname": "FIN-LT-07",
+      "kind": "workstation",
+      "department": "Finance",
+      "location": "Finance, desk 7",
+      "mac": "52:54:00:f1:07:07",
+      "owner": "s.alharbi",
+      "users": ["s.alharbi", "k.nasser"],
+      "sudoers": ["k.nasser"],
+      "uptimeMinutes": 4400,
+      "console": { "user": "s.alharbi", "state": "locked", "loginMinutesAgo": 18 },
+      "bashHistory": {
+        "s.alharbi": ["ls Documents", "cat todo.txt", "grep -i overdue Documents/invoices_feb.csv"]
+      },
+      "files": [
+        { "path": "/home/s.alharbi/todo.txt", "ageMinutes": 1400, "content": [
+          "[ ] approve February invoices",
+          "[ ] send payroll summary to Lina (HR)",
+          "[ ] ask IT why my laptop IP changed last week",
+          "[x] expense claims for January"
+        ] },
+        { "path": "/home/s.alharbi/notes.txt", "ageMinutes": 5000, "content": [
+          "Shared folder is on ADMIN-SRV-01 under /srv/shared",
+          "  ssh s.alharbi@ADMIN-SRV-01",
+          "Khalid (IT) sits at IT-WS-02.",
+          "Remember to lock the screen: loginctl lock-session"
+        ] },
+        { "path": "/home/s.alharbi/Documents/invoices_feb.csv", "ageMinutes": 2900, "content": [
+          "invoice_id,vendor,amount_sar,due_date,status",
+          "INV-2041,Gulf Office Supplies,4120.00,2026-02-10,paid",
+          "INV-2042,Desert Cloud Hosting,18750.00,2026-02-15,paid",
+          "INV-2043,Najd Catering,2300.50,2026-02-20,OVERDUE",
+          "INV-2044,Red Sea Logistics,9900.00,2026-02-28,pending",
+          "INV-2045,Falcon Security Systems,31200.00,2026-03-05,pending"
+        ] },
+        { "path": "/home/s.alharbi/Documents/payroll_summary_2026-02.csv", "mode": "600", "ageMinutes": 2600, "content": [
+          "department,headcount,total_sar",
+          "Finance,2,41500",
+          "HR,1,17800",
+          "Marketing,1,16200",
+          "IT,1,24900"
+        ] },
+        { "path": "/home/s.alharbi/Documents/budget_q1_draft.txt", "ageMinutes": 7200, "content": [
+          "Q1 budget draft - DO NOT SHARE YET",
+          "Marketing asked for +12%. Finance recommends +5%."
+        ] }
+      ]
+    },
+
+    {
+      "hostname": "FIN-LT-04",
+      "kind": "workstation",
+      "department": "Finance",
+      "location": "Finance, desk 4",
+      "mac": "52:54:00:f1:04:04",
+      "owner": "r.mansour",
+      "users": ["r.mansour", "k.nasser"],
+      "sudoers": ["k.nasser"],
+      "uptimeMinutes": 4400,
+      "bashHistory": {
+        "r.mansour": ["ssh r.mansour@ADMIN-SRV-01", "ls ~/reports", "cat todo.txt"]
+      },
+      "files": [
+        { "path": "/home/r.mansour/todo.txt", "ageMinutes": 1500, "content": [
+          "[ ] finish cash-flow forecast",
+          "[ ] ask Khalid for the expense template (ticket #1045)",
+          "[ ] change my password... the policy says 10+ characters"
+        ] },
+        { "path": "/home/r.mansour/reports/cashflow_forecast.csv", "ageMinutes": 3100, "content": [
+          "month,inflow_sar,outflow_sar,net_sar",
+          "2026-01,412000,371500,40500",
+          "2026-02,398000,402300,-4300",
+          "2026-03,430000,389000,41000"
+        ] },
+        { "path": "/home/r.mansour/reports/vendor_review.txt", "ageMinutes": 6000, "content": [
+          "Vendor review notes",
+          "- Desert Cloud Hosting: contract renewal in April, compare 2 other quotes",
+          "- Najd Catering: invoice INV-2043 still overdue, Sara is chasing it"
+        ] }
+      ]
+    },
+
+    {
+      "hostname": "HR-LT-03",
+      "kind": "workstation",
+      "department": "HR",
+      "location": "HR, desk 3",
+      "mac": "52:54:00:b2:03:03",
+      "owner": "l.haddad",
+      "users": ["l.haddad", "k.nasser"],
+      "sudoers": ["k.nasser"],
+      "uptimeMinutes": 4400,
+      "console": { "user": "l.haddad", "state": "unlocked", "loginMinutesAgo": 22 },
+      "bashHistory": {
+        "l.haddad": ["ls", "cat Documents/onboarding_checklist.txt", "ls -la Documents"]
+      },
+      "files": [
+        { "path": "/home/l.haddad/todo.txt", "ageMinutes": 900, "content": [
+          "[ ] prepare onboarding pack for the new analyst",
+          "[ ] remind everyone: LOCK YOUR SCREENS (yes, me too)",
+          "[ ] printer ticket #1042 with IT"
+        ] },
+        { "path": "/home/l.haddad/Documents/onboarding_checklist.txt", "ageMinutes": 12000, "content": [
+          "ONBOARDING CHECKLIST",
+          "1. Contract signed",
+          "2. Badge issued (reception)",
+          "3. Laptop + onboarding card from IT (username, first password, hostname)",
+          "4. Security briefing: password policy, screen lock, phishing"
+        ] },
+        { "path": "/home/l.haddad/Documents/employees.csv", "mode": "600", "ageMinutes": 4300, "content": [
+          "username,full_name,department,title,desk",
+          "s.alharbi,Sara Alharbi,Finance,Accountant,FIN-LT-07",
+          "r.mansour,Rami Mansour,Finance,Financial Analyst,FIN-LT-04",
+          "l.haddad,Lina Haddad,HR,HR Specialist,HR-LT-03",
+          "o.farouk,Omar Farouk,Marketing,Marketing Coordinator,MKT-LT-11",
+          "k.nasser,Khalid Nasser,IT,System Administrator,IT-WS-02"
+        ] },
+        { "path": "/home/l.haddad/Documents/leave_requests.txt", "ageMinutes": 2000, "content": [
+          "o.farouk   2026-03-12 .. 2026-03-13   approved",
+          "r.mansour  2026-03-20                 pending"
+        ] }
+      ]
+    },
+
+    {
+      "hostname": "MKT-LT-11",
+      "kind": "workstation",
+      "department": "Marketing",
+      "location": "Marketing, desk 11",
+      "mac": "52:54:00:c3:11:0b",
+      "owner": "o.farouk",
+      "users": ["o.farouk", "k.nasser"],
+      "sudoers": ["k.nasser"],
+      "uptimeMinutes": 4400,
+      "console": { "user": "o.farouk", "state": "locked", "loginMinutesAgo": 10 },
+      "bashHistory": {
+        "o.farouk": ["cat campaign/spring_launch_plan.md", "ls campaign", "ping -c 2 ADMIN-SRV-01"]
+      },
+      "files": [
+        { "path": "/home/o.farouk/todo.txt", "ageMinutes": 800, "content": [
+          "[ ] final copy for the spring launch email",
+          "[ ] budget request to Finance (+12%)",
+          "[ ] ticket #1047: VPN profile after the IP change"
+        ] },
+        { "path": "/home/o.farouk/campaign/spring_launch_plan.md", "ageMinutes": 3300, "content": [
+          "# Spring launch",
+          "- Teaser posts: week 11",
+          "- Launch email: 2026-03-16",
+          "- Landing page review with IT: 2026-03-10"
+        ] },
+        { "path": "/home/o.farouk/campaign/mailing_list_sample.csv", "ageMinutes": 3300, "content": [
+          "email,segment",
+          "customer001@example.com,retail",
+          "customer002@example.com,enterprise"
+        ] },
+        { "path": "/home/o.farouk/notes.txt", "ageMinutes": 6100, "content": [
+          "IT said my laptop used to have 10.0.2.58 and now has a different address.",
+          "Apparently DHCP hands them out again - an IP is not a person!"
+        ] }
+      ]
+    }
+  ],
+
+  "history": [
+    { "type": "console-session", "host": "IT-WS-02", "user": "k.nasser", "minutesAgo": 4310, "durationMinutes": 500 },
+    { "type": "console-session", "host": "FIN-LT-07", "user": "s.alharbi", "minutesAgo": 4290, "durationMinutes": 450 },
+    { "type": "console-session", "host": "FIN-LT-04", "user": "r.mansour", "minutesAgo": 4280, "durationMinutes": 465 },
+    { "type": "console-session", "host": "HR-LT-03", "user": "l.haddad", "minutesAgo": 4275, "durationMinutes": 440 },
+    { "type": "console-session", "host": "MKT-LT-11", "user": "o.farouk", "minutesAgo": 4260, "durationMinutes": 400 },
+
+    { "type": "ssh-session", "from": "IT-WS-02", "host": "ADMIN-SRV-01", "user": "k.nasser", "minutesAgo": 4200, "durationMinutes": 35,
+      "commands": ["sudo systemctl status isc-dhcp-server", "tail -n 20 /var/log/syslog", "cat /var/lib/dhcp/dhcpd.leases"] },
+    { "type": "sudo", "host": "ADMIN-SRV-01", "user": "k.nasser", "minutesAgo": 4198, "command": "systemctl status isc-dhcp-server" },
+
+    { "type": "ssh-fail", "from": "FIN-LT-04", "host": "ADMIN-SRV-01", "user": "r.mansour", "minutesAgo": 4101, "attempts": 2 },
+    { "type": "ssh-session", "from": "FIN-LT-04", "host": "ADMIN-SRV-01", "user": "r.mansour", "minutesAgo": 4100, "durationMinutes": 12,
+      "commands": ["ls /srv/shared", "cat /srv/shared/README.txt", "ls /srv/shared/templates"] },
+
+    { "type": "ssh-session", "from": "IT-WS-02", "host": "HR-LT-03", "user": "k.nasser", "minutesAgo": 4000, "durationMinutes": 15,
+      "commands": ["sudo journalctl -n 50", "ps aux | grep cups"] },
+    { "type": "sudo", "host": "HR-LT-03", "user": "k.nasser", "minutesAgo": 3999, "command": "journalctl -n 50" },
+
+    { "type": "ssh-fail", "from": "MKT-LT-11", "host": "ADMIN-SRV-01", "user": "admin", "minutesAgo": 3950, "attempts": 3 },
+
+    { "type": "ssh-session", "from": "FIN-LT-07", "host": "ADMIN-SRV-01", "user": "s.alharbi", "minutesAgo": 3900, "durationMinutes": 8,
+      "commands": ["ls /srv/shared/policies", "cat /srv/shared/policies/password-policy.txt"] },
+
+    { "type": "ssh-session", "from": "IT-WS-02", "host": "ADMIN-SRV-01", "user": "k.nasser", "minutesAgo": 28, "durationMinutes": 10,
+      "commands": ["sudo tail -n 5 /var/log/backup.log", "who"] },
+    { "type": "sudo", "host": "ADMIN-SRV-01", "user": "k.nasser", "minutesAgo": 27, "command": "tail -n 5 /var/log/backup.log" }
+  ]
+}
