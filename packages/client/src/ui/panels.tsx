@@ -1,6 +1,14 @@
 /** The small React pieces around the map: start screen, HUD and onboarding card. */
 import type { EmployeeChoice, OnboardingCard as Card } from '@insider/shared';
+import { useState, type CSSProperties } from 'react';
 import { store, type UiState } from '../game/store';
+import { characterPortrait, departmentColor } from '../game/characterArt';
+
+function Portrait({ id, department }: { id: string; department: string }) {
+  return <span className="portrait" style={{ '--department': departmentColor(department) } as CSSProperties}>
+    <img src={characterPortrait(id, department)} alt="" width="40" height="40" />
+  </span>;
+}
 
 /** "Mon 2 Mar 2026 09:04:31" in UTC, which is the time zone of the simulated office. */
 function clockText(ms: number): string {
@@ -19,7 +27,9 @@ export function StartScreen({ ui }: { ui: UiState }) {
   return (
     <div className="start">
       <div className="start-box">
+        <div className="eyebrow"><span className="signal-dot" /> NEXORA CORPORATION / EMPLOYEE ACCESS</div>
         <h1>THE INSIDER</h1>
+        <p className="start-intro">An ordinary office. An extraordinary amount of evidence.</p>
         <p className="start-sub">{ui.scenarioName} — choose who you are today</p>
         {[...byDepartment].map(([department, people]) => (
           <section key={department}>
@@ -30,13 +40,17 @@ export function StartScreen({ ui }: { ui: UiState }) {
                   key={e.id}
                   type="button"
                   className="employee"
+                  style={{ '--department': departmentColor(e.department) } as CSSProperties}
                   disabled={e.taken}
                   data-testid={`employee-${e.id}`}
                   onClick={() => store.send('choose', { playerId: e.id })}
                 >
-                  <span className="employee-name">{e.name}</span>
-                  <span className="employee-title">{e.title}</span>
-                  <span className="employee-desk">{e.taken ? 'already playing' : `desk ${e.desk}`}</span>
+                  <Portrait id={e.id} department={e.department} />
+                  <span className="employee-copy">
+                    <span className="employee-name">{e.name}</span>
+                    <span className="employee-title">{e.title}</span>
+                    <span className="employee-desk">{e.taken ? 'already playing' : `desk ${e.desk}`}</span>
+                  </span>
                 </button>
               ))}
             </div>
@@ -57,15 +71,22 @@ export function Hud({ ui }: { ui: UiState }) {
   return (
     <>
       <div className="hud-top">
+        <span className="hud-brand"><span className="brand-mark" />THE INSIDER</span>
         <span className="hud-clock" data-testid="clock">{clockText(ui.clock)}</span>
         {ui.speed !== 1 && <span className="hud-speed">×{ui.speed}</span>}
         <span className="hud-room" data-testid="room">{ui.roomName || '—'}</span>
         <span className="hud-spacer" />
-        <span className="hud-keys">
-          WASD / arrows: walk · E: use PC / tap badge · C: card · T: tasks{ui.dev ? ' · `: dev panel' : ''}
-        </span>
+        <span className="hud-location">NEXORA HQ <span className="signal-dot" /></span>
       </div>
-      {ui.notice && <div className="hud-notice" data-testid="notice">{ui.notice}</div>}
+      <div className="hud-bottom">
+        <span><kbd>W A S D</kbd> / arrows <span className="key-caption">Move</span></span>
+        <span><kbd>E</kbd> <span className="key-caption">PC / badge</span></span>
+        <button type="button" onClick={() => store.set({ cardOpen: !ui.cardOpen })}><kbd>C</kbd> My card</button>
+        <button type="button" onClick={() => store.set({ tasksOpen: !ui.tasksOpen })}><kbd>T</kbd> Tasks</button>
+        {ui.dev && <span className="dev-shortcut"><kbd>`</kbd> Dev</span>}
+      </div>
+      <PlayerRoster ui={ui} />
+      {ui.notice && <div className="hud-notice" role="status" data-testid="notice">{ui.notice}</div>}
       {ui.nearDesk && !ui.seatedAt && (
         <div className="hud-hint" data-testid="hint">
           Press <kbd>E</kbd> to use {ui.nearDesk}
@@ -80,6 +101,38 @@ export function Hud({ ui }: { ui: UiState }) {
   );
 }
 
+/** Public identity/presence only. No role inference, private cards, bot labels or invented voice/life state. */
+function PlayerRoster({ ui }: { ui: UiState }) {
+  const [selected, setSelected] = useState('');
+  const [open, setOpen] = useState(true);
+  const people: { id: string; name: string; seatedAt: string }[] = [];
+  store.room?.state.players?.forEach((p) => people.push({ id: p.id, name: p.name, seatedAt: p.seatedAt }));
+  people.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+  if (ui.seatedAt) return null;
+  return <aside className={`roster ${open ? '' : 'roster-collapsed'}`} aria-label="Office roster" data-testid="roster">
+    <button className="roster-heading" type="button" aria-expanded={open} onClick={() => setOpen(!open)}>
+      <span>IN THE OFFICE <b>{people.length}</b></span><span aria-hidden="true">{open ? '−' : '+'}</span>
+    </button>
+    {open && <div className="roster-list">
+      {people.map((p) => {
+        const department = ui.employees.find((e) => e.id === p.id)?.department ?? 'Employee';
+        const self = p.id === ui.playerId;
+        return <button key={p.id} type="button" className={`roster-person ${self ? 'roster-self' : ''}`}
+          aria-pressed={(selected || ui.playerId) === p.id} onClick={() => setSelected(p.id)}
+          style={{ '--department': departmentColor(department) } as CSSProperties}>
+          <Portrait id={p.id} department={department} />
+          <span className="roster-copy"><span className="roster-name">{p.name}{self && <small> You</small>}</span>
+            <span className="department-tag">{department}</span>
+            <span className="roster-status"><span className="signal-dot" />{p.seatedAt ? 'At workstation' : 'In office'}</span>
+          </span>
+        </button>;
+      })}
+      {people.length === 0 && <p className="tasks-empty">Waiting for office state…</p>}
+    </div>}
+    {open && <div className="roster-foot">EMPLOYEE DIRECTORY</div>}
+  </aside>;
+}
+
 // ───────────────────────────── Task list ─────────────────────────────
 
 /**
@@ -92,9 +145,10 @@ export function TaskList({ ui }: { ui: UiState }) {
   return (
     <div className={`tasks ${ui.seatedAt ? 'tasks-seated' : ''}`} data-testid="tasks">
       <div className="tasks-head">
-        <span>YOUR TASKS</span>
+        <span>YOUR TASKS <kbd>T</kbd></span>
         <span data-testid="tasks-completed">{ui.tasksCompleted} done</span>
       </div>
+      <div className="tasks-caption">Your workday</div>
       {ui.tasks.length === 0 && <p className="tasks-empty">Nothing to do right now.</p>}
       {ui.tasks.map((task) => {
         const next = task.steps.find((s) => !s.done);
@@ -150,7 +204,7 @@ export function OnboardingCard({ card }: { card: Card }) {
         </tbody>
       </table>
       <p className="card-note">
-        Doors with a green box need your badge: stand at the door and press <kbd>E</kbd>. Every tap is logged.
+        Doors with a reader need your badge: stand at the door and press <kbd>E</kbd>. White means ready, green means accepted, and red means declined. Every tap is logged.
         Your IP comes from DHCP and can change. Lock your screen when you leave your desk:
         <code> loginctl lock-session</code>. Press <kbd>C</kbd> to show or hide this card.
       </p>

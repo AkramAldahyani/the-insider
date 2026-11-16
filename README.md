@@ -2,7 +2,7 @@
 
 A multiplayer social-deduction game that teaches real Linux forensics. The full design is in [DESIGN.md](DESIGN.md).
 
-**Current state: Phase 3 — a living office.** You walk around a top-down office full of bot employees, sit at any PC and use its simulated Linux shell. The bots come to work, badge through doors, log in, do job tasks, write each other email, browse, take breaks and sometimes forget to lock their screen, so badge, door, camera, mail, DNS, proxy and system logs fill up even while you stand still. There are no hacker tools, roles, meetings or log viewers yet, and the art is placeholder shapes. `PROGRESS.md` says what was built in which step.
+**Current state: Phase 3 — a living office.** You walk around a top-down office full of bot employees, sit at any PC and use its simulated Linux shell. The bots come to work, badge through doors, log in, do job tasks, write each other email, browse, take breaks and sometimes forget to lock their screen, so badge, door, camera, mail, DNS, proxy and system logs fill up even while you stand still. There are no hacker tools, roles, meetings or log viewers yet. The client now has detailed procedural office art, original temporary directional pixel characters, and a dark HUD with a public employee directory. See [visual upgrade notes](docs/design/visual-upgrade.md) for assets, scope and reference differences. `PROGRESS.md` says what was built in which step.
 
 What exists:
 
@@ -63,9 +63,9 @@ This starts the game server (port 2567) and the web page. Open http://localhost:
 | `F2` | lock screen | switch user |
 | `↑` `↓` `←` `→` `Home` `End` | terminal | history and line editing |
 
-On the map, a monitor is green when unlocked, amber when locked (with the user's name) and grey at the login prompt. Red triangles are cameras (only drawn so far).
+On the map, a monitor is green when unlocked, amber when locked (with the user's name) and grey at the login prompt. Muted red camera housings mark CCTV locations. A teal outline marks the desk or badge door in reach.
 
-**Doors.** A closed door is a solid bar across the doorway. Doors with a small box beside them have a badge reader: stand at the door and press `E`. If your badge is accepted the door opens for 3 seconds (anyone can walk through while it is open); if not, the box turns red. Dark red doors (server room, security office) open only for certain badges; your onboarding card says what yours opens. Doors without a box open by themselves. Every tap is written to `/var/log/badge/access.log` on `SEC-SRV-01`, which the security guard and the sysadmin can read over ssh.
+**Doors.** A closed door is a solid bar across the doorway. Doors with a small box beside them have a badge reader: stand at the door and press `E`. The reader is white by default. If your badge is accepted it turns green and the door opens for 3 seconds (anyone can walk through while it is open); if declined, it turns red. It returns to white when the door closes or the denial indicator clears. Dark red doors (server room, security office) open only for certain badges; your onboarding card says what yours opens. Doors without a box open by themselves. Every tap is written to `/var/log/badge/access.log` on `SEC-SRV-01`, which the security guard and the sysadmin can read over ssh.
 
 Other commands:
 
@@ -121,7 +121,7 @@ pnpm typecheck
 pnpm e2e
 ```
 
-Three Playwright tests drive a real Chromium browser through the game (on their own server, ports 2577 and 5183, without bots, so they never share an office with a game you have open) and save screenshots to `e2e/screenshots/`. The first time, download the browser (about 150 MB) with:
+Four Playwright tests drive real Chromium clients through the game (on their own server, ports 2577 and 5183, without bots, so they never share an office with a game you have open). They cover the existing interactions plus two-client movement and responsive HUD layout. Screenshots go to `e2e/screenshots/` and `test-results/design/`. The first time, download the browser with:
 
 ```bash
 pnpm exec playwright install chromium

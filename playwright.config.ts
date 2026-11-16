@@ -17,6 +17,8 @@ const PAGE_PORT = '5183';
 
 export default defineConfig({
   testDir: 'e2e',
+  // Files share one office and the same employee choices.
+  workers: 1,
   timeout: 120_000,
   // The tests steer a character with real key presses and real timing. About one run in ten the walk
   // in the first test gets stuck on a slow moment; one retry keeps that from failing the whole run.

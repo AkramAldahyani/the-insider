@@ -1,8 +1,8 @@
 /**
  * The office map, drawn with Phaser.
  *
- * Everything here is placeholder art made of rectangles, circles and text
- * (DESIGN.md section 13: real art comes in Phase 7). The scene does two jobs:
+ * Office materials use the existing Tiled geometry; original temporary pixel
+ * sprites supply four-direction animation. The scene does two jobs:
  *
  *  - once, at start: draw the things that never move (floor, walls, furniture,
  *    cameras, room names, desks);
@@ -11,7 +11,7 @@
  *
  * A closed door is a solid slab across the doorway. An open door is drawn as
  * two thin stubs at the frame. The small box beside a door is its badge
- * reader: green normally, red for a moment after a badge was refused.
+ * reader: white normally, green while access is granted, red after refusal.
  *
  * The scene never decides anything. Positions come from the server; the scene
  * only glides each character towards its latest known position
@@ -24,14 +24,11 @@ import {
 } from '@insider/shared';
 import { playSound } from './sound';
 import type { Store } from './store';
+import { characterSheet, DIRECTIONS, FRAME_H, FRAME_W } from './characterArt';
+import { drawOffice } from './officeArt';
 
 const COLORS = {
-  wall: 0x181a20,
-  wallEdge: 0x2c303a,
-  desk: 0x7a5a3a,
   deskEdge: 0x4a3622,
-  chair: 0x30343c,
-  furniture: 0x4b5160,
   door: 0xb98a3c,
   doorRestricted: 0x9a4b4b,
   camera: 0xe5484d,
@@ -40,13 +37,12 @@ const COLORS = {
   screenLocked: 0xf2b134,
   screenUnlocked: 0x3ecf8e,
 };
-/** Body colours for players; picked by player number so everyone looks different. */
-const BODY_COLORS = [0x4f9dde, 0xe07a5f, 0x81b29a, 0xf2cc8f, 0xb388eb, 0xef6f8e, 0x5bc0be, 0xd4a373, 0x9bc53d, 0xc9ada7];
 const LABEL = { fontFamily: 'ui-monospace, Consolas, monospace', fontSize: '11px', color: '#e6e8ee', resolution: 2 };
 
 interface PlayerView {
   container: Phaser.GameObjects.Container;
-  nose: Phaser.GameObjects.Triangle;
+  sprite: Phaser.GameObjects.Image;
+  walkTime: number;
   /** Latest position reported by the server. */
   targetX: number;
   targetY: number;
@@ -86,6 +82,7 @@ export function createOfficeScene(store: Store): Phaser.Scene {
   const doors = new Map<string, DoorView>();
   let map: OfficeMap;
   let hudTimer = 0;
+  let highlight: Phaser.GameObjects.Graphics;
 
   class OfficeScene extends Phaser.Scene {
     constructor() {
@@ -96,49 +93,10 @@ export function createOfficeScene(store: Store): Phaser.Scene {
       map = store.map!;
       this.cameras.main.setBackgroundColor('#0d0f14');
       this.cameras.main.setBounds(0, 0, map.width, map.height);
-      this.drawStatic();
+      drawOffice(this, map, tileColors(store));
       for (const desk of map.desks) this.drawDesk(desk);
       for (const door of map.doors) this.addDoor(door);
-    }
-
-    /** Floor, walls, furniture, cameras and room names. Drawn once. */
-    private drawStatic(): void {
-      const g = this.add.graphics();
-      const colors = tileColors(store);
-      const t = map.tile;
-      for (let r = 0; r < map.rows; r++) {
-        for (let c = 0; c < map.cols; c++) {
-          const floor = map.floor[r][c];
-          if (floor) {
-            g.fillStyle(colors.get(floor) ?? 0x4a4c52, 1).fillRect(c * t, r * t, t, t);
-            g.lineStyle(1, 0x000000, 0.08).strokeRect(c * t, r * t, t, t);
-          }
-          if (map.walls[r][c]) {
-            g.fillStyle(COLORS.wall, 1).fillRect(c * t, r * t, t, t);
-            g.lineStyle(1, COLORS.wallEdge, 1).strokeRect(c * t + 0.5, r * t + 0.5, t - 1, t - 1);
-          }
-        }
-      }
-      for (const f of map.furniture) {
-        g.fillStyle(COLORS.furniture, 1).fillRoundedRect(f.x + 2, f.y + 2, f.width - 4, f.height - 4, 4);
-        g.lineStyle(1, 0x000000, 0.4).strokeRoundedRect(f.x + 2, f.y + 2, f.width - 4, f.height - 4, 4);
-        if (f.width >= 3 * t || f.height >= 3 * t) {
-          this.add.text(f.x + f.width / 2, f.y + f.height / 2, f.name, { ...LABEL, fontSize: '9px', color: '#aab0bd' }).setOrigin(0.5).setDepth(2);
-        }
-      }
-      for (const cam of map.cameras) {
-        g.fillStyle(COLORS.camera, 1).fillTriangle(cam.x - 7, cam.y - 6, cam.x + 7, cam.y - 6, cam.x, cam.y + 7);
-        g.lineStyle(1, 0x000000, 0.6).strokeTriangle(cam.x - 7, cam.y - 6, cam.x + 7, cam.y - 6, cam.x, cam.y + 7);
-        this.add.text(cam.x + 10, cam.y - 6, cam.name.split(' ')[0], { ...LABEL, fontSize: '8px', color: '#ff9da0' }).setDepth(2);
-      }
-      // Room names. A room made of two rectangles (IT) is labelled once.
-      const named = new Set<string>();
-      for (const room of map.rooms) {
-        if (named.has(room.name) || room.name === 'Corridor') continue;
-        named.add(room.name);
-        this.add.text(room.x + room.width / 2, room.y + room.height - 14, room.name.toUpperCase(), { ...LABEL, fontSize: '12px', color: '#ffffff' })
-          .setOrigin(0.5).setAlpha(0.45).setDepth(2);
-      }
+      highlight = this.add.graphics().setDepth(4);
     }
 
     /** A door (redrawn when it opens or closes) and, if it has one, its badge reader. */
@@ -147,8 +105,9 @@ export function createOfficeScene(store: Store): Phaser.Scene {
       const reader = map.badgeReaders.find((r) => r.props.door === def.code);
       let light: Phaser.GameObjects.Rectangle | null = null;
       if (reader) {
-        this.add.rectangle(reader.x, reader.y, 12, 16, 0x15171c).setStrokeStyle(1, 0x000000).setDepth(3);
-        light = this.add.rectangle(reader.x, reader.y - 2, 6, 6, COLORS.badge).setDepth(4);
+        this.add.rectangle(reader.x, reader.y, 16, 22, 0x132131).setStrokeStyle(2, 0x718292).setDepth(3);
+        light = this.add.rectangle(reader.x, reader.y - 2, 6, 6, 0xffffff).setDepth(4);
+        this.add.rectangle(reader.x, reader.y + 6, 7, 2, 0x8497a4).setDepth(4);
       }
       const view: DoorView = { def, slab, light, last: '' };
       doors.set(def.code, view);
@@ -169,6 +128,8 @@ export function createOfficeScene(store: Store): Phaser.Scene {
       const g = view.slab.clear();
       const color = d.restricted ? COLORS.doorRestricted : COLORS.door;
       const across = d.axis === 'y'; // the slab lies left-to-right in a horizontal wall
+      g.fillStyle(0x101b29, 0.6).fillRect(d.x, d.y, d.width, d.height);
+      g.lineStyle(1, 0xd5be87, 0.45).strokeRect(d.x + 2, d.y + 2, d.width - 4, d.height - 4);
       if (door.look === 'open') {
         // Two short stubs at the frame: the doorway is clear.
         g.fillStyle(color, 0.9);
@@ -178,31 +139,57 @@ export function createOfficeScene(store: Store): Phaser.Scene {
         g.fillStyle(color, 1).lineStyle(1, 0x000000, 0.7);
         if (across) g.fillRect(d.x, d.y + d.height / 2 - 6, d.width, 12).strokeRect(d.x, d.y + d.height / 2 - 6, d.width, 12);
         else g.fillRect(d.x + d.width / 2 - 6, d.y, 12, d.height).strokeRect(d.x + d.width / 2 - 6, d.y, 12, d.height);
+        g.lineStyle(1, 0xffe5b1, 0.7);
+        if (across) {
+          g.lineBetween(d.x + 3, d.y + d.height / 2 - 4, d.x + d.width - 3, d.y + d.height / 2 - 4);
+          g.lineStyle(2, 0x3f3d3e).lineBetween(d.x + d.width / 2, d.y + d.height / 2 - 5, d.x + d.width / 2, d.y + d.height / 2 + 5);
+        } else g.lineBetween(d.x + d.width / 2 - 4, d.y + 3, d.x + d.width / 2 - 4, d.y + d.height - 3);
       }
-      view.light?.setFillStyle(door.look === 'denied' ? COLORS.camera : door.look === 'open' ? 0xffffff : COLORS.badge);
+      view.light?.setFillStyle(door.look === 'denied' ? COLORS.camera : door.look === 'open' ? COLORS.badge : 0xffffff);
     }
 
     /** A desk: table, chair, monitor (recoloured live) and two text lines. */
     private drawDesk(desk: MapDesk): void {
       const g = this.add.graphics().setDepth(3);
-      g.fillStyle(COLORS.chair, 1).fillCircle(desk.seatX, desk.seatY, 9);
-      g.fillStyle(COLORS.desk, 1).fillRoundedRect(desk.x + 1, desk.y + 3, desk.width - 2, desk.height - 5, 3);
+      g.fillStyle(0x111c2b, 0.35).fillEllipse(desk.seatX + 2, desk.seatY + 4, 28, 16);
+      g.fillStyle(0x243247).fillRoundedRect(desk.seatX - 11, desk.seatY - 8, 22, 18, 4);
+      g.lineStyle(1, 0x7d8b9e).strokeRoundedRect(desk.seatX - 11, desk.seatY - 8, 22, 18, 4);
+      g.fillStyle(0x516178).fillRoundedRect(desk.seatX - 9, desk.seatY + 4, 18, 6, 2);
+      g.fillStyle(0x192333, 0.4).fillRect(desk.x + 2, desk.y + 7, desk.width - 4, desk.height - 7);
+      g.fillStyle(0xb29377, 1).fillRoundedRect(desk.x + 1, desk.y + 2, desk.width - 2, desk.height - 7, 3);
       g.lineStyle(1, COLORS.deskEdge, 1).strokeRoundedRect(desk.x + 1, desk.y + 3, desk.width - 2, desk.height - 5, 3);
-      const screen = this.add.rectangle(desk.x + desk.width / 2, desk.y + desk.height / 2 + 1, 26, 14, COLORS.screenLogin).setStrokeStyle(2, 0x101216).setDepth(4);
-      this.add.text(desk.x + desk.width / 2, desk.y - 18, desk.hostname, { ...LABEL, fontSize: '10px' }).setOrigin(0.5).setDepth(6);
+      g.lineStyle(1, 0xe3c5a2, 0.7).lineBetween(desk.x + 4, desk.y + 4, desk.x + desk.width - 4, desk.y + 4);
+      g.fillStyle(0x364456).fillRect(desk.x + 7, desk.y + 7, 7, 12);
+      g.fillStyle(0x253344).fillRect(desk.seatX - 11, desk.y + 21, 22, 5);
+      g.lineStyle(1, 0x8997a3, 0.5).lineBetween(desk.seatX - 9, desk.y + 23, desk.seatX + 8, desk.y + 23);
+      g.fillStyle(0xdce5de).fillRoundedRect(desk.x + desk.width - 12, desk.y + 13, 5, 7, 2);
+      const screen = this.add.rectangle(desk.x + desk.width / 2, desk.y + 11, 26, 14, COLORS.screenLogin).setStrokeStyle(2, 0x101216).setDepth(4);
+      this.add.rectangle(desk.seatX - 4, desk.y + 7, 15, 1, 0xffffff, 0.35).setDepth(4);
+      this.add.text(desk.x + desk.width / 2, desk.y - 23, desk.hostname, { ...LABEL, fontSize: '9px', backgroundColor: '#172638', padding: { x: 4, y: 2 } }).setOrigin(0.5).setDepth(6);
       const status = this.add.text(desk.x + desk.width / 2, desk.y - 7, '', { ...LABEL, fontSize: '9px', color: '#aab0bd' }).setOrigin(0.5).setDepth(6);
       desks.set(desk.hostname, { screen, status, last: '' });
     }
 
     private addPlayer(p: PublicPlayer): PlayerView {
-      const index = Math.max(0, parseInt(p.id.replace(/\D/g, ''), 10) - 1) % BODY_COLORS.length;
-      const body = this.add.circle(0, 0, 11, BODY_COLORS[index]).setStrokeStyle(2, 0x101216);
-      // The "nose": a small triangle showing which way the character faces.
-      const nose = this.add.triangle(0, 0, -5, 4, 5, 4, 0, -5, 0xffffff).setOrigin(0, 0);
+      const department = store.getUi().employees.find((e) => e.id === p.id)?.department ?? '';
+      const key = `employee-${p.id}`;
+      if (!this.textures.exists(key)) {
+        const texture = this.textures.addCanvas(key, characterSheet(p.id, department))!;
+        texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+        for (let row = 0; row < 4; row++) for (let frame = 0; frame < 4; frame++) {
+          texture.add(row * 4 + frame, 0, frame * FRAME_W, row * FRAME_H, FRAME_W, FRAME_H);
+        }
+      }
+      const shadow = this.add.ellipse(0, 9, 27, 10, 0x07111e, 0.35);
+      const sprite = this.add.image(0, 10, key, 0).setOrigin(0.5, 1);
       const self = p.id === store.getUi().playerId;
-      const name = this.add.text(0, 15, self ? `${p.name} (you)` : p.name, { ...LABEL, color: self ? '#ffe08a' : '#e6e8ee' }).setOrigin(0.5, 0);
-      const container = this.add.container(p.x, p.y, [body, nose, name]).setDepth(5);
-      const view = { container, nose, targetX: p.x, targetY: p.y };
+      const name = this.add.text(0, 17, self ? `${p.name} (you)` : p.name, { ...LABEL, fontFamily: 'Segoe UI, sans-serif', fontSize: '10px', backgroundColor: '#132131', padding: { x: 4, y: 2 }, color: self ? '#9fe8d0' : '#e6e8ee' }).setOrigin(0.5, 0);
+      const container = this.add.container(p.x, p.y, [shadow, sprite, name]).setDepth(10);
+      if (self) {
+        const marker = this.add.triangle(0, -37, 0, 0, 8, 0, 4, 5, 0x8fe3cd).setStrokeStyle(1, 0x143b45);
+        container.add(marker);
+      }
+      const view = { container, sprite, walkTime: 0, targetX: p.x, targetY: p.y };
       players.set(p.id, view);
       if (self) this.cameras.main.startFollow(container, true, 0.15, 0.15);
       return view;
@@ -236,9 +223,12 @@ export function createOfficeScene(store: Store): Phaser.Scene {
         const dy = p.y - view.container.y;
         const blend = Math.hypot(dx, dy) > 96 ? 1 : Math.min(1, deltaMs / 70);
         view.container.setPosition(view.container.x + dx * blend, view.container.y + dy * blend);
-        const [nx, ny, angle] = p.facing === 'up' ? [0, -13, 0] : p.facing === 'down' ? [0, 13, 180] : p.facing === 'left' ? [-13, 0, -90] : [13, 0, 90];
-        view.nose.setPosition(nx, ny).setAngle(angle);
-        view.container.setAlpha(p.seatedAt ? 0.85 : 1);
+        const walking = !p.seatedAt && Math.hypot(dx, dy) > 0.8 && blend !== 1;
+        view.walkTime = walking ? view.walkTime + deltaMs : 0;
+        const frame = walking ? [1, 2, 3, 2][Math.floor(view.walkTime / 130) % 4] : 0;
+        view.sprite.setFrame(DIRECTIONS.indexOf(p.facing) * 4 + frame);
+        view.container.setDepth(10 + p.y / map.height);
+        view.container.setAlpha(p.seatedAt ? 0.9 : 1);
       });
       for (const [id, view] of players) {
         if (!alive.has(id)) {
@@ -248,6 +238,13 @@ export function createOfficeScene(store: Store): Phaser.Scene {
       }
       state.desks.forEach((desk) => this.updateDesk(desk));
       state.doors?.forEach((door) => this.updateDoor(door));
+      // Read the same existing proximity facts as the E-key prompt; never grant interaction here.
+      highlight.clear();
+      const ui = store.getUi();
+      const target = ui.nearDesk ? map.desks.find((d) => d.hostname === ui.nearDesk) : map.doors.find((d) => d.code === ui.nearDoor);
+      if (target && !ui.seatedAt) {
+        highlight.lineStyle(2, 0x8fe3cd, 0.9).strokeRoundedRect(target.x - 3, target.y - 3, target.width + 6, target.height + 6, 4);
+      }
 
       // HUD facts, a few times per second (not every frame: React does not need 60 updates a second).
       hudTimer += deltaMs;

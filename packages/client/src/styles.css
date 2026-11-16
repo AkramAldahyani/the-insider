@@ -1,12 +1,12 @@
 /* The Insider - interface styles. Dark "security console" look; the map itself is drawn by Phaser. */
 :root {
-  --bg: #0d0f14;
-  --panel: #161a22;
-  --panel-2: #1e2430;
-  --line: #2b3342;
-  --text: #e6e8ee;
-  --muted: #8f98a8;
-  --green: #3ecf8e;
+  --bg: #0b1320;
+  --panel: #111e2e;
+  --panel-2: #1b2c40;
+  --line: #344a62;
+  --text: #e2ebf1;
+  --muted: #9aafbf;
+  --green: #8adbc1;
   --amber: #f2b134;
   --red: #e5484d;
   --mono: ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
@@ -28,14 +28,14 @@ kbd {
 .error button { padding: 8px 14px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; }
 
 /* ── Start screen ── */
-.start { height: 100%; overflow: auto; display: grid; place-items: start center; padding: 40px 16px; }
+.start { height: 100%; overflow: auto; display: grid; place-items: start center; padding: 48px 24px; background: radial-gradient(ellipse at 80% 0, #1d3545 0, transparent 55%), var(--bg); }
 .start-box { width: min(880px, 100%); }
-.start h1 { font-family: var(--mono); letter-spacing: 0.35em; font-size: 28px; margin: 0; color: var(--green); }
+.start h1 { letter-spacing: 0.03em; font-size: clamp(32px, 5vw, 52px); font-style: italic; font-weight: 850; margin: 12px 0 0; color: var(--text); }
 .start-sub { color: var(--muted); margin: 6px 0 26px; }
 .start h2 { font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
-.start-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.start-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
 .employee {
-  display: flex; flex-direction: column; gap: 3px; text-align: left; padding: 12px 14px;
+  display: flex; align-items: center; gap: 14px; text-align: left; padding: 14px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 8px; transition: border-color 0.12s, transform 0.12s;
 }
 .employee:hover:not(:disabled) { border-color: var(--green); transform: translateY(-1px); }
@@ -47,62 +47,62 @@ kbd {
 .start-note { color: var(--muted); font-size: 13px; line-height: 1.5; margin-top: 26px; max-width: 62ch; }
 
 /* ── In game ── */
-.game { position: relative; height: 100%; }
-.map { position: absolute; inset: 0; }
+.game { position: relative; height: 100%; background: linear-gradient(110deg, #101d2c, #0b1320 50%, #101d2c); }
+.map { position: absolute; inset: 66px 244px 54px 272px; overflow: hidden; border: 1px solid #42596e; border-radius: 5px; box-shadow: 0 10px 32px #0004; }
 .map canvas { display: block; }
 
 .hud-top {
-  position: absolute; top: 0; left: 0; right: 0; height: 36px; padding: 0 14px;
+  position: absolute; top: 0; left: 0; right: 0; height: 54px; padding: 0 18px;
   display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 13px;
-  background: rgba(13, 15, 20, 0.86); border-bottom: 1px solid var(--line); pointer-events: none;
+  background: #0c1623; border-bottom: 1px solid var(--line); pointer-events: none;
 }
 .hud-clock { color: var(--green); }
 .hud-speed { color: var(--amber); }
-.hud-room { padding: 2px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); }
+.hud-room { padding: 4px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); font: 12px var(--sans); }
 .hud-spacer { flex: 1; }
 .hud-keys { color: var(--muted); font-size: 12px; }
 .hud-hint, .hud-notice {
   position: absolute; left: 50%; transform: translateX(-50%); padding: 9px 16px; border-radius: 8px;
-  font-size: 14px; background: rgba(22, 26, 34, 0.95); border: 1px solid var(--line); pointer-events: none; white-space: nowrap;
+  font-size: 13px; background: #0e1d2bf5; border: 1px solid var(--line); pointer-events: none; max-width: calc(100% - 32px); text-align: center; z-index: 12;
 }
-.hud-hint { bottom: 28px; border-color: var(--green); }
-.hud-notice { top: 50px; border-color: var(--amber); color: var(--amber); }
+.hud-hint { bottom: 66px; border-color: var(--green); box-shadow: 0 4px 20px #0004; }
+.hud-notice { top: 68px; border-color: var(--amber); color: var(--amber); }
 
 /* ── Task list ── */
 .tasks {
-  position: absolute; left: 16px; top: 52px; width: 290px; max-height: calc(100vh - 120px); overflow: auto; padding: 10px 12px;
-  border-radius: 8px; background: rgba(22, 26, 34, 0.92); border: 1px solid var(--line); font-size: 12.5px; z-index: 5;
+  position: absolute; left: 12px; top: 66px; width: 248px; max-height: calc(100% - 120px); overflow: auto; padding: 14px 12px;
+  border-radius: 6px; background: linear-gradient(160deg, #17283a, #101b2a); border: 1px solid var(--line); font-size: 12px; z-index: 5;
 }
 .tasks-seated { opacity: 0.96; }
-.tasks-head { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: #8b93a3; margin-bottom: 6px; }
+.tasks-head { display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 650; letter-spacing: 0.06em; color: var(--text); margin-bottom: 6px; }
 .tasks-empty { color: #8b93a3; margin: 4px 0; }
-.task { padding: 6px 0; border-top: 1px solid var(--line); }
+.task { padding: 12px 9px; border: 1px solid #344a62; border-radius: 5px; background: #0c1928; margin-top: 8px; }
 .task-title { font-weight: 600; }
 .task-done .task-title { color: var(--green); font-weight: 500; }
-.task ol { margin: 4px 0 0; padding-left: 18px; color: #8b93a3; }
-.task li { margin: 2px 0; }
+.task ol { margin: 8px 0 0; padding-left: 18px; color: var(--muted); }
+.task li { margin: 5px 0; line-height: 1.45; }
 .task li.step-done { text-decoration: line-through; opacity: 0.6; }
 .task li.step-next { color: #e6e8ee; }
-.task code { display: block; margin-top: 3px; padding: 3px 6px; border-radius: 4px; background: #0d0f14; color: var(--green); font-family: var(--mono); font-size: 11.5px; white-space: pre-wrap; word-break: break-all; user-select: all; }
+.task code { display: block; margin-top: 6px; padding: 7px; border: 1px solid #294c4b; border-radius: 4px; background: #0b1a20; color: var(--green); font-family: var(--mono); font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: all; }
 
 /* ── Onboarding card ── */
 .card {
-  position: absolute; right: 16px; top: 52px; width: 320px; padding: 16px 18px; border-radius: 10px;
-  background: #f4f1e8; color: #1c2230; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); border-top: 6px solid #0b3954;
+  position: absolute; right: 256px; top: 78px; width: 330px; max-height: calc(100% - 140px); overflow: auto; padding: 16px 18px; border-radius: 7px; z-index: 15;
+  background: #152536; color: var(--text); box-shadow: 0 12px 40px #0008; border: 1px solid #58778a; border-top: 3px solid var(--green);
 }
-.card-head { display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: #5b6475; }
-.card-head button { background: none; border: 0; font-size: 20px; line-height: 1; color: #5b6475; padding: 0 2px; }
+.card-head { display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: var(--green); }
+.card-head button { background: none; border: 0; font-size: 20px; line-height: 1; color: var(--text); padding: 3px 5px; }
 .card-name { font-size: 20px; font-weight: 700; margin-top: 10px; }
-.card-title { color: #5b6475; font-size: 13px; margin-bottom: 10px; }
+.card-title { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
 .card table { width: 100%; border-collapse: collapse; }
-.card th { text-align: left; font-weight: 500; color: #5b6475; font-size: 12px; padding: 4px 0; width: 104px; }
+.card th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 5px 0; width: 104px; vertical-align: top; }
 .card td { font-family: var(--mono); font-size: 13px; padding: 4px 0; user-select: all; }
-.card-note { font-size: 11.5px; line-height: 1.45; color: #5b6475; margin: 10px 0 0; }
+.card-note { font-size: 11.5px; line-height: 1.6; color: var(--muted); margin: 14px 0 0; border-top: 1px solid var(--line); padding-top: 12px; }
 .card-note code { font-family: var(--mono); }
-.card kbd { background: #e4e0d4; border-color: #c9c4b4; color: #1c2230; }
+.card kbd { background: var(--panel-2); border-color: var(--line); color: var(--text); }
 
 /* ── PC terminal ── */
-.term-backdrop { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(5, 6, 9, 0.6); }
+.term-backdrop { position: absolute; inset: 54px 0 42px; display: grid; place-items: center; background: rgba(5, 6, 9, 0.72); z-index: 4; }
 .term-window {
   width: min(940px, calc(100% - 32px)); height: min(600px, calc(100% - 72px)); display: flex; flex-direction: column;
   background: #0b0d10; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
@@ -133,4 +133,72 @@ kbd {
 .dev-log { margin: 6px 10px 10px; padding: 8px; overflow: auto; min-height: 60px; background: #0b0d10; border-radius: 4px; white-space: pre-wrap; word-break: break-all; color: #c3c8d2; }
 
 /* While the task list is shown next to an open PC, the terminal moves right so the list does not cover what you type. */
-.game:has(.tasks-seated) .term-window { margin-left: 314px; width: min(940px, calc(100% - 346px)); }
+.game:has(.tasks-seated) .term-window { margin-left: 264px; width: min(940px, calc(100% - 288px)); }
+
+/* Shared identity treatment, drawn from the same temporary sprite frames as the office. */
+button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+.eyebrow { display: flex; align-items: center; gap: 9px; color: var(--green); font: 10px var(--mono); letter-spacing: 0.14em; }
+.start-intro { color: #c3d1dc; font-size: 16px; margin-bottom: 8px; }
+.employee-copy { display: flex; flex-direction: column; gap: 3px; }
+.portrait { flex: 0 0 46px; width: 46px; height: 46px; display: grid; place-items: end center; overflow: hidden; border: 1px solid var(--department, var(--line)); border-radius: 6px; background: linear-gradient(140deg, #304456, #0a1320); }
+.portrait img { width: 44px; height: 44px; image-rendering: pixelated; }
+.employee .portrait { width: 58px; height: 64px; flex-basis: 58px; }
+.employee .portrait img { width: 56px; height: 56px; }
+.employee:hover:not(:disabled) { border-color: var(--department); }
+.hud-brand { display: flex; align-items: center; gap: 12px; font: italic 800 19px var(--sans); white-space: nowrap; padding-right: 18px; border-right: 1px solid var(--line); letter-spacing: 0.03em; }
+.brand-mark { width: 24px; height: 17px; border: 2px solid var(--green); border-radius: 2px; position: relative; }
+.brand-mark::after { content: ''; position: absolute; left: -5px; right: -5px; bottom: -6px; border-bottom: 2px solid var(--green); }
+.signal-dot { display: inline-block; width: 5px; height: 5px; background: var(--green); border-radius: 50%; flex-shrink: 0; }
+.hud-location { display: flex; align-items: center; gap: 12px; font-size: 10px; color: var(--muted); letter-spacing: 0.12em; }
+.hud-bottom { position: absolute; bottom: 0; left: 0; right: 0; height: 42px; display: flex; justify-content: center; align-items: center; gap: 24px; font-size: 11px; color: var(--muted); border-top: 1px solid #24394c; background: #0c1623; z-index: 6; }
+.hud-bottom button { background: none; border: 0; font-size: inherit; color: inherit; padding: 4px; }
+.hud-bottom kbd { margin-right: 5px; color: #dce8f0; }
+.tasks-caption { font-size: 11px; color: var(--muted); padding: 5px 0 8px; }
+.tasks-head kbd { margin-left: 4px; font-size: 9px; font-weight: 400; color: var(--muted); }
+.tasks-head > span:last-child { color: var(--green); font: 10px var(--mono); letter-spacing: 0; }
+.roster { position: absolute; right: 12px; top: 66px; width: 220px; border: 1px solid var(--line); border-radius: 6px; background: linear-gradient(160deg, #17283a, #101b2a); overflow: hidden; max-height: calc(100% - 120px); display: flex; flex-direction: column; }
+.roster-heading { display: flex; justify-content: space-between; align-items: center; padding: 14px 12px; border: 0; border-bottom: 1px solid var(--line); background: transparent; font-size: 11px; font-weight: 650; letter-spacing: 0.04em; }
+.roster-heading b { margin-left: 7px; font: 11px var(--mono); color: var(--green); }
+.roster-list { padding: 6px; overflow-y: auto; min-height: 0; }
+.roster-person { width: 100%; display: flex; gap: 9px; align-items: center; text-align: left; padding: 9px 6px; margin-bottom: 4px; background: #0d1928; border: 1px solid #2a3b50; border-radius: 5px; }
+.roster-person:hover { background: #1b2d40; }
+.roster-person[aria-pressed='true'] { border-color: #8adbc1; background: #173335; }
+.roster-copy { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.roster-name { font-size: 11px; font-weight: 650; line-height: 1.3; overflow-wrap: anywhere; }
+.roster-name small { color: var(--green); font-size: 9px; font-weight: 400; }
+.department-tag { color: var(--department); font-size: 10px; }
+.roster-status { display: flex; align-items: center; gap: 5px; color: #a8bdc7; font-size: 9px; }
+.roster-foot { border-top: 1px solid var(--line); padding: 10px 12px; font: 8px var(--mono); letter-spacing: 0.15em; color: var(--muted); }
+* { scrollbar-width: thin; scrollbar-color: #40576b #101b2a; }
+
+/* Rail layout reserves real canvas space: UI never covers a followed character. */
+.game:not(:has(.tasks)) .map { left: 12px; }
+@media (max-width: 1100px) {
+  .map { left: 248px; right: 12px; }
+  .tasks { width: 224px; max-height: calc(55% - 70px); }
+  .roster { left: 12px; right: auto; top: 55%; width: 224px; max-height: calc(45% - 54px); }
+  .card { right: 24px; }
+  .hud-location { display: none; }
+  .hud-clock { font-size: 11px; }
+  .tasks-seated { max-height: calc(100% - 120px); }
+  .game:has(.tasks-seated) .term-window { margin-left: 236px; width: calc(100% - 260px); }
+  .game:not(:has(.tasks)) .map { left: 248px; }
+}
+@media (max-width: 700px) {
+  .hud-top { gap: 8px; padding: 0 10px; }
+  .hud-brand { font-size: 14px; padding-right: 8px; }
+  .brand-mark, .hud-location, .dev-shortcut { display: none; }
+  .hud-clock { max-width: 115px; font-size: 9px; }
+  .hud-room { font-size: 10px; padding: 3px 5px; }
+  .map, .game:not(:has(.tasks)) .map { inset: 62px 8px 54px; }
+  .tasks { top: 70px; left: 16px; width: 190px; max-height: 34%; font-size: 11px; }
+  .roster { top: auto; bottom: 60px; left: auto; right: 16px; width: 180px; max-height: 28%; }
+  .roster-person .portrait { flex-basis: 32px; width: 32px; height: 34px; }
+  .roster-person .portrait img { width: 32px; height: 32px; }
+  .card { right: 16px; width: min(330px, calc(100% - 32px)); }
+  .hud-bottom { gap: 10px; font-size: 10px; }
+  .hud-hint { bottom: 55px; max-width: calc(100% - 36px); }
+  .game:has(.tasks-seated) .term-window { width: calc(100% - 20px); margin-left: 0; height: 62%; align-self: end; margin-bottom: 10px; }
+  .tasks-seated { max-height: 27%; width: calc(100% - 32px); }
+}
+@media (prefers-reduced-motion: reduce) { .employee { transition: none; } }

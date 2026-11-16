@@ -33,7 +33,14 @@ export function PhaserView() {
       scene: createOfficeScene(store),
       banner: false,
     });
-    return () => game.destroy(true);
+    // The HUD rails reserve space for the canvas; collapsing tasks can resize
+    // its parent without a window resize. Camera/world coordinates stay intact.
+    const resize = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      if (width > 0 && height > 0) game.scale.resize(width, height);
+    });
+    resize.observe(holder.current!);
+    return () => { resize.disconnect(); game.destroy(true); };
   }, []);
 
   // The keyboard.
