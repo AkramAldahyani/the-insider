@@ -9,11 +9,17 @@
  * line: they exist only in the master event list.
  */
 import { syslog, pidOf } from './journal';
-import { isoSecond } from '../core/time';
+import { renderMail } from '../commands/mail';
+import { fullStamp, isoSecond, syslogStamp } from '../core/time';
 import { sysWrite } from '../fs/vfs';
 import type { GameEvent, Host, World } from '../types';
 
 const str = (v: unknown) => String(v ?? '');
+
+/** The host firewall notes every new connection to the ssh port, whether or not the login then succeeds. */
+function firewall(world: World, host: Host, e: GameEvent, d: Record<string, unknown>): void {
+  syslog(world, host, 'kernel', null, `[UFW ALLOW] IN=eth0 OUT= MAC=${host.mac} SRC=${e.sourceIp} DST=${host.ip} LEN=60 TTL=64 PROTO=TCP SPT=${str(d.port)} DPT=22 WINDOW=64240 SYN`, 'kernel');
+}
 
 /** Appends one line to a badge-system log. Like /var/log, readable by root and group "adm". */
 function badgeLog(host: Host, time: number, file: string, text: string): void {
@@ -43,6 +49,46 @@ export function materialize(world: World, e: GameEvent): void {
     case 'door.close':
       badgeLog(host, world.time, 'doors.log', `DOOR=${str(d.door)} EVENT=CLOSE OPEN_FOR=${(Number(d.openMs) / 1000).toFixed(1)}s PASSAGES=${str(d.passages)}`);
       break;
+
+    // ── mail (files on the mail server; see commands/mail.ts) ──
+    case 'mail.send': {
+      const message = world.mail.messages.find((m) => m.id === d.id);
+      if (!message) break;
+      const domain = world.domain;
+      const client = `${str(d.clientHost)}.${domain}[${e.sourceIp}]`;
+      const mlog = (ident: string, text: string) => sysWrite(host, '/var/log/mail.log', `${syslogStamp(world.time)} ${host.hostname} postfix/${ident}[${pidOf(host, 'master') || 1100}]: ${text}\n`, { owner: 'syslog', group: 'adm', mode: 0o640, time: world.time, append: true });
+      mlog('smtpd', `connect from ${client}`);
+      mlog('smtpd', `${message.queueId}: client=${client}, sasl_username=${e.user}`);
+      mlog('cleanup', `${message.queueId}: message-id=<${message.queueId.toLowerCase()}.${message.id}@${str(d.clientHost)}.${domain}>`);
+      mlog('qmgr', `${message.queueId}: from=<${e.user}@${domain}>, size=${str(d.size)}, nrcpt=${message.to.length} (queue active)`);
+      for (const to of message.to) {
+        mlog('local', `${message.queueId}: to=<${to}@${domain}>, relay=local, delay=0.02, status=sent (delivered to mailbox)`);
+        // The recipient's mailbox: "mbox" format, one file per user, readable only by that user.
+        sysWrite(host, `/var/mail/${to}`, `From ${e.user}@${domain}  ${fullStamp(world.time)}\n${renderMail(world, message)}\n`, { owner: to, group: 'mail', mode: 0o600, time: world.time, append: true });
+      }
+      mlog('qmgr', `${message.queueId}: removed`);
+      mlog('smtpd', `disconnect from ${client}`);
+      break;
+    }
+
+    // ── DNS and web (files on the DNS server and on the proxy; see `curl`) ──
+    case 'dns.query': {
+      const dns = world.hosts[world.dnsServer];
+      if (!dns || !host.ip) break;
+      const dt = new Date(world.time);
+      const stamp = `${String(dt.getUTCDate()).padStart(2, '0')}-${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][dt.getUTCMonth()]}-${dt.getUTCFullYear()} ${isoSecond(world.time).slice(11)}.${String(e.id % 1000).padStart(3, '0')}`;
+      const name = str(d.name);
+      // The query log records who ASKED and what for; it does not say whether the name exists.
+      sysWrite(dns, '/var/log/named/queries.log', `${stamp} client ${host.ip}#${32768 + ((e.id * 7919) % 28000)} (${name}): query: ${name} IN ${/^\d+\.\d+\.\d+\.\d+$/.test(name) ? 'PTR' : 'A'} +E(0)K (${dns.ip})\n`, { owner: 'bind', group: 'adm', mode: 0o640, time: world.time, append: true });
+      break;
+    }
+    case 'web.request': {
+      const proxy = world.hosts[world.web.proxyHost];
+      if (!proxy) break;
+      // One line per request: when, which PC, which account ("-" = the system itself), what, result, size, time taken, destination.
+      sysWrite(proxy, '/var/log/squid/access.log', `${isoSecond(world.time)} ${host.ip} ${e.user || '-'} ${str(d.method)} ${str(d.url)} ${str(d.status)} ${str(d.bytes)} ${str(d.ms)}ms ${Number(d.status) === 304 ? 'TCP_REFRESH_UNMODIFIED' : 'TCP_MISS'} DIRECT/${str(d.ip)}\n`, { owner: 'proxy', group: 'adm', mode: 0o640, time: world.time, append: true });
+      break;
+    }
 
     // ── boot ──
     case 'host.boot': {
@@ -98,11 +144,13 @@ export function materialize(world: World, e: GameEvent): void {
 
     // ── SSH (always logged on the TARGET host, with the SOURCE ip) ──
     case 'ssh.accept':
+      firewall(world, host, e, d);
       auth('sshd', pid, `Accepted password for ${e.user} from ${from} ssh2`);
       auth('sshd', pid, `pam_unix(sshd:session): session opened for user ${e.user}(uid=${str(d.uid)}) by (uid=0)`);
       logind(`New session ${str(d.logindId)} of user ${e.user}.`);
       break;
     case 'ssh.fail':
+      if (Number(d.attempt ?? 1) === 1) firewall(world, host, e, d);
       if (d.invalidUser) {
         auth('sshd', pid, `Invalid user ${e.user} from ${from}`);
         auth('sshd', pid, `Failed password for invalid user ${e.user} from ${from} ssh2`);

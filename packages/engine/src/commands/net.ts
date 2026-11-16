@@ -1,5 +1,5 @@
 /** Network commands: ip, ss, netstat, ping, nslookup. */
-import { randInt } from '../core/rng';
+import { hashString, randInt } from '../core/rng';
 import { emit } from '../events/log';
 import { activeLease } from '../net/dhcp';
 import { broadcastOf, fqdn, gatewayOf, networkOf, resolveHost } from '../net/dns';
@@ -148,4 +148,40 @@ const nslookup: Handler = (c, args) => {
   return { stdout: `${header}Name:\t${fqdn(c.world, target)}\nAddress: ${target.ip}\n\n` };
 };
 
-export const netCommands: Record<string, Handler> = { ip, ss, netstat, ping, nslookup };
+/**
+ * curl - fetch a page from the simulated web.
+ *
+ * There is no real network here: the "internet" is the list of sites in the
+ * scenario. What matters is the evidence a request leaves behind: a line in
+ * the DNS server's query log (who asked for which name) and a line in the
+ * web proxy's access log (which PC and account fetched which URL, how big
+ * the answer was).
+ */
+const curl: Handler = (c, args) => {
+  const { flags, rest } = parseArgs(args, 'oAHdX');
+  const raw = rest[0];
+  if (!raw) return fail("curl: try 'curl URL'", 2);
+  const url = /^[a-z]+:\/\//i.test(raw) ? raw : `http://${raw}`;
+  const match = /^(https?):\/\/([^/:]+)(?::\d+)?(\/.*)?$/i.exec(url);
+  if (!match) return fail(`curl: (3) URL using bad/illegal format or missing URL`, 3);
+  const [, scheme, name, path = '/'] = match;
+  const base = { host: c.host.hostname, user: c.cred.user, sourceIp: c.session.sourceIp };
+
+  const site = c.world.web.sites.find((s) => s.host.toLowerCase() === name.toLowerCase());
+  const internal = site ? undefined : lookup(c, name);
+  emit(c.world, { ...base, type: 'dns.query', details: { name, found: !!(site ?? internal), ip: site?.ip ?? internal?.ip ?? '' } });
+  if (!site && !internal) return fail(`curl: (6) Could not resolve host: ${name}`, 6);
+  // A machine of the office that is not a web server.
+  if (!site) return fail(`curl: (7) Failed to connect to ${name} port ${scheme === 'https' ? 443 : 80} after 2 ms: Connection refused`, 7);
+  if (!c.world.web.proxyHost) return fail(`curl: (5) Could not resolve proxy`, 5);
+
+  // Size and duration look random but depend only on the URL, so the same page is always the same size.
+  const bytes = 2048 + (hashString(url) % 60000);
+  const ms = 30 + (hashString(url, c.world.time & 0xffff) % 400);
+  emit(c.world, { ...base, type: 'web.request', details: { method: flags.has('I') ? 'HEAD' : 'GET', url: `${scheme.toLowerCase()}://${site.host}${path}`, site: site.host, ip: site.ip, status: 200, bytes: flags.has('I') ? 0 : bytes, ms, category: site.category, agent: 'curl' } });
+
+  if (flags.has('I')) return { stdout: `HTTP/1.1 200 OK\nServer: nginx\nContent-Type: text/html; charset=utf-8\nContent-Length: ${bytes}\nVia: 1.1 ${c.world.web.proxyHost} (squid)\n\n` };
+  return { stdout: `<!doctype html>\n<html>\n<head><title>${site.title}</title></head>\n<body>\n<h1>${site.title}</h1>\n<p>${site.category} page ${path} (${bytes} bytes, simulated).</p>\n</body>\n</html>\n` };
+};
+
+export const netCommands: Record<string, Handler> = { ip, ss, netstat, ping, nslookup, curl };

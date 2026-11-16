@@ -274,6 +274,50 @@ export interface BadgeSystem {
   holders: Record<string, Badge>;
 }
 
+// ───────────────────────────── Mail and web ─────────────────────────────
+
+export interface MailMessage {
+  /** 1, 2, 3... in the order the server accepted them. */
+  id: number;
+  /** The mail server's queue id, as it appears in mail.log and in the Received header. */
+  queueId: string;
+  time: number;
+  /** The account that really sent it (the "envelope sender"). */
+  from: string;
+  /** What the From: line claims. The same as `from` unless the message is spoofed (Phase 4). */
+  headerFrom: string;
+  to: string[];
+  subject: string;
+  body: string;
+  /** The machine the message was sent from, and its IP at that moment. */
+  sourceHost: string;
+  sourceIp: string;
+  /** Recipients who have opened it. */
+  readBy: string[];
+}
+
+export interface MailSystem {
+  /** Hostname of the mail server ("" = no mail). */
+  serverHost: string;
+  messages: MailMessage[];
+}
+
+/** A web site of the simulated internet / intranet. Nothing real is ever contacted. */
+export interface WebSite {
+  host: string;
+  ip: string;
+  title: string;
+  category: string;
+}
+
+export interface WebSystem {
+  /** Hostname of the web proxy all web requests pass through ("" = no web). */
+  proxyHost: string;
+  sites: WebSite[];
+  /** The site workstations ask for software updates ("" = none). */
+  updateSite: string;
+}
+
 // ───────────────────────────── World ─────────────────────────────
 
 export interface Player {
@@ -305,6 +349,15 @@ export interface World {
   dnsServer: string;
   /** The door-badge system (see physical/badges.ts). */
   badges: BadgeSystem;
+  /** Internal email (see commands/mail.ts). */
+  mail: MailSystem;
+  /** The simulated web and its proxy (see `curl` in commands/net.ts). */
+  web: WebSystem;
+  /**
+   * Background log noise (see core/noise.ts): `from` is the game time it
+   * starts (null = off), `done` the time up to which it has been produced.
+   */
+  noise: { from: number | null; done: number };
   players: Player[];
   /**
    * Engine-side secrets: plaintext passwords and strengths.

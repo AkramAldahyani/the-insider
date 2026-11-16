@@ -8,6 +8,7 @@
  * moments so logs get correct timestamps:
  *  - every hour at :17 cron runs its hourly job on each machine (log noise);
  *  - online machines renew their DHCP lease halfway through it;
+ *  - machines write their background noise (noise.ts);
  *  - a screen that got no PHYSICAL keyboard input for the machine's auto-lock
  *    time locks itself (typing over ssh happens on another keyboard and does
  *    not count).
@@ -17,6 +18,7 @@ import { syslog, pidOf } from '../events/journal';
 import { dhcpRequest, expireLeases } from '../net/dhcp';
 import { allocPid } from '../proc/processes';
 import type { World } from '../types';
+import { nextNoise } from './noise';
 import { HOUR, MINUTE } from './time';
 
 const CRON_MINUTE = 17 * MINUTE;
@@ -60,6 +62,12 @@ export function advanceTo(world: World, target: number): void {
         when = lockAt;
         action = () => lockConsole(world, host, { by: 'idle-timer', via: 'idle' });
       }
+    }
+    // Background noise (clock sync, timers, update checks): see noise.ts.
+    const noise = nextNoise(world);
+    if (noise.when < when) {
+      when = Math.max(noise.when, world.time);
+      action = noise.run;
     }
     if (when > target) break;
     world.time = when;

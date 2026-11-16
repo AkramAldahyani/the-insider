@@ -108,6 +108,14 @@ Map size scales with lobby size:
 - **Accepted simplifications (decided in Phase 1):** a workstation's owner is in group `adm` on their own machine, so employees can read their own logs (on servers only the sysadmin is); and `dmesg` is readable by everyone (real Ubuntu restricts it to root), so employees can later check their own PC for USB events.
 - A simulated **DHCP server** keeps lease history (which MAC had which IP and when). An IP address is not a person — players must correlate IP → device → user → physical location.
 
+### Mail, web and background noise (decided in Phase 3)
+
+- **Internal mail** is a shell command, `mail`: list the inbox, read a message with all headers, send. One mail server stores a mailbox file per user (`/var/mail/USER`, private) and a Postfix-style `/var/log/mail.log`. A message's `Received:` header names the machine and IP it was really sent from; `From:` is only what the sender wrote. That difference is what a spoofed email will have to get past in Phase 4.
+- **The web is a list of sites in the scenario** (made-up `.example` names; nothing real is contacted). `curl URL` fetches a page. Every request goes through a web proxy and is logged there with the PC's IP and the account (`/var/log/squid/access.log`, in a readable one-line format rather than squid's default epoch timestamps). Every name lookup is logged by the DNS server (`/var/log/named/queries.log`).
+- **Host firewalls** log each connection to the ssh port (`[UFW ALLOW] ... SRC=... DPT=22` in `kern.log` / `dmesg`), successful or not.
+- **Background noise** runs from the first second of a match: clock synchronisation, systemd timers and workstation update checks (which also appear in the DNS and proxy logs with `-` as the account). It is produced by the game clock, without random numbers, so it is identical in every replay and independent of how often the server ticks.
+- Bots add the human noise: they do their job tasks, read and write mail, and browse.
+
 ### Evidence types available in the game
 | Source | Example clue |
 |---|---|

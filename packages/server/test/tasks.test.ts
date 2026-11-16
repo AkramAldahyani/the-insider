@@ -179,6 +179,20 @@ describe('bots doing tasks', () => {
     expect(opened - closed).toBeLessThanOrEqual(3);
   });
 
+  it('bots write each other email and browse the web, so those logs fill up too', () => {
+    const r = new Recorder({ bots: true });
+    r.tick(minutes(20));
+    const mails = queryEvents(r.game.world, { type: 'mail.send', since: START });
+    expect(mails.length).toBeGreaterThanOrEqual(3);
+    expect(mails.every((e) => e.actor !== null && e.origin !== 'system')).toBe(true);
+    const browsing = queryEvents(r.game.world, { type: 'web.request', since: START }).filter((e) => e.actor !== null);
+    expect(browsing.length).toBeGreaterThanOrEqual(10);
+    expect(new Set(browsing.map((e) => e.user)).size).toBeGreaterThanOrEqual(5);
+    const proxyLog = r.file('ADMIN-SRV-01', '/var/log/squid/access.log');
+    expect(proxyLog).toContain('news.example');
+    expect(proxyLog).toContain(' - GET http://archive.ubuntu.example/'); // and the machines' own update checks
+  });
+
   it('bots give up on few tasks', () => {
     const r = new Recorder({ bots: true });
     r.tick(minutes(20));

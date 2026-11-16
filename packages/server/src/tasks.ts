@@ -55,7 +55,7 @@ interface Sheet {
 /** How many tasks a player has at the same time. */
 const OPEN_TASKS = 3;
 
-/** Fills {date}, {n} and {user} in a step's text. */
+/** Fills {date}, {n}, {user} and {colleague} in a step's text. */
 function fill(text: string, values: Record<string, string>): string {
   return text.replace(/\{(\w+)\}/g, (whole, key: string) => values[key] ?? whole);
 }
@@ -91,7 +91,13 @@ export class TaskBoard {
       const candidates = this.tasksFor(playerId).filter((t) => !sheet.open.some((o) => !o.done && o.taskId === t.id));
       if (candidates.length === 0) break;
       const task = this.random.pick(candidates);
-      const values = { date: new Date(this.world.time).toISOString().slice(0, 10), n: String(this.random.int(100, 999)), user: account };
+      const others = this.world.players.map((p) => p.account).filter((a) => a !== account);
+      const values = {
+        date: new Date(this.world.time).toISOString().slice(0, 10),
+        n: String(this.random.int(100, 999)),
+        user: account,
+        colleague: others.length > 0 ? this.random.pick(others) : account,
+      };
       sheet.open.push({
         id: `${task.id}#${++this.counter}`,
         taskId: task.id,

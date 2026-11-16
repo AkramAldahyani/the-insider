@@ -17,6 +17,7 @@ import { dhcpRequest } from '../net/dhcp';
 import { allocPid, bootProcesses } from '../proc/processes';
 import type { Host, Session, World } from '../types';
 import { advanceTo } from './clock';
+import { sendMail } from '../commands/mail';
 import { doorClosed, doorOpened, tapBadge } from '../physical/badges';
 import { randInt, randString } from './rng';
 import { validateScenario, type Scenario, type ScenarioAccount, type ScenarioHost } from './scenario';
@@ -228,6 +229,13 @@ export function createWorld(scenario: Scenario, seed = 1): World {
       serverHost: scenario.badgeSystem?.server ?? '',
       holders: Object.fromEntries(scenario.accounts.filter((a) => a.badge).map((a) => [a.username, { id: a.badge!.id, access: a.badge!.access ?? [] }])),
     },
+    mail: { serverHost: scenario.mail?.server ?? scenario.dhcp.server, messages: [] },
+    web: {
+      proxyHost: scenario.web ? (scenario.web.proxy ?? scenario.dhcp.server) : '',
+      sites: (scenario.web?.sites ?? []).map((site) => ({ ...site })),
+      updateSite: scenario.web?.updateSite ?? '',
+    },
+    noise: { from: null, done: start }, // switched on at the end of this function
     players: scenario.players.map((p) => ({ id: p.id, name: p.name, account: p.account, desk: p.desk, role: p.role ?? 'employee' })),
     credentials: {},
     events: [],
@@ -297,6 +305,15 @@ export function createWorld(scenario: Scenario, seed = 1): World {
     }
   }
 
+  // Old mail, sent from each sender's own PC.
+  for (const m of scenario.mail?.history ?? []) {
+    at(m.minutesAgo, () => {
+      const desk = scenario.hosts.find((h) => h.owner === m.from);
+      const from = world.hosts[desk?.hostname ?? world.mail.serverHost];
+      sendMail(world, { from: m.from, to: m.to, subject: m.subject, body: m.body, sourceHost: from.hostname, sourceIp: from.ip || '10.0.2.1' });
+    });
+  }
+
   // The last working day's arrivals and departures, so the badge log is not empty.
   const entrance = scenario.badgeSystem?.entranceDoor;
   if (entrance) {
@@ -340,5 +357,7 @@ export function createWorld(scenario: Scenario, seed = 1): World {
     world.hosts[sh.hostname].autoLockMs = (sh.autoLockSeconds ?? scenario.autoLockSeconds ?? 60) * 1000;
   }
   for (const terminal of Object.values(world.terminals)) terminal.lastPhysicalInput = start;
+  // Background noise starts with the match (see core/noise.ts for why not earlier).
+  world.noise = { from: start, done: start };
   return world;
 }

@@ -7,6 +7,31 @@
   "autoLockSeconds": 60,
   "badgeSystem": { "server": "SEC-SRV-01", "entranceDoor": "MAIN-ENT" },
 
+  "mail": {
+    "server": "ADMIN-SRV-01",
+    "history": [
+      { "from": "n.saleh", "to": ["s.alharbi", "r.mansour", "l.haddad", "o.farouk", "y.khalil", "d.aziz", "m.yousef", "t.omar", "k.nasser"], "subject": "Reminder: lock your screen", "body": "Hello all,\n\nplease lock your screen whenever you leave your desk (loginctl lock-session).\nLast week two PCs were found open at lunch time.\n\nNoor", "minutesAgo": 4250 },
+      { "from": "k.nasser", "to": ["d.aziz"], "subject": "Backup job", "body": "Dana, the nightly backup ran fine again. If someone asks: the log is /var/log/backup.log on the admin server.\n\nKhalid", "minutesAgo": 4100 },
+      { "from": "r.mansour", "to": ["s.alharbi"], "subject": "February invoices", "body": "Sara, can you send me the list of February invoices before the meeting?\n\nThanks, Rami", "minutesAgo": 80 },
+      { "from": "m.yousef", "to": ["t.omar"], "subject": "Courier at 11", "body": "Tariq, a courier is expected around 11:00 with a parcel for IT.\n\nMaha", "minutesAgo": 35 }
+    ]
+  },
+
+  "web": {
+    "proxy": "ADMIN-SRV-01",
+    "updateSite": "archive.ubuntu.example",
+    "sites": [
+      { "host": "intranet.nexora.local", "ip": "10.0.1.10", "title": "Nexora Intranet", "category": "intranet" },
+      { "host": "archive.ubuntu.example", "ip": "203.0.113.20", "title": "Ubuntu package archive", "category": "software updates" },
+      { "host": "news.example", "ip": "203.0.113.31", "title": "World News Today", "category": "news" },
+      { "host": "weather.example", "ip": "203.0.113.32", "title": "City Weather", "category": "weather" },
+      { "host": "supplier-portal.example", "ip": "198.51.100.14", "title": "Najd Catering supplier portal", "category": "business" },
+      { "host": "bank.example", "ip": "198.51.100.40", "title": "First Example Bank - business banking", "category": "finance" },
+      { "host": "jobs.example", "ip": "198.51.100.77", "title": "Careers board", "category": "recruiting" },
+      { "host": "stock-photos.example", "ip": "198.51.100.90", "title": "Stock photo library", "category": "media" }
+    ]
+  },
+
   "dhcp": {
     "server": "ADMIN-SRV-01",
     "subnet": "10.0.2",
@@ -587,6 +612,16 @@
     ] },
     { "id": "coffee", "title": "Team coffee", "steps": [
       { "text": "Join your colleagues in the cafeteria for a few minutes", "visit": "Cafeteria / meeting room", "staySeconds": 20 }
+    ] },
+    { "id": "answer-mail", "title": "Answer a colleague by email", "steps": [
+      { "text": "Look at your inbox", "run": "mail", "match": "^mail( \\d+)?$" },
+      { "text": "Send {colleague} a short reply", "run": "mail -s \"Re: question {n}\" {colleague} \"Sure, I will send it over today.\"", "match": "^mail -s .*{colleague}" }
+    ] },
+    { "id": "intranet-news", "title": "Read the intranet news", "steps": [
+      { "text": "Open the intranet news page", "run": "curl http://intranet.nexora.local/news", "match": "^curl .*intranet\\.nexora\\.local" }
+    ] },
+    { "id": "supplier-check", "title": "Check the supplier portal", "departments": ["Finance"], "steps": [
+      { "text": "Open the supplier's invoice page", "run": "curl https://supplier-portal.example/invoices/2{n}", "match": "^curl .*supplier-portal\\.example" }
     ] },
     { "id": "approve-invoice", "title": "Approve an invoice", "departments": ["Finance"], "steps": [
       { "text": "Make sure the Documents folder exists", "run": "mkdir -p Documents", "match": "^mkdir .*Documents" },

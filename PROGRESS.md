@@ -19,8 +19,8 @@ Update it at the end of every part.
 | B | Bot movement and pathfinding | **done** |
 | C | Bot behaviour (routines, desk use, observations) | **done** |
 | D | Job tasks (bots and humans) | **done** |
-| E | Internal email, network/DNS/proxy logs, background service noise | next |
-| F | CCTV recording | not started |
+| E | Internal email, network/DNS/proxy logs, background service noise | **done** |
+| F | CCTV recording | next |
 | G | Dev panel additions, soak test, docs | not started |
 
 The Phase 3 brief the owner pasted was cut off in the middle of Part B. The owner then said:
@@ -99,6 +99,23 @@ locally (never push), update this file.
   after two failed attempts. `Mind.typing` tells a bot's own password question from one somebody else left.
 - 185 Vitest tests (new: `tasks.test.ts`), 3 Playwright tests.
 
+## Part E: what exists now (all in the engine, so the CLI has it too)
+
+- **Mail**: `commands/mail.ts`. `mail` (inbox), `mail N` (read with full headers), `mail -s "S" USER "BODY"` (send; body
+  may come from a pipe). `world.mail` holds the messages; `mail.send` materializes Postfix lines in
+  `/var/log/mail.log` and an mbox copy in `/var/mail/USER` (mode 600) on the mail server. Headers carry the sending
+  machine and its IP. `MailMessage.headerFrom` vs `from` is ready for spoofing in Phase 4. Scenario: `mail.server`, `mail.history`.
+- **Web**: `curl URL` (in `commands/net.ts`) against the scenario's `web.sites` (made-up `.example` names only).
+  `web.request` -> `/var/log/squid/access.log` on the proxy (readable format: time, PC IP, account or `-`, method, URL,
+  status, bytes, ms, destination IP). `dns.query` (nslookup, curl) -> `/var/log/named/queries.log` on the DNS server.
+- **Firewall**: every connection to a machine's ssh port writes a `[UFW ALLOW] ... SRC= DST= SPT= DPT=22` kernel line there.
+- **Noise**: `core/noise.ts`, driven by the clock from the match start only. Per machine: clock sync every 16 min,
+  systemd timer lines every 11 min, workstation update checks every 23 min (DNS + proxy lines with account `-`).
+  No random numbers; the phase comes from the hostname. Seed-1 addresses are unchanged (a test checks two of them).
+- Tasks `answer-mail`, `intranet-news`, `supplier-check`; placeholder `{colleague}`. Bots' everyday commands
+  include `mail` and `curl`.
+- 204 Vitest tests (new: `packages/engine/test/office.test.ts`).
+
 ## Things the next part must know
 
 - Bots must use the same paths as humans: `Doors.tap(walker, code)` for badge doors, and the `Walker`
@@ -106,11 +123,10 @@ locally (never push), update this file.
 - Plan routes on `game.map.solid` (doors passable); move bodies against `game.collision`.
 - Humans start at their desks WITHOUT an arrival line in today's badge log; bots walk in and (mostly) have one.
   Left as is for now; tell the owner in the Phase 3 summary (a later lobby/"match start" in Phase 6 can fix it).
-- Part E plan: (1) internal mail in the engine: a mail spool per user on a mail host, a `mail` command to list,
-  read and send, realistic headers (Received, originating IP) and a mail log; a "reply to an email" task; bots send
-  each other mail. (2) network logs: DNS query log and web proxy log on a server host, fed by a new `curl`-like
-  command and by bots "browsing"; firewall log lines for ssh connections. (3) background service noise generated
-  by the clock (cron, systemd timers, NTP, apt) so logs grow when nobody types. Everything stays simulated.
+- Part F plan: the server records, for every camera on the map, a snapshot every few game seconds: who is in the
+  camera's area (`covers` room, within range), where they stand and which desk they sit at. Stored server-side as
+  compact records plus a text log on SEC-SRV-01 (`/var/log/cctv/CAM-01.log`). No viewer UI (Phase 5); the dev panel
+  (Part G) can print the latest snapshot. Blind spots: printer room, storage, bathrooms have no camera.
 - The dev server (`pnpm dev`) restarts itself when server files change; Playwright reuses a running one.
 - Door timers and walking use real time; the game clock can run faster (dev panel). At speed 1 they agree.
 - Writing files from Bash heredocs breaks on apostrophes in this environment: use the Write tool or a script file.

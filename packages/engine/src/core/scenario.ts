@@ -96,7 +96,8 @@ export interface ScenarioHistoryItem {
  * One step of a job task. Either a shell command (`run` + `match`) or a room
  * to visit (`visit`). In `text`, `run` and `match` these placeholders are
  * filled in when the task is handed out: {date} (2026-03-02), {n} (a random
- * three-digit number), {user} (the employee's username).
+ * three-digit number), {user} (the employee's username), {colleague} (the
+ * username of some other employee).
  */
 export interface ScenarioTaskStep {
   /** What the player reads: "Create the reports folder". */
@@ -168,6 +169,25 @@ export interface Scenario {
   };
   accounts: ScenarioAccount[];
   hosts: ScenarioHost[];
+  /**
+   * Internal email. `server` defaults to the DHCP server. `history` is old
+   * mail already in people's inboxes when the game starts.
+   */
+  mail?: {
+    server?: string;
+    history?: { from: string; to: string[]; subject: string; body: string; minutesAgo: number }[];
+  };
+  /**
+   * The simulated web. Every request goes through `proxy` (default: the DHCP
+   * server) and is logged there. `sites` is the whole "internet": a name
+   * that is not listed does not resolve. Use made-up names (".example").
+   */
+  web?: {
+    proxy?: string;
+    sites: { host: string; ip: string; title: string; category: string }[];
+    /** The site workstations fetch updates from in the background (must be in `sites`). */
+    updateSite?: string;
+  };
   players: ScenarioPlayer[];
   history?: ScenarioHistoryItem[];
   /** Job tasks handed to players and bots. */
@@ -227,6 +247,13 @@ export function validateScenario(s: Scenario): void {
     if (item.type.startsWith('ssh')) need(item.from && hosts.has(item.from), `history: ssh item needs a valid "from" host`);
   }
 
+  if (s.mail?.server) need(hosts.has(s.mail.server), `mail.server "${s.mail.server}" is not a host`);
+  for (const m of s.mail?.history ?? []) {
+    for (const u of [m.from, ...m.to]) need(accounts.has(u), `mail history: unknown account "${u}"`);
+  }
+  if (s.web?.proxy) need(hosts.has(s.web.proxy), `web.proxy "${s.web.proxy}" is not a host`);
+  if (s.web?.updateSite) need(s.web.sites.some((site) => site.host === s.web!.updateSite), `web.updateSite "${s.web.updateSite}" is not in web.sites`);
+
   const taskIds = new Set<string>();
   for (const t of s.tasks ?? []) {
     const where = `task "${t.id}"`;
@@ -241,7 +268,7 @@ export function validateScenario(s: Scenario): void {
       if (step.host) need(hosts.has(step.host), `${at}: unknown host "${step.host}"`);
       if (step.run !== undefined) {
         // The example command must satisfy the step's own pattern, or a bot would type it forever.
-        const sample = (text: string) => text.replace(/\{date\}/g, '2026-01-01').replace(/\{n\}/g, '123').replace(/\{user\}/g, 'someone');
+        const sample = (text: string) => text.replace(/\{date\}/g, '2026-01-01').replace(/\{n\}/g, '123').replace(/\{(user|colleague)\}/g, 'someone');
         let ok = false;
         try {
           ok = new RegExp(sample(step.match ?? '')).test(sample(step.run));

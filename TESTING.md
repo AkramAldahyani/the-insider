@@ -183,7 +183,7 @@ Open http://localhost:5173, pick an employee and press the backtick key: nothing
 pnpm test
 ```
 
-Expected: `Test Files 16 passed (16)` and `Tests 185 passed (185)`.
+Expected: `Test Files 17 passed (17)` and `Tests 204 passed (204)`.
 
 ```bash
 pnpm e2e

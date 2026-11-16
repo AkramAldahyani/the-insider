@@ -84,7 +84,12 @@ const SIGHT = 320;
 const MAX_OBSERVATIONS = 300;
 
 /** Shell commands of ordinary office work. Only those the engine really has are used. */
-const EVERYDAY = ['ls', 'ls -la', 'ls Documents', 'date', 'whoami', 'pwd', 'uptime', 'w', 'df -h', 'history | tail -n 5', 'id', 'hostname'];
+const EVERYDAY = [
+  'ls', 'ls -la', 'ls Documents', 'date', 'whoami', 'pwd', 'uptime', 'w', 'history | tail -n 5', 'id', 'hostname',
+  'mail', 'mail', 'mail 1',
+  // A little web browsing, like in any office. (Simulated sites from the scenario; unknown names simply fail.)
+  'curl http://intranet.nexora.local/', 'curl -s https://news.example/', 'curl -s https://weather.example/today', 'curl -I http://intranet.nexora.local/lunch-menu',
+];
 const IT_EXTRA = ['ps aux | head -n 8', 'ss -tlnp', 'tail -n 5 /var/log/syslog', 'ping -c 2 ADMIN-SRV-01', 'last | head -n 5', 'ip a', 'journalctl -n 5'];
 
 export class BotManager {
