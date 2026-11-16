@@ -70,6 +70,7 @@ async function walkTo(page: Page, x: number, y: number): Promise<void> {
     for (const k of wanted) if (!held.has(k)) { await page.keyboard.down(k); held.add(k); }
   };
   let before = { x: NaN, y: NaN };
+  let still = 0; // looks in a row without any movement
   for (const point of route) {
     for (let guard = 0; guard < 600; guard++) {
       const me = await page.evaluate(() => window.__insider!.me()!);
@@ -82,14 +83,18 @@ async function walkTo(page: Page, x: number, y: number): Promise<void> {
           await page.waitForTimeout(150);
         }
       }
+      still = me.x === before.x && me.y === before.y ? still + 1 : 0;
       before = me;
+      // Not moving although we should be: we are probably a few pixels off-centre and caught on a
+      // door frame. Line up exactly (1 px instead of 6) until we are moving again.
+      const tolerance = still >= 3 ? 1 : 6;
       const dx = point.x - me.x;
       const dy = point.y - me.y;
       const keys: string[] = [];
       // Arrive within 6 px: a tile is 32 px and a player 20 px wide, so being
       // further off-centre than that can snag on a door frame at the next turn.
-      if (Math.abs(dx) > 6) keys.push(dx > 0 ? 'ArrowRight' : 'ArrowLeft');
-      if (Math.abs(dy) > 6) keys.push(dy > 0 ? 'ArrowDown' : 'ArrowUp');
+      if (Math.abs(dx) > tolerance) keys.push(dx > 0 ? 'ArrowRight' : 'ArrowLeft');
+      if (Math.abs(dy) > tolerance) keys.push(dy > 0 ? 'ArrowDown' : 'ArrowUp');
       await hold(keys);
       if (keys.length === 0) break;
       await page.waitForTimeout(60); // at least one server tick (50 ms), or the step might not happen at all
