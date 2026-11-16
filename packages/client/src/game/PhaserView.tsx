@@ -83,6 +83,7 @@ export function PhaserView() {
         // Hold the badge against the reader. The server decides; the answer comes back as a notice.
         store.send('tap', { door: ui.nearDoor });
       } else if (event.code === 'KeyC') store.set({ cardOpen: !ui.cardOpen });
+      else if (event.code === 'KeyT') store.set({ tasksOpen: !ui.tasksOpen });
       else if (event.code === 'Escape') store.set({ cardOpen: false });
       else if (event.code === 'Backquote' && ui.dev) store.set({ devOpen: !ui.devOpen });
     };

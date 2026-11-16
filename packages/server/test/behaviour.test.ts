@@ -137,7 +137,8 @@ describe('what a human receives while bots work', () => {
     r.connect('a', 'p9'); // Maha, standing in Reception
     r.tick(minutes(10));
     expect(queryEvents(r.game.world, { type: 'command', since: START }).length).toBeGreaterThan(50); // bots really worked
-    expect(r.messages('a').map((m) => m.type).sort()).toEqual(['lobby', 'welcome']);
+    // She got her start screen, her card and her own task list - and nothing else, in particular no screen text.
+    expect([...new Set(r.messages('a').map((m) => m.type))].sort()).toEqual(['lobby', 'tasks', 'welcome']);
     const everything = JSON.stringify({ sent: [...r.sent.values()], states: r.states });
     for (const account of scenario.accounts) {
       if (account.username !== 'm.yousef') expect(everything.includes(PW[account.username]), account.username).toBe(false);

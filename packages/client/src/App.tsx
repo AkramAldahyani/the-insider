@@ -6,7 +6,7 @@ import { Suspense, lazy, useEffect, useSyncExternalStore } from 'react';
 import { PhaserView } from './game/PhaserView';
 import { store } from './game/store';
 import { TerminalOverlay } from './ui/TerminalOverlay';
-import { Hud, OnboardingCard, StartScreen } from './ui/panels';
+import { Hud, OnboardingCard, StartScreen, TaskList } from './ui/panels';
 
 // The developer panel is loaded only in development. `import.meta.env.DEV` is
 // replaced by the word `false` in a production build, so the build tool
@@ -38,8 +38,9 @@ export function App() {
     <div className="game">
       <PhaserView />
       <Hud ui={ui} />
-      {ui.cardOpen && ui.card && !ui.seatedAt && <OnboardingCard card={ui.card} />}
       {ui.seatedAt && <TerminalOverlay hostname={ui.seatedAt} />}
+      <TaskList ui={ui} />
+      {ui.cardOpen && ui.card && !ui.seatedAt && <OnboardingCard card={ui.card} />}
       {DevPanel && ui.dev && ui.devOpen && (
         <Suspense fallback={null}>
           <DevPanel ui={ui} />

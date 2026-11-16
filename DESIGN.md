@@ -186,6 +186,14 @@ Default for 15 players:
 
 Defenders have short tasks: approve an invoice file, rotate a log, patch a package, reply to an email, move files, etc. Tasks generate normal log noise, so the hacker can hide among legitimate activity.
 
+Decided in Phase 3:
+
+- **Tasks are data in the scenario file** (`tasks`): a title and steps. A step is a shell command to type (with a pattern that decides what counts) or a room to visit for some seconds. A task can be limited to roles or departments.
+- **Every player and every bot always has three open tasks.** Finishing one brings a new one.
+- **Steps are ticked off from what really happens**, in order: typed commands are read from the master event log (by who was at the keyboard), visits from where the body stands. Nobody presses a "done" button, and a bot completes a task exactly as a human does.
+- **A task list is private**: only its owner's browser receives it.
+- Some tasks send people to the printer room or the cafeteria on purpose: that is when a desk is empty.
+
 ---
 
 ## 9. Meetings, evidence and voting

@@ -31,6 +31,7 @@ const ALLOWED_FIELDS: Record<string, string[]> = {
   'term.output': ['output', 'prompt', 'masked', 'screen', 'canSwitchUser'],
   'term.close': ['reason'],
   notice: ['text'],
+  tasks: ['tasks', 'completed'],
 };
 
 /** Plays the match: Sara (client "sara") at her own PC, Omar (client "omar") at Lina's unlocked one. */

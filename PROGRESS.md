@@ -18,8 +18,8 @@ Update it at the end of every part.
 | A | Decisions, doors and badges | **done** |
 | B | Bot movement and pathfinding | **done** |
 | C | Bot behaviour (routines, desk use, observations) | **done** |
-| D | Job tasks (bots and humans) | next |
-| E | Internal email, network/DNS/proxy logs, background service noise | not started |
+| D | Job tasks (bots and humans) | **done** |
+| E | Internal email, network/DNS/proxy logs, background service noise | next |
 | F | CCTV recording | not started |
 | G | Dev panel additions, soak test, docs | not started |
 
@@ -83,6 +83,22 @@ locally (never push), update this file.
 - Playwright now starts its own server (ports 2577 / 5183, `BOTS=0`), independent of `pnpm dev`.
 - 175 Vitest tests (new: `behaviour.test.ts`), 3 Playwright tests.
 
+## Part D: what exists now
+
+- Scenario `tasks[]` (`ScenarioTask`, `ScenarioTaskStep` in `engine/src/core/scenario.ts`): steps are either
+  `run` + `match` (+ optional `host`) or `visit` (+ `staySeconds`); placeholders `{date}`, `{n}`, `{user}`;
+  optional `roles` / `departments`. `validateScenario` refuses a step whose `run` does not satisfy its own `match`.
+  `nexora-small` has 14 tasks (general, per department, sysadmin, helpdesk, guard).
+- `packages/server/src/tasks.ts`: `TaskBoard`. Three open tasks per player; steps are ticked off IN ORDER from the
+  master event list (`command` events, by `actor`) and from where bodies stand (visits). `abandon`, `abandoned`,
+  `completed(playerId)`, `view(playerId)`.
+- Humans: message `tasks` (own list only, built in `visibility.ts` `taskList`), HUD panel (`T` toggles), terminal moves
+  right while the list is shown.
+- Bots: `brain.ts` `work` types the next step, answers ssh/sudo password questions with its own password, treats a
+  visit step as an errand (a break with a destination), closes its ssh sessions before leaving, gives a task up
+  after two failed attempts. `Mind.typing` tells a bot's own password question from one somebody else left.
+- 185 Vitest tests (new: `tasks.test.ts`), 3 Playwright tests.
+
 ## Things the next part must know
 
 - Bots must use the same paths as humans: `Doors.tap(walker, code)` for badge doors, and the `Walker`
@@ -90,10 +106,11 @@ locally (never push), update this file.
 - Plan routes on `game.map.solid` (doors passable); move bodies against `game.collision`.
 - Humans start at their desks WITHOUT an arrival line in today's badge log; bots walk in and (mostly) have one.
   Left as is for now; tell the owner in the Phase 3 summary (a later lobby/"match start" in Phase 6 can fix it).
-- Part D plan: task definitions in the scenario (`tasks[]`: id, title, who may get it, steps as shell commands or
-  "go to room"), an engine/server task tracker that marks a step done from master events, the same tasks handed to
-  bots (the `work` leaf picks task commands instead of random ones) and to humans (a HUD list, key `T`).
-  Private per player: a player's task list goes only to that player (visibility rule).
+- Part E plan: (1) internal mail in the engine: a mail spool per user on a mail host, a `mail` command to list,
+  read and send, realistic headers (Received, originating IP) and a mail log; a "reply to an email" task; bots send
+  each other mail. (2) network logs: DNS query log and web proxy log on a server host, fed by a new `curl`-like
+  command and by bots "browsing"; firewall log lines for ssh connections. (3) background service noise generated
+  by the clock (cron, systemd timers, NTP, apt) so logs grow when nobody types. Everything stays simulated.
 - The dev server (`pnpm dev`) restarts itself when server files change; Playwright reuses a running one.
 - Door timers and walking use real time; the game clock can run faster (dev panel). At speed 1 they agree.
 - Writing files from Bash heredocs breaks on apostrophes in this environment: use the Write tool or a script file.

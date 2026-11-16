@@ -26,6 +26,7 @@ import type { Avatar } from '../visibility';
 import { employeeTree, newMind, type BotSubject, type BrainWorld, type Mind, type Persona } from './brain';
 import { Mover, type MoverWorld } from './mover';
 import { Random } from './random';
+import type { TaskBoard } from '../tasks';
 
 /** What the bots need from the game (kept small, so bots cannot reach into things they should not). */
 export interface BotHost extends Omit<MoverWorld, 'mayEnter'> {
@@ -42,6 +43,8 @@ export interface BotHost extends Omit<MoverWorld, 'mayEnter'> {
   type(avatar: Avatar, line: string): TerminalResult;
   cancel(avatar: Avatar): TerminalResult;
   switchUser(avatar: Avatar): TerminalResult;
+  /** Job tasks: hand a player their tasks, read the next step, give one up. */
+  tasks: TaskBoard;
 }
 
 export interface BotOptions {
@@ -207,6 +210,14 @@ export class BotManager {
         return null;
       },
       spotAtDesk: (hostname) => map.spawns[hostname] ?? null,
+      nextStep: () => {
+        const next = host.tasks.nextStep(body.playerId);
+        if (!next) return null;
+        const { task, step } = next;
+        const index = task.steps.indexOf(step);
+        return { taskId: task.id, title: task.title, index, last: index === task.steps.length - 1, run: step.run, visit: step.visit, stayMs: step.stayMs ?? 0 };
+      },
+      abandon: (taskId) => host.tasks.abandon(body.playerId, taskId),
       colleagueDesks: () => workstations.filter((h) => h.department === own?.department).map((h) => h.hostname),
       otherDesks: () => workstations.map((h) => h.hostname),
     };
@@ -228,6 +239,7 @@ export class BotManager {
       world: this.brainWorld(body, bot.random),
     };
     this.host.addBody(body);
+    this.host.tasks.assign(player.id);
   }
 
   // ───────────────────────────── Every tick ─────────────────────────────

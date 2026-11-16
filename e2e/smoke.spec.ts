@@ -124,6 +124,14 @@ test('walk to a desk, log in, then use someone else\'s unlocked PC', async ({ pa
   await expect(page.getByTestId('room')).toHaveText('Finance');
   await page.screenshot({ path: `${SHOTS}/2-office-and-card.png` });
 
+  // Her task list: three open tasks, none finished. T hides and shows it.
+  await expect(page.getByTestId('tasks').locator('.task')).toHaveCount(3);
+  await expect(page.getByTestId('tasks-completed')).toHaveText('0 done');
+  await page.keyboard.press('t');
+  await expect(page.getByTestId('tasks')).toBeHidden();
+  await page.keyboard.press('t');
+  await expect(page.getByTestId('tasks')).toBeVisible();
+
   // C hides and shows the card.
   await page.keyboard.press('c');
   await expect(page.getByTestId('card')).toBeHidden();

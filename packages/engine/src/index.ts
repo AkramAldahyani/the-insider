@@ -16,7 +16,7 @@ import type { World } from './types';
 
 export * from './types';
 export type {
-  Scenario, ScenarioAccount, ScenarioFile, ScenarioHistoryItem, ScenarioHost, ScenarioPlayer,
+  Scenario, ScenarioAccount, ScenarioFile, ScenarioHistoryItem, ScenarioHost, ScenarioPlayer, ScenarioTask, ScenarioTaskStep,
 } from './core/scenario';
 export { validateScenario } from './core/scenario';
 export { createWorld } from './core/world';

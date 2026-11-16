@@ -10,6 +10,11 @@
  * does lands in the same logs, under its own account, with realistic pauses.
  * It knows only what an employee knows: its own username and password.
  *
+ * "Work" is mostly the bot's job tasks (tasks.ts): it types the commands of
+ * the next step, answers password questions (ssh, sudo) with its own
+ * password, and walks to a room when a step says so. Between tasks it types
+ * a few everyday commands.
+ *
  * The decision logic is the behaviour tree at the bottom of this file. Read
  * it top-down: break time has priority over working.
  */
@@ -41,6 +46,10 @@ export interface BrainWorld {
   spotIn(room: string): Point | null;
   /** The point where a desk's owner stands when visiting it (two tiles below the chair), or null. */
   spotAtDesk(hostname: string): Point | null;
+  /** The bot's next task step, if it has one. */
+  nextStep(): { taskId: string; title: string; index: number; last: boolean; run?: string; visit?: string; stayMs: number } | null;
+  /** Give up on a task that cannot be done. */
+  abandon(taskId: string): void;
   /** Desks of other employees in the same department. */
   colleagueDesks(): string[];
   /** Every desk except the bot's own. */
@@ -78,6 +87,16 @@ export interface Mind {
   loginSteps: number;
   /** Did the bot already decide about locking for this departure? */
   leaving: 'undecided' | 'locking' | 'ready';
+  /** True once the bot itself has typed something since sitting down: a question on screen is then its own (ssh, sudo). */
+  typing: boolean;
+  /** A task step that sends the bot to a room: the room and how long to stay (game ms). "" = none. */
+  errand: string;
+  errandMs: number;
+  /** Everyday commands still to type before starting the next task. */
+  fillers: number;
+  /** The task step last attempted and how often, to give up on one that never completes. */
+  stepKey: string;
+  stepTries: number;
   /** A short description of what it is doing, for the developer panel. */
   doing: string;
 }
@@ -87,6 +106,7 @@ export function newMind(now: number, random: Random): Mind {
     nextBreakAt: now + random.between(120, 360) * SECOND,
     breakSpot: null, breakRoom: '', atBreakSpot: false, breakUntil: 0,
     nextKeyAt: 0, screen: null, loginSteps: 0, leaving: 'undecided', doing: 'arriving',
+    typing: false, errand: '', errandMs: 0, fillers: random.int(1, 3), stepKey: '', stepTries: 0,
   };
 }
 
@@ -102,9 +122,17 @@ export interface BotSubject {
 
 // ───────────────────────────── Helpers ─────────────────────────────
 
-/** The account a shell prompt belongs to: "s.alharbi@FIN-LT-07:~$ " -> "s.alharbi". */
+/** The account and machine of a shell prompt: "s.alharbi@FIN-LT-07:~$ " -> "s.alharbi", "FIN-LT-07". */
 const promptUser = (screen: TerminalResult | null) => /^([^@\s]+)@/.exec(screen?.prompt ?? '')?.[1] ?? '';
-const atOwnShell = (b: BotSubject) => b.mind.screen?.screen === 'shell' && !b.mind.screen.awaitingInput && promptUser(b.mind.screen) === b.persona.account;
+const promptHost = (screen: TerminalResult | null) => /^[^@\s]+@([^:\s]+):/.exec(screen?.prompt ?? '')?.[1] ?? '';
+/** A plain shell prompt (no question pending). */
+const atShell = (b: BotSubject) => b.mind.screen?.screen === 'shell' && !b.mind.screen.awaitingInput;
+/** ...of the bot's own account on its own PC (not inside an ssh session to somewhere else). */
+const atOwnShell = (b: BotSubject) => atShell(b) && promptUser(b.mind.screen) === b.persona.account && promptHost(b.mind.screen) === b.persona.desk;
+/** ...of the bot's own account on ANOTHER machine: it is inside an ssh session it opened. */
+const inRemoteShell = (b: BotSubject) => atShell(b) && promptUser(b.mind.screen) === b.persona.account && promptHost(b.mind.screen) !== b.persona.desk;
+/** The password, with an occasional slip of the finger (which leaves an honest failure in the log). */
+const typedPassword = (b: BotSubject) => (b.random.chance(0.06) ? b.persona.password.slice(0, -1) : b.persona.password);
 
 /** Pauses like a person: the next key press is `min` to `max` seconds from now. */
 function pause(b: BotSubject, min: number, max: number): void {
@@ -124,6 +152,7 @@ function chooseBreak(b: BotSubject): { spot: Point | null; room: string } {
   const { random, world, persona } = b;
   const room = (name: string) => ({ spot: world.spotIn(name), room: name });
   const desk = (hostname: string | undefined) => (hostname ? { spot: world.spotAtDesk(hostname), room: `desk ${hostname}` } : room('Corridor'));
+  if (b.mind.errand) return room(b.mind.errand); // a task sends the bot somewhere
   const roll = random.next();
   if (persona.role === 'guard') {
     // A patrol: mostly the corridor and the public rooms.
@@ -147,6 +176,13 @@ function leaveDesk(b: BotSubject): Status {
   if (!body.seatedAt) {
     mind.leaving = 'undecided';
     return 'success';
+  }
+  // First finish what is on the screen: answer nothing, close remote sessions.
+  if (mind.screen?.screen === 'shell' && (mind.screen.awaitingInput || inRemoteShell(b))) {
+    if (!ready(b)) return 'running';
+    mind.screen = mind.screen.awaitingInput ? b.world.cancel() : b.world.type('exit');
+    pause(b, 0.8, 2);
+    return 'running';
   }
   if (mind.leaving === 'undecided') {
     // Only an open shell of one's own can be locked; anything else is left as it is.
@@ -190,13 +226,17 @@ function walkToBreak(b: BotSubject): Status {
     return 'success';
   }
   // The walk failed (a door refused the badge, or something was in the way): the break ends here.
+  if (mind.errand) {
+    const step = b.world.nextStep();
+    if (step?.visit === mind.errand) b.world.abandon(step.taskId); // a task that cannot be done
+  }
   endBreak(b);
   return 'failure';
 }
 
 function endBreak(b: BotSubject): void {
   const [min, max] = rhythm(b.persona.role).work;
-  Object.assign(b.mind, { breakSpot: null, breakRoom: '', atBreakSpot: false, breakUntil: 0 });
+  Object.assign(b.mind, { breakSpot: null, breakRoom: '', atBreakSpot: false, breakUntil: 0, errand: '', errandMs: 0 });
   b.mind.nextBreakAt = b.world.now() + b.random.between(min, max) * SECOND;
 }
 
@@ -204,7 +244,8 @@ function linger(b: BotSubject): Status {
   const { mind } = b;
   if (mind.breakUntil === 0) {
     const [min, max] = rhythm(b.persona.role).away;
-    mind.breakUntil = b.world.now() + b.random.between(min, max) * SECOND;
+    // On an errand: as long as the task asks, plus a moment. Otherwise a normal break.
+    mind.breakUntil = b.world.now() + (mind.errand ? mind.errandMs + b.random.between(2, 6) * SECOND : b.random.between(min, max) * SECOND);
     mind.doing = `in ${mind.breakRoom}`;
   }
   if (b.world.now() < mind.breakUntil) return 'running';
@@ -235,6 +276,7 @@ function beAtDesk(b: BotSubject): Status {
     return 'failure';
   }
   mind.screen = result;
+  mind.typing = false;
   mind.loginSteps = 0;
   pause(b, 1, 2.5);
   mind.doing = 'sitting down';
@@ -247,6 +289,8 @@ function reachShell(b: BotSubject): Status {
   const screen = mind.screen;
   if (!screen) return 'failure';
   if (atOwnShell(b)) return 'success';
+  // A password question the bot caused itself (ssh, sudo): `work` answers it.
+  if (screen.screen === 'shell' && mind.typing && (screen.awaitingInput || inRemoteShell(b))) return 'success';
   if (!ready(b)) return 'running';
   if (++mind.loginSteps > 10) {
     // Something is wrong with this PC (password changed?). Give up for now.
@@ -256,11 +300,7 @@ function reachShell(b: BotSubject): Status {
     return 'failure';
   }
   mind.doing = 'logging in';
-  const password = () => {
-    // Now and then a finger slips, which leaves an honest "authentication failure" in the log.
-    const typo = b.random.chance(0.06);
-    return typo ? `${persona.password.slice(0, -1)}` : persona.password;
-  };
+  const password = () => typedPassword(b);
   if (screen.screen === 'locked') {
     // My own lock screen: type my password. Someone else's session locked on my PC: log in next to it.
     mind.screen = b.world.lockedBy() === persona.account || !screen.canSwitchUser ? b.world.type(password()) : b.world.switchUser();
@@ -275,12 +315,57 @@ function reachShell(b: BotSubject): Status {
   return 'running';
 }
 
-/** Ordinary work: a command every now and then. Never finishes; a break interrupts it. */
+/**
+ * Work: the next step of a job task, or an everyday command in between.
+ * Never finishes; a break (or an errand) interrupts it.
+ */
 function work(b: BotSubject): Status {
   const { mind, persona } = b;
   if (!ready(b)) return 'running';
-  mind.screen = b.world.type(b.random.pick(persona.commands));
-  mind.doing = 'working';
+  const screen = mind.screen!;
+  mind.typing = true;
+
+  // A question on the screen: ssh or sudo asking for the password.
+  if (screen.awaitingInput) {
+    mind.screen = screen.awaitingInput.masked ? b.world.type(typedPassword(b)) : b.world.cancel();
+    pause(b, 1.5, 4);
+    return 'running';
+  }
+
+  const step = mind.fillers > 0 && !inRemoteShell(b) ? null : b.world.nextStep();
+  if (step?.visit) {
+    // A step somewhere else in the building: handled like a break with a destination.
+    mind.errand = step.visit;
+    mind.errandMs = step.stayMs;
+    mind.nextBreakAt = b.world.now();
+    mind.doing = `task: ${step.title}`;
+    return 'running';
+  }
+  if (step?.run) {
+    const key = `${step.taskId}/${step.index}`;
+    mind.stepTries = mind.stepKey === key ? mind.stepTries + 1 : 1;
+    mind.stepKey = key;
+    if (mind.stepTries > 2) {
+      // Typed twice and the step still is not done (the ssh login failed, a file is missing...): drop the task.
+      b.world.abandon(step.taskId);
+      mind.stepKey = '';
+      pause(b, 2, 5);
+      return 'running';
+    }
+    mind.screen = b.world.type(step.run);
+    mind.doing = `task: ${step.title}`;
+    if (step.last) mind.fillers = b.random.int(1, 4); // potter about a little before the next task
+    pause(b, 3, 10);
+    return 'running';
+  }
+
+  // Nothing from a task right now.
+  if (inRemoteShell(b)) mind.screen = b.world.type('exit');
+  else {
+    mind.screen = b.world.type(b.random.pick(persona.commands));
+    mind.fillers = Math.max(0, mind.fillers - 1);
+    mind.doing = 'working';
+  }
   pause(b, 6, 24);
   return 'running';
 }

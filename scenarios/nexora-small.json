@@ -563,5 +563,73 @@
     { "type": "ssh-session", "from": "IT-WS-02", "host": "ADMIN-SRV-01", "user": "k.nasser", "minutesAgo": 28, "durationMinutes": 10,
       "commands": ["sudo tail -n 5 /var/log/backup.log", "who"] },
     { "type": "sudo", "host": "ADMIN-SRV-01", "user": "k.nasser", "minutesAgo": 27, "command": "tail -n 5 /var/log/backup.log" }
+  ],
+
+  "tasks": [
+    { "id": "daily-report", "title": "File the daily report", "steps": [
+      { "text": "Create the reports folder", "run": "mkdir -p Documents/reports", "match": "^mkdir .*Documents/reports" },
+      { "text": "Write today's report", "run": "echo \"Daily report {date}: nothing unusual\" > Documents/reports/{date}.txt", "match": "^echo .*>+ *Documents/reports/" },
+      { "text": "Check that it is there", "run": "ls Documents/reports", "match": "^ls .*Documents/reports" }
+    ] },
+    { "id": "read-policy", "title": "Re-read the password policy on the server", "steps": [
+      { "text": "Connect to the admin server", "run": "ssh ADMIN-SRV-01", "match": "^ssh .*ADMIN-SRV-01" },
+      { "text": "Read the policy", "run": "cat /srv/shared/policies/password-policy.txt", "match": "password-policy", "host": "ADMIN-SRV-01" },
+      { "text": "Disconnect", "run": "exit", "match": "^(exit|logout)$", "host": "ADMIN-SRV-01" }
+    ] },
+    { "id": "archive-draft", "title": "Archive an old draft", "steps": [
+      { "text": "Save the draft", "run": "echo \"draft {n}\" > draft_{n}.txt", "match": "^echo .*> *draft_{n}\\.txt" },
+      { "text": "Make an archive folder", "run": "mkdir -p archive", "match": "^mkdir .*archive" },
+      { "text": "Move the draft into it", "run": "mv draft_{n}.txt archive/", "match": "^mv draft_{n}\\.txt +archive" }
+    ] },
+    { "id": "print-form", "title": "Print an expense form", "steps": [
+      { "text": "Fill in the form", "run": "echo \"expense claim {n}\" > expense_{n}.txt", "match": "^echo .*> *expense_{n}\\.txt" },
+      { "text": "Collect the printout from the printer room", "visit": "Printer room", "staySeconds": 6 }
+    ] },
+    { "id": "coffee", "title": "Team coffee", "steps": [
+      { "text": "Join your colleagues in the cafeteria for a few minutes", "visit": "Cafeteria / meeting room", "staySeconds": 20 }
+    ] },
+    { "id": "approve-invoice", "title": "Approve an invoice", "departments": ["Finance"], "steps": [
+      { "text": "Make sure the Documents folder exists", "run": "mkdir -p Documents", "match": "^mkdir .*Documents" },
+      { "text": "Record the approval", "run": "echo \"{date} approved INV-2{n}\" >> Documents/approvals.log", "match": "^echo .*approved.*>> *Documents/approvals\\.log" },
+      { "text": "Check the last approvals", "run": "tail -n 3 Documents/approvals.log", "match": "^(tail|cat) .*approvals\\.log" }
+    ] },
+    { "id": "staff-list", "title": "Update the staff log", "departments": ["HR"], "steps": [
+      { "text": "Make sure the Documents folder exists", "run": "mkdir -p Documents", "match": "^mkdir .*Documents" },
+      { "text": "Add today's line", "run": "echo \"{date} headcount checked\" >> Documents/staff_log.txt", "match": "^echo .*>> *Documents/staff_log\\.txt" }
+    ] },
+    { "id": "campaign-notes", "title": "Write up the campaign notes", "departments": ["Marketing"], "steps": [
+      { "text": "Make sure the Documents folder exists", "run": "mkdir -p Documents", "match": "^mkdir .*Documents" },
+      { "text": "Add a note", "run": "echo \"{date} newsletter draft {n} reviewed\" >> Documents/campaign_notes.txt", "match": "^echo .*>> *Documents/campaign_notes\\.txt" },
+      { "text": "Count the notes so far", "run": "wc -l Documents/campaign_notes.txt", "match": "^wc .*campaign_notes" }
+    ] },
+    { "id": "visitor-log", "title": "Update the visitor log", "departments": ["Reception"], "steps": [
+      { "text": "Make sure the visitors folder exists", "run": "mkdir -p visitors", "match": "^mkdir .*visitors" },
+      { "text": "Add a visitor", "run": "echo \"{date} courier, parcel {n}, signed by {user}\" >> visitors/{date}.txt", "match": "^echo .*>> *visitors/" }
+    ] },
+    { "id": "net-check", "title": "Check that the server answers", "roles": ["helpdesk", "sysadmin"], "steps": [
+      { "text": "Ping the admin server", "run": "ping -c 2 ADMIN-SRV-01", "match": "^ping .*ADMIN-SRV-01" },
+      { "text": "Check its DNS name", "run": "nslookup ADMIN-SRV-01", "match": "^nslookup .*ADMIN-SRV-01" }
+    ] },
+    { "id": "check-backup", "title": "Check last night's backup", "roles": ["sysadmin"], "steps": [
+      { "text": "Connect to the admin server", "run": "ssh ADMIN-SRV-01", "match": "^ssh .*ADMIN-SRV-01" },
+      { "text": "Read the end of the backup log", "run": "sudo tail -n 5 /var/log/backup.log", "match": "backup\\.log", "host": "ADMIN-SRV-01" },
+      { "text": "Disconnect", "run": "exit", "match": "^(exit|logout)$", "host": "ADMIN-SRV-01" }
+    ] },
+    { "id": "rotate-log", "title": "Rotate the backup log", "roles": ["sysadmin"], "steps": [
+      { "text": "Connect to the admin server", "run": "ssh ADMIN-SRV-01", "match": "^ssh .*ADMIN-SRV-01" },
+      { "text": "Keep a copy of the current log", "run": "sudo cp /var/log/backup.log /var/log/backup.log.1", "match": "^sudo cp /var/log/backup\\.log", "host": "ADMIN-SRV-01" },
+      { "text": "Disconnect", "run": "exit", "match": "^(exit|logout)$", "host": "ADMIN-SRV-01" }
+    ] },
+    { "id": "badge-review", "title": "Review the badge log", "roles": ["guard"], "steps": [
+      { "text": "Connect to the badge server", "run": "ssh SEC-SRV-01", "match": "^ssh .*SEC-SRV-01" },
+      { "text": "Read the latest taps", "run": "tail -n 20 /var/log/badge/access.log", "match": "badge/access\\.log", "host": "SEC-SRV-01" },
+      { "text": "Count refused badges", "run": "grep -c DENIED /var/log/badge/access.log", "match": "^grep .*DENIED", "host": "SEC-SRV-01" },
+      { "text": "Disconnect", "run": "exit", "match": "^(exit|logout)$", "host": "SEC-SRV-01" }
+    ] },
+    { "id": "rounds", "title": "Walk the rounds", "roles": ["guard"], "steps": [
+      { "text": "Check the storage room", "visit": "Storage", "staySeconds": 5 },
+      { "text": "Check the printer room", "visit": "Printer room", "staySeconds": 5 },
+      { "text": "Check reception", "visit": "Reception", "staySeconds": 5 }
+    ] }
   ]
 }

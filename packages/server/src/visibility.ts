@@ -14,7 +14,7 @@
  * test/visibility.test.ts plays a match and checks every byte sent.
  */
 import { screenState, type Scenario, type TerminalResult, type World } from '@insider/engine';
-import type { DoorLook, EmployeeChoice, OnboardingCard, PublicDesk, PublicDoor, PublicPlayer, TermScreen, Facing } from '@insider/shared';
+import type { DoorLook, EmployeeChoice, OnboardingCard, PublicDesk, PublicDoor, PublicPlayer, ServerMessages, TaskView, TermScreen, Facing } from '@insider/shared';
 
 /** A player's body in the office (server-side record). */
 export interface Avatar {
@@ -87,6 +87,18 @@ export function termScreen(result: TerminalResult): TermScreen {
     masked: result.awaitingInput?.masked ?? false,
     screen: result.screen,
     canSwitchUser: result.canSwitchUser,
+  };
+}
+
+/**
+ * A player's OWN task list. The caller passes the list of exactly one player
+ * and sends the result to that player only; this copies the documented
+ * fields and nothing else (not the patterns a step is checked with).
+ */
+export function taskList(view: { tasks: TaskView[]; completed: number }): ServerMessages['tasks'] {
+  return {
+    completed: view.completed,
+    tasks: view.tasks.map((t) => ({ id: t.id, title: t.title, done: t.done, steps: t.steps.map((s) => ({ text: s.text, hint: s.hint, done: s.done })) })),
   };
 }
 

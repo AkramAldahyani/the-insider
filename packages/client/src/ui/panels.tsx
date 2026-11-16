@@ -62,7 +62,7 @@ export function Hud({ ui }: { ui: UiState }) {
         <span className="hud-room" data-testid="room">{ui.roomName || '—'}</span>
         <span className="hud-spacer" />
         <span className="hud-keys">
-          WASD / arrows: walk · E: use PC / tap badge · C: card{ui.dev ? ' · `: dev panel' : ''}
+          WASD / arrows: walk · E: use PC / tap badge · C: card · T: tasks{ui.dev ? ' · `: dev panel' : ''}
         </span>
       </div>
       {ui.notice && <div className="hud-notice" data-testid="notice">{ui.notice}</div>}
@@ -77,6 +77,44 @@ export function Hud({ ui }: { ui: UiState }) {
         </div>
       )}
     </>
+  );
+}
+
+// ───────────────────────────── Task list ─────────────────────────────
+
+/**
+ * The player's own job tasks. For each open task it shows the next step and a
+ * command that does it; finished steps are crossed out. It stays visible
+ * while the PC terminal is open, because that is where most steps are typed.
+ */
+export function TaskList({ ui }: { ui: UiState }) {
+  if (!ui.tasksOpen) return null;
+  return (
+    <div className={`tasks ${ui.seatedAt ? 'tasks-seated' : ''}`} data-testid="tasks">
+      <div className="tasks-head">
+        <span>YOUR TASKS</span>
+        <span data-testid="tasks-completed">{ui.tasksCompleted} done</span>
+      </div>
+      {ui.tasks.length === 0 && <p className="tasks-empty">Nothing to do right now.</p>}
+      {ui.tasks.map((task) => {
+        const next = task.steps.find((s) => !s.done);
+        return (
+          <div key={task.id} className={`task ${task.done ? 'task-done' : ''}`} data-testid={`task-${task.id.split('#')[0]}`}>
+            <div className="task-title">{task.done ? '✓ ' : ''}{task.title}</div>
+            {!task.done && (
+              <ol>
+                {task.steps.map((step, i) => (
+                  <li key={i} className={step.done ? 'step-done' : step === next ? 'step-next' : ''}>
+                    {step.text}
+                    {step === next && step.hint && <code>{step.hint}</code>}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

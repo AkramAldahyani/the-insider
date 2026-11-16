@@ -91,6 +91,19 @@ export interface OnboardingCard {
   badgeAccess: string[];
 }
 
+/** One of the player's OWN job tasks. */
+export interface TaskView {
+  id: string;
+  title: string;
+  done: boolean;
+  steps: {
+    text: string;
+    /** A command that does the step ("" for steps that are not commands). */
+    hint: string;
+    done: boolean;
+  }[];
+}
+
 /** What a PC's screen shows after something happened. */
 export interface TermScreen {
   /** Text to print. */
@@ -116,6 +129,8 @@ export interface ServerMessages {
   'term.output': TermScreen;
   /** The player is no longer at a PC. */
   'term.close': { reason: string };
+  /** The player's own task list (sent whenever it changes). */
+  tasks: { tasks: TaskView[]; completed: number };
   /** A short note for the HUD ("Too far from the desk"). */
   notice: { text: string };
   /** Developer panel replies. Never sent by a production server. */

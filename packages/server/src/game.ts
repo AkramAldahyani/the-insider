@@ -22,8 +22,10 @@ import {
 } from '@insider/shared';
 import { BotManager, type BotOptions } from './bots/manager';
 import { Doors, type Walker } from './doors';
+import { Random } from './bots/random';
 import { checkMapAgainstScenario } from './mapCheck';
-import { employeeChoices, onboardingCard, publicDesk, publicDoor, publicPlayer, termScreen, type Avatar } from './visibility';
+import { TaskBoard } from './tasks';
+import { employeeChoices, onboardingCard, publicDesk, publicDoor, publicPlayer, taskList, termScreen, type Avatar } from './visibility';
 
 export interface OfficeGameOptions {
   scenario: Scenario;
@@ -61,6 +63,8 @@ export class OfficeGame {
   readonly doors: Doors;
   /** Null when the match runs without bots. */
   readonly bots: BotManager | null;
+  /** Everybody's job tasks. */
+  readonly tasks: TaskBoard;
   readonly dev: boolean;
   speed: number;
 
@@ -91,6 +95,7 @@ export class OfficeGame {
     this.speed = options.speed ?? 1;
     this.dev = options.dev ?? false;
     this.writeDump = options.writeDump;
+    this.tasks = new TaskBoard(this.world, this.scenario, this.map, new Random((options.seed ?? 1) ^ 0x7a5c));
     this.bots = options.bots === false
       ? null
       : new BotManager({
@@ -105,6 +110,7 @@ export class OfficeGame {
           type: (a, line) => sendInput(this.world, a.terminalId, line.slice(0, MAX_LINE)),
           cancel: (a) => cancelInput(this.world, a.terminalId),
           switchUser: (a) => switchUser(this.world, a.terminalId),
+          tasks: this.tasks,
         }, options.seed ?? 1, options.botOptions);
   }
 
@@ -242,6 +248,9 @@ export class OfficeGame {
       clientId, playerId: player.id, account: player.account, name: player.name, x: spawn.x, y: spawn.y, facing: 'up', seatedAt: '', terminalId: '', dx: 0, dy: 0,
     });
     this.send(clientId, 'welcome', { playerId: player.id, card: onboardingCard(this.world, this.scenario, player.id) });
+    this.tasks.assign(player.id);
+    this.tasks.takeChanged();
+    this.send(clientId, 'tasks', taskList(this.tasks.view(player.id)));
     for (const other of this.clients) if (!this.avatars.has(other)) this.sendLobby(other);
   }
 
@@ -321,6 +330,12 @@ export class OfficeGame {
       avatar.facing = avatar.dx < 0 ? 'left' : avatar.dx > 0 ? 'right' : avatar.dy < 0 ? 'up' : 'down';
     }
     this.bots?.tick(realMs);
+    // Job tasks: tick off what was just typed or reached, and tell the humans whose list changed.
+    this.tasks.update([...this.avatars.values()]);
+    for (const playerId of this.tasks.takeChanged()) {
+      const human = this.humans().find((a) => a.playerId === playerId);
+      if (human) this.send(human.clientId, 'tasks', taskList(this.tasks.view(playerId)));
+    }
     // Doors last: they look at where everybody ended up.
     this.doors.tick(realMs, [...this.avatars.values()].map((a) => this.walker(a)));
   }

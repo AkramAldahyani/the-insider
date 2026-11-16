@@ -92,6 +92,38 @@ export interface ScenarioHistoryItem {
   attempts?: number;
 }
 
+/**
+ * One step of a job task. Either a shell command (`run` + `match`) or a room
+ * to visit (`visit`). In `text`, `run` and `match` these placeholders are
+ * filled in when the task is handed out: {date} (2026-03-02), {n} (a random
+ * three-digit number), {user} (the employee's username).
+ */
+export interface ScenarioTaskStep {
+  /** What the player reads: "Create the reports folder". */
+  text: string;
+  /** A command that does the step. Shown to humans as a hint; typed by bots. */
+  run?: string;
+  /** Regular expression a typed command must match to count. Required with `run`. */
+  match?: string;
+  /** The command must be typed in a shell ON this machine (e.g. after ssh). Default: anywhere. */
+  host?: string;
+  /** Name of a room on the map to go to. */
+  visit?: string;
+  /** How long to stay in that room. Default 5. */
+  staySeconds?: number;
+}
+
+/** A small piece of ordinary work (DESIGN.md section 8). */
+export interface ScenarioTask {
+  id: string;
+  title: string;
+  /** Only players with one of these roles get it. Default: everyone. */
+  roles?: string[];
+  /** Only employees of one of these departments get it. Default: everyone. */
+  departments?: string[];
+  steps: ScenarioTaskStep[];
+}
+
 export interface ScenarioPlayer {
   id: string;
   name: string;
@@ -138,6 +170,8 @@ export interface Scenario {
   hosts: ScenarioHost[];
   players: ScenarioPlayer[];
   history?: ScenarioHistoryItem[];
+  /** Job tasks handed to players and bots. */
+  tasks?: ScenarioTask[];
 }
 
 /** Throws a readable error if the scenario is inconsistent. */
@@ -191,6 +225,32 @@ export function validateScenario(s: Scenario): void {
     need(h, `history: unknown host "${item.host}"`);
     if (h) need(knowsUser(h, item.user) || item.type === 'ssh-fail', `history: user "${item.user}" does not exist on ${item.host}`);
     if (item.type.startsWith('ssh')) need(item.from && hosts.has(item.from), `history: ssh item needs a valid "from" host`);
+  }
+
+  const taskIds = new Set<string>();
+  for (const t of s.tasks ?? []) {
+    const where = `task "${t.id}"`;
+    need(t.id && t.title, 'every task needs an id and a title');
+    need(!taskIds.has(t.id), `${where}: duplicate id`);
+    taskIds.add(t.id);
+    need(Array.isArray(t.steps) && t.steps.length > 0, `${where}: needs at least one step`);
+    for (const [i, step] of (t.steps ?? []).entries()) {
+      const at = `${where}, step ${i + 1}`;
+      need(step.text, `${at}: needs a text`);
+      need((step.run !== undefined) !== (step.visit !== undefined), `${at}: needs either "run" or "visit"`);
+      if (step.host) need(hosts.has(step.host), `${at}: unknown host "${step.host}"`);
+      if (step.run !== undefined) {
+        // The example command must satisfy the step's own pattern, or a bot would type it forever.
+        const sample = (text: string) => text.replace(/\{date\}/g, '2026-01-01').replace(/\{n\}/g, '123').replace(/\{user\}/g, 'someone');
+        let ok = false;
+        try {
+          ok = new RegExp(sample(step.match ?? '')).test(sample(step.run));
+        } catch {
+          ok = false;
+        }
+        need(step.match && ok, `${at}: "match" must be a regular expression that matches "run"`);
+      }
+    }
   }
 
   if (problems.length > 0) throw new Error(`Invalid scenario "${s.id ?? '?'}":\n- ${problems.join('\n- ')}`);

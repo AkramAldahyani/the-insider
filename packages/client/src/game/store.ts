@@ -16,7 +16,7 @@ import { Client, type Room } from 'colyseus.js';
 import {
   ROOM_NAME, SERVER_PORT, parseOfficeMap,
   type ClientMessages, type EmployeeChoice, type OfficeMap, type OnboardingCard, type PublicDesk, type PublicDoor, type PublicPlayer,
-  type ServerMessages, type TermScreen, type TiledMap,
+  type ServerMessages, type TaskView, type TermScreen, type TiledMap,
 } from '@insider/shared';
 
 /** Every map file in maps/ is bundled with the page; the server says which one the match uses. */
@@ -55,6 +55,10 @@ export interface UiState {
   /** Desk the player is sitting at ("" = walking). */
   seatedAt: string;
   notice: string;
+  /** The player's own job tasks, how many they have finished, and whether the list is shown. */
+  tasks: TaskView[];
+  tasksCompleted: number;
+  tasksOpen: boolean;
   devOpen: boolean;
   devLog: string[];
 }
@@ -73,7 +77,7 @@ export class Store {
 
   private ui: UiState = {
     phase: 'connecting', error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false,
-    clock: 0, speed: 1, roomName: '', nearDesk: '', nearDoor: '', nearDoorName: '', seatedAt: '', notice: '', devOpen: false, devLog: [],
+    clock: 0, speed: 1, roomName: '', nearDesk: '', nearDoor: '', nearDoorName: '', seatedAt: '', notice: '', tasks: [], tasksCompleted: 0, tasksOpen: true, devOpen: false, devLog: [],
   };
   private listeners = new Set<Listener>();
   private termListener: ((event: TermEvent) => void) | null = null;
@@ -150,6 +154,10 @@ export class Store {
       on('term.output', (screen) => this.term({ kind: 'output', screen }));
       on('term.close', () => this.set({ seatedAt: '' }));
       on('notice', ({ text }) => this.notice(text));
+      on('tasks', ({ tasks, completed }) => {
+        if (completed > this.ui.tasksCompleted) this.notice('Task finished.');
+        this.set({ tasks, tasksCompleted: completed });
+      });
       on('dev.result', ({ text }) => this.set({ devLog: [...this.ui.devLog.slice(-30), text] }));
 
       room.onLeave(() => this.set({ phase: 'error', error: 'The connection to the game server was closed.' }));
