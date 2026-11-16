@@ -179,3 +179,36 @@ describe('observations', () => {
     expect(rooms.size).toBeGreaterThanOrEqual(2); // he saw people in more than one room
   });
 });
+
+describe('developer views of the living office (development servers only)', () => {
+  const show = (r: Recorder, what: string, arg?: string) => {
+    r.send('a', 'dev.show', { what, arg });
+    return (r.last('a', 'dev.result')?.payload as { text: string } | undefined)?.text ?? '';
+  };
+
+  it('show bots, tasks, doors, the badge log, a camera, what a bot saw, and any file', () => {
+    const r = new Recorder({ bots: true, dev: true });
+    r.connect('a', 'p9');
+    r.tick(minutes(6));
+    const bots = show(r, 'bots');
+    expect(bots).toContain('Bots (9) and humans (1)');
+    expect(bots).toMatch(/p1 +Sara Alharbi +FIN-LT-07 +tasks done +\d+ +(working|task: )/);
+    expect(bots).toMatch(/p9 +Maha Yousef +HUMAN/);
+    expect(show(r, 'tasks')).toMatch(/p5 +Khalid Nasser +done +\d+ +next: /);
+    expect(show(r, 'doors')).toMatch(/MAIN-ENT +badge +(closed|OPEN)/);
+    expect(show(r, 'badges')).toContain('DOOR=MAIN-ENT');
+    expect(show(r, 'cctv', 'CAM-01')).toMatch(/CAM-01 Reception \(watches Reception; \d+ snapshots stored\)[\s\S]*Maha Yousef +tile \d+,\d+/);
+    expect(show(r, 'saw', 'p1')).toMatch(/What p1 noticed[\s\S]*Rami Mansour +in Finance/);
+    expect(show(r, 'file', 'ADMIN-SRV-01:/var/log/squid/access.log')).toContain('ms TCP_MISS DIRECT/');
+    expect(show(r, 'file', 'ADMIN-SRV-01:/no/such/file')).toContain('(no file /no/such/file on ADMIN-SRV-01)');
+    expect(show(r, 'nonsense')).toContain('Unknown view');
+  });
+
+  it('a production server answers none of it', () => {
+    const r = new Recorder({ bots: true, dev: false });
+    r.connect('a', 'p9');
+    r.tick(minutes(1));
+    for (const what of ['bots', 'tasks', 'doors', 'badges', 'cctv', 'saw', 'file']) expect(show(r, what, 'ADMIN-SRV-01:/etc/shadow')).toBe('');
+    expect(r.messages('a', 'dev.result')).toEqual([]);
+  });
+});

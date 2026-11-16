@@ -201,11 +201,17 @@ test('switch user on a locked PC, and the developer panel', async ({ page }) => 
   await page.keyboard.press('Backquote');
   const dev = page.getByTestId('dev-panel');
   await expect(dev).toBeVisible();
-  await dev.getByRole('combobox').selectOption('REC-PC-01');
+  await dev.getByLabel('Desk').selectOption('REC-PC-01');
   await dev.getByRole('button', { name: 'go' }).nth(1).click(); // teleport
   await expect(page.getByTestId('room')).toHaveText('Reception');
   await dev.getByRole('button', { name: 'show last' }).click();
   await expect(page.getByTestId('dev-log')).toContainText('Master event log');
+  // Server-only views: the doors, and the latest picture of a camera (Khalid is in Reception, in view of CAM-01).
+  await dev.getByRole('button', { name: 'doors' }).click();
+  await expect(page.getByTestId('dev-log')).toContainText('SRV-ROOM    badge, zone server-room');
+  await dev.getByRole('button', { name: 'snapshot' }).click();
+  await expect(page.getByTestId('dev-log')).toContainText('CAM-01 Reception (watches Reception');
+  await expect(page.getByTestId('dev-log')).toContainText('Khalid Nasser');
   await page.screenshot({ path: `${SHOTS}/8-dev-panel.png` });
   await page.keyboard.press('Backquote');
   await expect(dev).toBeHidden();

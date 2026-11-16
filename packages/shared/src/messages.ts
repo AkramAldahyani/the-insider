@@ -163,6 +163,12 @@ export interface ClientMessages {
   'dev.events': { count: number };
   'dev.teleport': { hostname: string };
   'dev.dump': Record<string, never>;
+  /**
+   * Print something only the server knows. `what` is one of: bots, doors,
+   * badges, tasks, cctv (arg = camera id), saw (arg = player id),
+   * file (arg = "HOST:/path", shows the end of that file).
+   */
+  'dev.show': { what: string; arg?: string };
 }
 
 export type ServerMessageType = keyof ServerMessages;

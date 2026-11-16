@@ -69,6 +69,7 @@ function playMatch(): Recorder {
     r.send(client, 'dev.speed', { multiplier: 100 });
     r.send(client, 'dev.jump', { duration: '+1h' });
     r.send(client, 'dev.teleport', { hostname: 'ADMIN-SRV-01' });
+    for (const what of ['bots', 'doors', 'badges', 'tasks', 'cctv', 'saw', 'file']) r.send(client, 'dev.show', { what, arg: 'ADMIN-SRV-01:/etc/shadow' });
   }
   r.tick(20 * 70); // long enough for Sara's screen to lock itself
   return r;

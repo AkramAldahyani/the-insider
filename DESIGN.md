@@ -233,6 +233,17 @@ Decided in Phase 3:
 - **Background NPC traffic** always runs, so logs are never suspiciously clean.
 - Bot logic uses **behavior trees**. LLM-driven chat is an optional pluggable module behind an interface, **off by default**.
 
+Decided in Phase 3 (bot employees; the bot hacker, chat and voting come in Phase 5):
+
+- **A bot is an ordinary body.** It is the same server object as a human player and acts through the same functions (walk, tap a badge, sit, type), so it obeys the same rules and leaves the same logs under its own account. A browser receives exactly the same fields for a bot as for a human. Nothing sent to a browser says who is a bot, and the start screen does not mark bot-played employees as taken.
+- **One bot per employee nobody plays.** Bots come to work through the main entrance during the first four minutes; humans start at their desks. A human who picks an employee replaces that employee's bot; when the human leaves, a bot takes over again.
+- **Routine** (a behaviour tree): walk to the own desk, sit, log in or unlock (or switch user if someone else's session is locked there), work, and every few minutes take a break: lock the screen or forget to (25 % by default, a future difficulty setting), walk to the cafeteria, bathrooms, printer room or a colleague, come back. The guard patrols, the helpdesk visits desks, the sysadmin sometimes goes to the server room.
+- **Work** is the bot's job tasks, typed as real commands with human pauses, plus everyday commands, mail and browsing. Bots know only their own credentials. They mistype a password about once in sixteen times.
+- **Bots do not try doors their badge cannot open**, but about one time in four they walk through a door someone else just opened without tapping. That is the natural tailgating in the logs.
+- **Observations:** each bot remembers who it saw in the room it was in (appeared, sat down at which desk, stood up), with the time. Nothing uses this yet; in Phase 5 it is what bots will say in meetings and vote on.
+- Bots have their own seeded random numbers, separate from the engine's, so adding or removing a bot never changes the simulated network.
+- **Route finding** is A* on the map's tile grid; doors are handled by whoever walks the route.
+
 ---
 
 ## 11. Post-match debrief (key learning feature)

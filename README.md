@@ -2,14 +2,12 @@
 
 A multiplayer social-deduction game that teaches real Linux forensics. The full design is in [DESIGN.md](DESIGN.md).
 
-**Current state: Phase 3 (in progress) — a living office.** Doors and badges work, and bot employees walk in, log in, work, take breaks and sometimes forget to lock their screen; everyone (you too) has job tasks; there is internal email (`mail`), a simulated web (`curl`) with DNS and proxy logs, and background log noise; CCTV is being added part by part (see `PROGRESS.md`). Phase 2 is complete:
-
-**Phase 2 — the office in the browser.** You can walk around a top-down office, sit at any PC and use its simulated Linux shell in a real-looking terminal. There are no bots, tasks, hacker tools, roles or meetings yet, and the art is placeholder shapes.
+**Current state: Phase 3 — a living office.** You walk around a top-down office full of bot employees, sit at any PC and use its simulated Linux shell. The bots come to work, badge through doors, log in, do job tasks, write each other email, browse, take breaks and sometimes forget to lock their screen, so badge, door, camera, mail, DNS, proxy and system logs fill up even while you stand still. There are no hacker tools, roles, meetings or log viewers yet, and the art is placeholder shapes. `PROGRESS.md` says what was built in which step.
 
 What exists:
 
-- a simulated office network: machines, users, files, logs, a shell (`packages/engine`);
-- a game server that owns that world and the clock (`packages/server`);
+- a simulated office network: machines, users, files, logs, a shell, mail, a simulated web, badge and camera logs (`packages/engine`);
+- a game server that owns that world, the clock, the doors, the bots, the tasks and the cameras (`packages/server`);
 - a browser client: map, movement, PC terminal (`packages/client`);
 - a text CLI to use the simulation without graphics (`packages/cli`).
 
@@ -46,9 +44,11 @@ pnpm dev
 
 This starts the game server (port 2567) and the web page. Open http://localhost:5173.
 
-1. Choose an employee. You appear next to their desk with an onboarding card (username, password, PC).
+1. Choose an employee. You appear next to their desk with an onboarding card (username, password, PC, badge). Everyone you did not choose is played by a bot.
+   On screen they look exactly like people; nothing tells you who is a bot.
 2. Walk with `WASD` or the arrow keys. Stand at a desk's chair and press `E` to use that PC.
 3. Type in the terminal. `Esc` stands up; the PC stays exactly as you left it.
+4. Your task list (top left) gives you ordinary work to do. Each step shows a command that does it; the step is ticked off when you really typed it (or stood in the room it names).
 
 | Key | Where | What it does |
 |---|---|---|
@@ -74,6 +74,7 @@ Other commands:
 | `pnpm server` | only the game server |
 | `pnpm client` | only the web page |
 | `pnpm build` | production build of the web page (`packages/client/dist`) |
+| `BOTS=0 pnpm dev` | an empty office without bot employees (PowerShell: `$env:BOTS=0; pnpm dev`) |
 | `pnpm map` | regenerate `maps/office-small.json` from `maps/build-office.ts` (overwrites edits made in Tiled) |
 
 Server settings are environment variables: `GAME_PORT` (2567), `SCENARIO` (`nexora-small`), `MAP` (`office-small`), `SEED` (1), `TIME_SPEED` (game seconds per real second, 1), `BOTS` (`0` = an empty office with no bot employees), and `NODE_ENV=production` to switch the developer tools off.
@@ -114,13 +115,13 @@ pnpm test
 pnpm typecheck
 ```
 
-215 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, auto-lock, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, bots, job tasks, CCTV, map checks, and the visibility rule).
+218 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, auto-lock, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, bots, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule).
 
 ```bash
 pnpm e2e
 ```
 
-Three Playwright tests drive a real Chromium browser through the game and save screenshots to `e2e/screenshots/`. The first time, download the browser (about 150 MB) with:
+Three Playwright tests drive a real Chromium browser through the game (on their own server, ports 2577 and 5183, without bots, so they never share an office with a game you have open) and save screenshots to `e2e/screenshots/`. The first time, download the browser (about 150 MB) with:
 
 ```bash
 pnpm exec playwright install chromium
@@ -133,22 +134,31 @@ scenarios/            office definitions (data only)
 maps/                 office maps in Tiled JSON format, and the script that generated the first one
 e2e/                  Playwright browser tests and their screenshots
 scripts/dev.mjs       starts server + web page together
-packages/shared/      message types, map format and movement rules used by server AND client
+packages/shared/      message types, map format, movement rules and route finding used by server AND client
 packages/server/      the game server (Colyseus)
   src/game.ts         one match: world + players' bodies; all rules, no networking
   src/visibility.ts   the ONLY place that builds data sent to a browser
   src/OfficeRoom.ts   thin network wrapper around game.ts
   src/state.ts        the public state synced to every browser
-  src/mapCheck.ts     start-up check: desks on the map = hosts in the scenario
+  src/mapCheck.ts     start-up check: map and scenario agree (desks, doors, badges, cameras, reachability)
+  src/doors.ts        doors: closed = wall, badge taps, 3 s open, passage counting
+  src/tasks.ts        job tasks: handed out, ticked off from what really happened
+  src/cctv.ts         cameras: snapshots of who is in view
+  src/bots/           bot employees
+    manager.ts        one bot per employee nobody plays; arrival; observations
+    mover.ts          walking a route at human speed, through doors
+    brain.ts          the daily routine as a behaviour tree (tree.ts)
+    random.ts         the bots' own seeded random numbers
 packages/client/      the browser game
   src/game/store.ts   connection + the data React, Phaser and xterm share
   src/game/           Phaser scene (map, players, monitors) and keyboard
   src/ui/             terminal window, line editor, HUD, start screen, card, dev panel
 packages/engine/      the simulation: pure TypeScript, no I/O, no Node APIs
-  src/core/           clock, random numbers, scenario format, world builder
+  src/core/           clock, background noise, random numbers, scenario format, world builder
   src/fs/             virtual filesystem and permission checks
   src/auth/           /etc/passwd & co, passwords, sudo rules, login sessions
   src/net/            DHCP (with lease history) and DNS
+  src/physical/       badge taps, door and camera events (the logs on SEC-SRV-01)
   src/proc/           process table
   src/events/         master event log and the log lines made from it
   src/shell/          lexer, parser, expansion, executor, prompt
@@ -172,7 +182,26 @@ client <--(messages: text of the PC I am sitting at)------+
 
 **The map** is a Tiled JSON file. Open `maps/office-small.json` in [Tiled](https://www.mapeditor.org) to edit it. Each object in the `desks` layer has a `hostname` property naming a scenario host; if the two lists differ, the server stops at start-up and prints every mismatch.
 
-**The developer panel** can show the master event log, so it is locked twice: the server ignores `dev.*` messages unless it runs in development mode, and the production build of the page does not contain the panel.
+**Bots are ordinary bodies.** A bot is the same kind of object as a human player and acts through the same functions (walk, tap a badge, sit, type a line), so it is bound by the same rules and leaves the same logs. A browser receives a bot exactly like a human: the same fields and nothing else. The only difference is where the decisions come from: a keyboard, or `bots/brain.ts`. Bots have their own seeded random numbers, so a match replays identically.
+
+**Doors** are pieces of wall that can be switched off. Closed, a door's tiles are solid; a granted badge tap makes them walkable for 3 seconds for anyone, which is what makes tailgating possible.
+
+**Evidence the office produces by itself** (all readable with the shell on the machine that stores it):
+
+| What | Where |
+|---|---|
+| Badge taps, granted and denied | `SEC-SRV-01:/var/log/badge/access.log` |
+| Door open/close with the number of people who passed | `SEC-SRV-01:/var/log/badge/doors.log` |
+| Camera motion (head count and snapshot id, no names) | `SEC-SRV-01:/var/log/cctv/motion.log` |
+| Mail traffic; each user's mailbox | `ADMIN-SRV-01:/var/log/mail.log`, `/var/mail/USER` |
+| Web requests (PC, account, URL, size) | `ADMIN-SRV-01:/var/log/squid/access.log` |
+| Name lookups | `ADMIN-SRV-01:/var/log/named/queries.log` |
+| Connections to a machine's ssh port | that machine's `kern.log` / `dmesg` (`[UFW ALLOW]`) |
+| Logins, sudo, locks, cron, timers, clock sync | each machine's `auth.log` and `syslog` |
+
+`SEC-SRV-01` has no screen: reach it with `ssh SEC-SRV-01` as the security guard or the sysadmin.
+
+**The developer panel** can show the master event log, which bodies are bots, camera snapshots and any file, so it is locked twice: the server ignores `dev.*` messages unless it runs in development mode, and the production build of the page does not contain the panel.
 
 ## Engine API in one minute
 
@@ -226,6 +255,9 @@ When `awaitingInput` is present, the next `sendInput` is the answer to a questio
 - No symlinks, no background jobs (`&`), no shell scripts: files can be read but not executed.
 - `less` prints the file; there is no pager.
 - A screen that locks itself while a password question (ssh, sudo) is open drops that question.
+- Humans start at their desk without an arrival line in today's badge log; bots walk in through the main entrance and (mostly) have one.
+- Camera snapshots are recorded but there is no viewer yet (Phase 5); the developer panel can print one.
+- Ended login sessions are kept in memory for the whole match (about 100 per game hour in a full office).
 - Movement in the browser is not predicted locally: your character follows the server's position, which is smooth on a local network but would lag on a slow connection.
 - Reloading the page starts you again at the start screen; the PCs keep their state.
 
@@ -237,9 +269,13 @@ Copy [scenarios/nexora-small.json](scenarios/nexora-small.json) and edit it. The
 - `hosts`: hostname, MAC, department, which accounts exist there, who has sudo, optional `staticIp`, files, crontabs, an optional `autoLockSeconds`, and who is logged in at the screen when the game starts (`locked` or `unlocked`).
 - `dhcp`: the address pool, plus optional old leases.
 - `history`: past logins, failed logins and sudo use. They are replayed through the same code as live actions, so old log lines look exactly like new ones.
-- `players`: who sits where.
+- `players`: who sits where, and their `role` (bots use it for their routine and tasks).
+- `accounts[].badge`: badge number and the restricted zones it opens. `badgeSystem`: which host stores the badge and camera logs.
+- `tasks`: job tasks (see the comments on `ScenarioTask`). `mail`: mail server and old messages. `web`: the simulated sites and the proxy.
 
-For the browser game, every host also needs a desk on the map (an object in the `desks` layer with that `hostname`, and a point in `spawns` with `desk` set to it).
+A host with `"headless": true` is a box in a rack: no desk, ssh only.
+
+For the browser game, every other host also needs a desk on the map (an object in the `desks` layer with that `hostname`, and a point in `spawns` with `desk` set to it).
 
 The CLI lists every `.json` file in `scenarios/`. A scenario with mistakes (unknown user, bad MAC…) is rejected at start with a list of problems.
 

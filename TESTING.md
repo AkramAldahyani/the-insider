@@ -161,21 +161,103 @@ pnpm --filter @insider/client preview
 
 Open http://localhost:5173, pick an employee and press the backtick key: nothing happens, and the top bar no longer mentions the dev panel. The server prints `dev=false`.
 
-## L. Phase 3, part A: doors and badges
+---
 
-1. Start as **Sara**. Walk down to the Finance door: it is a solid bar and stops you. The hint says *Press E to tap your badge at the finance door*.
-2. Press `E`. You hear a beep, the bar becomes two stubs, and you can walk into the corridor. About 3 seconds later the door closes.
-3. Walk along the corridor to the **Security office** door (dark red, below the corridor) and press `E`. Expected: *Access denied*, a lower beep, the reader box turns red for a moment, and you cannot walk in.
-4. Walk right to the **Bathrooms** door (no box beside it). It opens by itself as you approach and closes behind you.
-5. Open a second browser tab and start as **Tariq** (security guard). He starts inside the security office. Sit at `SEC-WS-01`, unlock it, then:
-   ```
-   ssh SEC-SRV-01
-   tail /var/log/badge/access.log
-   tail /var/log/badge/doors.log
-   ```
-   Expected: Sara's lines, for example `DOOR=FIN BADGE=0412 USER=s.alharbi RESULT=GRANTED DIR=OUT` and `DOOR=SEC-OFFICE BADGE=0412 USER=s.alharbi RESULT=DENIED DIR=IN`. Lines dated 2026-02-27 are the previous working day.
-6. **Tailgating.** In a third tab start as **Khalid**. Bring Sara and Khalid to the server room door (top right of IT). Khalid presses `E`; both walk in. In Tariq's terminal, `tail -n 2 /var/log/badge/doors.log` shows `PASSAGES=2` after a single granted tap in `access.log`.
-7. Sara, inside the server room, presses `E` at the door: it opens (leaving is always allowed) and `access.log` gets a line with **her** badge and `DIR=OUT`.
+# Phase 3 — a living office
+
+Start with `pnpm dev` and open http://localhost:5173. This time the office has bots. Steps L to S take about 15 minutes.
+To speed things up, open the developer panel (`` ` ``) and set the speed to ×10: the clock, typing and breaks go faster, but walking and doors stay at real speed.
+
+## L. Doors and badges
+
+1. Start as **Sara**. Her card now shows `Badge #0412` and `Badge opens: all normal doors`.
+2. Walk down to the Finance door: it is a solid bar and stops you. The hint says *Press E to tap your badge at the finance door*.
+3. Press `E`. You hear a beep, the bar becomes two stubs, and you can walk into the corridor. About 3 seconds later the door closes.
+4. Walk to the **Security office** door (dark red, below the corridor) and press `E`. Expected: *Access denied*, a lower beep, the reader box turns red for a moment, and you cannot walk in.
+5. Walk right to the **Bathrooms** door (no box beside it). It opens by itself as you approach and closes behind you.
+
+## M. Bots
+
+1. Stand in the corridor and watch. Within four minutes of the match starting, the other nine employees appear at the bottom left (the main entrance in Reception), badge in and walk to their desks. They have name labels and look exactly like you.
+2. Follow one into a department room: they sit, their monitor turns green (unlocked), and they stay for a few minutes.
+3. Wait for someone to get up. Most monitors turn amber (they locked the screen) just before they stand; now and then one stays green for a minute before it locks itself. That one was forgotten.
+4. Open the developer panel and press **bots**. Expected: nine lines, each with a desk or `walking`, a count of finished tasks and what the bot is doing (`working`, `task: …`, `in Cafeteria / meeting room`…), and one line `HUMAN` for you.
+5. Press **doors**: every door with its kind and whether it is open.
+
+## N. One occupant per PC
+
+1. Walk to a desk where a colleague is sitting and press `E`. Expected: *<name> is sitting at <PC>.*
+2. Sit at a free PC before its owner comes back from a break and stay there. Expected: the owner walks up, cannot sit, and wanders off again.
+
+## O. Job tasks
+
+1. Your task list is at the top left (`T` hides it). Each task shows its next step and, in green, a command that does it.
+2. Sit at your PC, unlock it, and type the green command of one task. Expected: the step is crossed out and the next one is highlighted. After the last step a notice says *Task finished*, the counter goes up, and a new task appears.
+3. Type a later step before an earlier one. Expected: nothing is ticked: steps count in order.
+4. A task that says *Collect the printout from the printer room* or *Team coffee* is done by going there and staying for the seconds it takes. This is on purpose: it gets you away from your desk.
+
+## P. Badge, door and camera logs (as the security guard)
+
+Reload the page and start as **Tariq**. He starts inside the security office. Sit at `SEC-WS-01`, unlock it, then:
+
+| Type | Expected |
+|---|---|
+| `ssh SEC-SRV-01` then his password | `t.omar@SEC-SRV-01:~$ ` |
+| `tail /var/log/badge/access.log` | Lines like `2026-03-02 09:01:12 DOOR=MAIN-ENT BADGE=0412 USER=s.alharbi RESULT=GRANTED DIR=IN`. |
+| `grep 2026-02-27 /var/log/badge/access.log \| head -n 4` | The previous working day: arrivals around 08:xx, departures around 17:xx. |
+| `grep -c DENIED /var/log/badge/access.log` | `0` unless a human tried a door (bots do not try doors they cannot open). |
+| `tail /var/log/badge/doors.log` | `EVENT=OPEN` / `EVENT=CLOSE OPEN_FOR=3.0s PASSAGES=1`. A `PASSAGES=2` after one tap is tailgating; bots do it now and then. |
+| `tail /var/log/cctv/motion.log` | `CAM-02 MOTION persons=2 snapshot=CAM-02-000117`: a head count and a snapshot id, never a name. |
+| `cat /etc/badge/doors.conf` | The door table: which doors are restricted. |
+
+In the developer panel choose a camera and press **snapshot**: the people in that camera's view right now, with tile positions. Choose `CAM-04`: it shows only the IT side of the server room door.
+
+**Tailgating by hand:** in a second tab start as **Khalid**, in a third as **Sara**. Bring both to the server room door (top right of IT). Khalid presses `E`; both walk in. Tariq's `tail -n 2 /var/log/badge/doors.log` shows `PASSAGES=2` after a single granted tap. Sara, inside, presses `E`: the door opens (leaving is always allowed) and `access.log` gets her badge with `DIR=OUT`.
+
+## Q. Email
+
+At any PC, logged in as yourself:
+
+| Type | Expected |
+|---|---|
+| `mail` | Your inbox: at least Noor's *Reminder: lock your screen*; after a few minutes, messages from bots. `N` marks unread ones. |
+| `mail 1` | The message with headers. `Received: from <PC>.nexora.local (… [10.0.2.x])` names the machine and IP it was sent from; `From:` is what the sender wrote. |
+| `mail -s "Hello" r.mansour "Testing the mail."` | `Message … sent to r.mansour@nexora.local`. |
+| `mail -s "Hi" nobody "x"` | `no such user`. |
+
+As **Khalid**: `ssh ADMIN-SRV-01`, then `sudo tail /var/log/mail.log`. Expected: Postfix-style lines with `connect from <PC>.nexora.local[<IP>]`, `from=<…>`, `to=<…> … status=sent`. `sudo cat /var/mail/s.alharbi` shows her mailbox; as Sara, `cat /var/mail/t.omar` on the server says `Permission denied`.
+
+## R. Web, DNS and firewall logs
+
+| Type (any PC) | Expected |
+|---|---|
+| `curl https://news.example/` | A small HTML page titled *World News Today* (simulated). |
+| `curl -I http://intranet.nexora.local/` | `HTTP/1.1 200 OK` and a `Via: … (squid)` line. |
+| `curl http://no-such-site.example/` | `curl: (6) Could not resolve host`. |
+
+As **Khalid** on `ADMIN-SRV-01` (he is in group `adm` there):
+
+| Type | Expected |
+|---|---|
+| `tail /var/log/squid/access.log` | One line per request: time, PC IP, account, method, URL, status, bytes, time taken, destination IP. Lines with `-` as the account and `archive.ubuntu.example` are machines checking for updates by themselves. |
+| `tail /var/log/named/queries.log` | `client 10.0.2.x#port (name): query: name IN A`: who asked for which name, including the one that did not exist. |
+| `dmesg \| grep UFW \| tail -n 3` | `[UFW ALLOW] … SRC=10.0.2.x DST=10.0.1.10 … DPT=22`: every connection to the ssh port, successful or not. |
+
+## S. Background noise
+
+Stand still for a while (or jump the clock: developer panel, **Jump** `+1h`). On any PC, as a user who may read logs (`k.nasser` with `sudo`, or the owner):
+
+```
+tail -n 15 /var/log/syslog
+```
+
+Expected: `systemd-timesyncd … Contacted time server 10.0.1.10:123`, `systemd[1]: Starting Cleanup of Temporary Directories...` and similar lines with timestamps spread over the hour, plus the hourly `CRON` lines. Nobody typed anything to cause them.
+
+## T. What you must NOT be able to see
+
+1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
+2. Your task list shows only your tasks.
+3. In a production build (step K of Phase 2) the developer panel does not open, so bots, snapshots and other people's files stay hidden.
 
 ## Automated tests
 
@@ -183,13 +265,13 @@ Open http://localhost:5173, pick an employee and press the backtick key: nothing
 pnpm test
 ```
 
-Expected: `Test Files 18 passed (18)` and `Tests 215 passed (215)`.
+Expected: `Test Files 19 passed (19)` and `Tests 218 passed (218)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
 
 ```bash
 pnpm e2e
 ```
 
-Expected: `3 passed`. This drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes ten screenshots to `e2e/screenshots/`.
+Expected: `3 passed`. Playwright starts its own game (ports 2577 and 5183, no bots), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes ten screenshots to `e2e/screenshots/`.
 
 ---
 

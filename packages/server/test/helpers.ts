@@ -1,5 +1,5 @@
 /** Test helpers for the server: build a game, and walk a player around like a browser would. */
-import type { Scenario } from '@insider/engine';
+import type { FsNode, Scenario } from '@insider/engine';
 import { TAP_DISTANCE, TICK_RATE, nearestReaderDoor, type OfficeMap, type PublicState, type TiledMap } from '@insider/shared';
 import { loadGameOptions } from '../src/app';
 import { OfficeGame, type OfficeGameOptions, type Outgoing } from '../src/game';
@@ -135,11 +135,11 @@ export class Recorder {
     return this.walkTo(clientId, playerId, (col + 0.5) * this.map.tile, (row + 0.5) * this.map.tile);
   }
 
-  /** Text of a file on a simulated machine (the server may read anything; this is a test). */
+  /** Text of a file on a simulated machine, "" if it does not exist (the server may read anything; this is a test). */
   file(hostname: string, path: string): string {
-    let node = this.game.world.hosts[hostname].fs;
-    for (const part of path.split('/').filter(Boolean)) node = node.children![part];
-    return node.content ?? '';
+    let node: FsNode | undefined = this.game.world.hosts[hostname].fs;
+    for (const part of path.split('/').filter(Boolean)) node = node?.children?.[part];
+    return node?.content ?? '';
   }
 
   /** The text of the latest HUD notice sent to a client. */

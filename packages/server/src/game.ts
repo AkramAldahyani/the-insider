@@ -14,7 +14,7 @@
  */
 import {
   advanceTime, cancelInput, createWorld, dateStamp, leaveTerminal, openTerminal, parseDuration, refreshTerminal,
-  sendInput, serializeWorld, switchUser, touchTerminal, type OpenResult, type Scenario, type TerminalResult, type World,
+  sendInput, serializeWorld, switchUser, touchTerminal, type FsNode, type OpenResult, type Scenario, type TerminalResult, type World,
 } from '@insider/engine';
 import {
   INTERACT_DISTANCE, PLAYER_RADIUS, PLAYER_SPEED, moveWithCollision, parseOfficeMap,
@@ -347,6 +347,62 @@ export class OfficeGame {
 
   // ───────────────────────────── Developer panel ─────────────────────────────
 
+  /** The end of a file on a simulated machine, read directly (no permission checks: this is the developer looking in). */
+  private tail(hostname: string, path: string, count: number): string {
+    let node: FsNode | undefined = this.world.hosts[hostname]?.fs;
+    for (const part of path.split('/').filter(Boolean)) node = node?.children?.[part];
+    if (!node || node.content === undefined) return `(no file ${path} on ${hostname})`;
+    return node.content.trimEnd().split('\n').slice(-count).join('\n');
+  }
+
+  /** Text views of server-only state, for `dev.show`. Reached only when `dev` is true. */
+  private devShow(what: string, arg: string): string {
+    const clock = (t: number) => new Date(t).toISOString().slice(11, 19);
+    const badgeHost = this.world.badges.serverHost;
+    switch (what) {
+      case 'bots': {
+        if (!this.bots) return 'This office has no bots (BOTS=0).';
+        const rows = this.bots.list().map((b) => {
+          const name = this.world.players.find((p) => p.id === b.playerId)?.name ?? b.playerId;
+          return `${b.playerId.padEnd(4)} ${name.padEnd(15)} ${(b.seatedAt || (b.present ? 'walking' : 'outside')).padEnd(13)} tasks done ${String(this.tasks.completed(b.playerId)).padStart(2)}  ${b.doing}${b.failure ? ` [last walk failed: ${b.failure}]` : ''}`;
+        });
+        const humans = this.humans().map((a) => `${a.playerId.padEnd(4)} ${a.name.padEnd(15)} HUMAN`);
+        return `Bots (${rows.length}) and humans (${humans.length})\n${[...rows, ...humans].join('\n')}`;
+      }
+      case 'doors':
+        return `Doors\n${this.map.doors.map((d) => {
+          const state = this.doors.inspect(d.code)!;
+          return `${d.code.padEnd(11)} ${(d.reader ? (d.restricted ? `badge, zone ${d.zone}` : 'badge') : 'opens by itself').padEnd(28)} ${state.open ? `OPEN  passages ${state.passages}` : 'closed'}`;
+        }).join('\n')}`;
+      case 'badges':
+        return `Badge taps (${badgeHost}:/var/log/badge/access.log)\n${this.tail(badgeHost, '/var/log/badge/access.log', 15)}\n\nDoors (doors.log)\n${this.tail(badgeHost, '/var/log/badge/doors.log', 8)}`;
+      case 'tasks':
+        return `Tasks finished / given up: ${this.world.players.reduce((n, p) => n + this.tasks.completed(p.id), 0)} / ${this.tasks.abandoned}\n${this.world.players.map((p) => {
+          const next = this.tasks.nextStep(p.id);
+          return `${p.id.padEnd(4)} ${p.name.padEnd(15)} done ${String(this.tasks.completed(p.id)).padStart(2)}  next: ${next ? `${next.task.title} -> ${next.step.text}` : '-'}`;
+        }).join('\n')}`;
+      case 'cctv': {
+        const camera = this.cctv.cameras.find((c) => c.id === arg) ?? this.cctv.cameras[0];
+        if (!camera) return 'This map has no cameras.';
+        const shot = this.cctv.at(camera.id, this.world.time);
+        const people = shot?.people.map((p) => `  ${p.name.padEnd(15)} tile ${Math.floor(p.x / this.map.tile)},${Math.floor(p.y / this.map.tile)} facing ${p.facing}${p.seatedAt ? `, sitting at ${p.seatedAt}` : ''}`) ?? [];
+        return `${camera.name} (watches ${camera.covers}; ${this.cctv.recording(camera.id).length} snapshots stored)\n` +
+          (shot ? `${shot.id} at ${clock(shot.time)}: ${people.length} in view\n${people.join('\n')}` : 'no snapshot yet') +
+          `\n\nMotion log\n${this.tail(badgeHost, '/var/log/cctv/motion.log', 8)}`;
+      }
+      case 'saw': {
+        const seen = this.bots?.observations(arg) ?? [];
+        return `What ${arg} noticed (last ${Math.min(15, seen.length)} of ${seen.length})\n${seen.slice(-15).map((o) => `${clock(o.time)} ${o.name.padEnd(15)} in ${o.room}${o.desk ? `, sitting at ${o.desk}` : ''}`).join('\n') || '(nothing: not a bot, or not arrived yet)'}`;
+      }
+      case 'file': {
+        const [hostname, ...rest] = arg.split(':');
+        return `${arg}\n${this.tail(hostname, rest.join(':'), 15)}`;
+      }
+      default:
+        return 'Unknown view. Try: bots, doors, badges, tasks, cctv, saw, file.';
+    }
+  }
+
   /**
    * Developer tools. They can show secrets (the master event log), so they
    * exist only when the server was started with dev: true. In production this
@@ -385,6 +441,8 @@ export class OfficeGame {
         Object.assign(avatar, { x: spawn.x, y: spawn.y, facing: 'up' as Facing, dx: 0, dy: 0 });
         return reply(`Teleported to ${desk.hostname}.`);
       }
+      case 'dev.show':
+        return reply(this.devShow(String(data.what ?? ''), String(data.arg ?? '')));
       case 'dev.dump': {
         if (!this.writeDump) return reply('This server cannot write dumps.');
         const stamp = new Date(this.world.time).toISOString().replace(/[:.]/g, '-');
