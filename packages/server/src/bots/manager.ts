@@ -50,6 +50,12 @@ export interface BotHost extends Omit<MoverWorld, 'mayEnter'> {
 export interface BotOptions {
   /** Probability that a bot leaves its desk without locking the screen (default 0.25). */
   forgetLock?: number;
+  /**
+   * Average game minutes between the starts of two job tasks of one bot
+   * (default 3). Between tasks a bot types an everyday command now and then,
+   * and otherwise sits idle.
+   */
+  taskMinutes?: number;
 }
 
 /** One thing a bot noticed: somebody came into view, sat down, or stood up. */
@@ -128,6 +134,11 @@ export class BotManager {
     return this.bots.has(playerId);
   }
 
+  /** Is this employee's bot inside the building right now? */
+  isPresent(playerId: string): boolean {
+    return !!this.bots.get(playerId)?.subject;
+  }
+
   /** Server-side view for tests and the developer panel. Never sent to a production browser. */
   list(): { playerId: string; present: boolean; moving: string; failure: string; seatedAt: string; doing: string }[] {
     return [...this.bots.values()].map((b) => ({
@@ -181,6 +192,7 @@ export class BotManager {
       chair: { x: desk.seatX, y: desk.seatY },
       commands: commands.length > 0 ? commands : ['ls'],
       forgetLock: this.options.forgetLock ?? 0.25,
+      taskEveryMs: (this.options.taskMinutes ?? 3) * 60_000,
     };
   }
 
@@ -238,9 +250,10 @@ export class BotManager {
       x, y: map.outsideSpawn.y, facing: 'up', seatedAt: '', terminalId: '', dx: 0, dy: 0,
     };
     const mover = new Mover(body, { ...this.host, mayEnter: (a, d) => this.mayEnter(a, d) }, bot.random);
+    const persona = this.persona(player.id);
     bot.subject = {
-      persona: this.persona(player.id), body, mover, random: bot.random,
-      mind: newMind(world.time, bot.random),
+      persona, body, mover, random: bot.random,
+      mind: newMind(world.time, bot.random, persona.taskEveryMs),
       world: this.brainWorld(body, bot.random),
     };
     this.host.addBody(body);

@@ -112,11 +112,6 @@ export interface Host {
   journal: JournalEntry[];
   /** The session currently shown on the physical screen/keyboard, if any. */
   consoleSessionId: string | null;
-  /**
-   * The screen locks itself after this much game time without PHYSICAL input
-   * (someone typing at this machine's own keyboard). 0 = never.
-   */
-  autoLockMs: number;
 }
 
 // ───────────────────────────── Sessions & terminals ─────────────────────────────
@@ -196,12 +191,6 @@ export interface Terminal {
    * logging in as that user again brings one back.
    */
   parked: string[][];
-  /**
-   * Game time of the last key pressed on THIS machine's own keyboard. The
-   * auto-lock timer counts from here. Input that arrives over ssh is typed on
-   * another machine's keyboard and does not move this.
-   */
-  lastPhysicalInput: number;
   pending: Pending | null;
   /** Text to show before the next prompt (e.g. "Connection closed by remote host"). */
   notice: string;
@@ -228,7 +217,7 @@ export interface GameEvent {
    * Where the input that caused this came from:
    *  - "physical": typed at the keyboard of the machine the event happened on;
    *  - "remote":   typed at ANOTHER machine's keyboard (it arrived over ssh);
-   *  - "system":   nobody typed anything (boot, DHCP, cron, auto-lock, old history).
+   *  - "system":   nobody typed anything (boot, DHCP, cron, old history).
    */
   origin: 'physical' | 'remote' | 'system';
 }
@@ -272,6 +261,30 @@ export interface BadgeSystem {
   serverHost: string;
   /** account username -> the badge that employee carries. */
   holders: Record<string, Badge>;
+}
+
+// ───────────────────────────── Unattended PCs ─────────────────────────────
+
+/**
+ * A stretch of time during which a PC stood unlocked while the person logged
+ * in was away from it (see auth/unattended.ts). Ground truth for the debrief.
+ */
+export interface UnattendedWindow {
+  host: string;
+  /** The account whose session was open. */
+  account: string;
+  /** The player who owns that account (null if no player does). */
+  ownerPlayer: string | null;
+  sessionId: string;
+  from: number;
+  /** null while it is still open. */
+  to: number | null;
+  /** How it ended: locked, logged out, or the owner sat down again. null while open. */
+  endedBy: 'locked' | 'logged out' | 'owner returned' | null;
+  /** Who locked it (account typed / player at the keyboard), when it ended by a lock. */
+  lockedBy: { account: string; playerId: string | null } | null;
+  /** Other players who sat at it while it was open, and how many lines each typed. */
+  visitors: { playerId: string; firstAt: number; lastAt: number; lines: number }[];
 }
 
 // ───────────────────────────── Mail and web ─────────────────────────────
@@ -351,6 +364,8 @@ export interface World {
   badges: BadgeSystem;
   /** Internal email (see commands/mail.ts). */
   mail: MailSystem;
+  /** Every time a PC stood unlocked with its user away (see auth/unattended.ts). Never sent to players. */
+  unattended: UnattendedWindow[];
   /** The simulated web and its proxy (see `curl` in commands/net.ts). */
   web: WebSystem;
   /**

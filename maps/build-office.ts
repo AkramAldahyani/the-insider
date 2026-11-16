@@ -193,7 +193,9 @@ const cameraObjects = [
   // Watches the server room door from the IT side. It does not see into the server room, nor the far end of IT.
   point('CAM-04 Server room door', 48.5, 2.5, [prop('covers', 'IT department'), prop('range', 9)]),
   point('CAM-05 Cafeteria', 33.5, 19.5, [prop('covers', 'Cafeteria / meeting room'), prop('range', 20)]),
-  // No cameras in the printer room, storage or bathrooms: blind spots (DESIGN.md section 2).
+  // Inside the server room, in the far corner: sees its door from the inside and the whole room (the racks, the admin server).
+  point('CAM-06 Server room', 54.5, 7.5, [prop('covers', 'Server room'), prop('range', 10)]),
+  // No cameras in the department rooms, the security office, the printer room, storage or bathrooms: blind spots (DESIGN.md section 2).
 ];
 
 // One reader per badge door, drawn on the wall beside the doorway. `door` is the door's code.

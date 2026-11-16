@@ -68,7 +68,7 @@ describe('soak: three hours of a living office', () => {
 
       // Work got done this hour, and the master log grew.
       const done = scenario.players.reduce((n, p) => n + r.game.tasks.completed(p.id), 0);
-      expect(done - tasksDone, `hour ${hour}: tasks finished`).toBeGreaterThanOrEqual(30);
+      expect(done - tasksDone, `hour ${hour}: tasks finished`).toBeGreaterThanOrEqual(100); // about 20 per employee
       tasksDone = done;
       expect(r.game.world.events.length).toBeGreaterThan(events);
       events = r.game.world.events.length;
@@ -83,10 +83,10 @@ describe('soak: three hours of a living office', () => {
     expect(queryEvents(world, { type: 'badge.tap', ...since }).filter((e) => e.details.granted === false)).toEqual([]);
     expect(r.game.tasks.abandoned).toBeLessThanOrEqual(Math.ceil(tasksDone * 0.1));
     expect(queryEvents(world, { type: 'ssh.accept', ...since }).length - queryEvents(world, { type: 'ssh.disconnect', ...since }).length).toBeLessThanOrEqual(3);
-    // Screens were locked by hand AND forgotten (then caught by the auto-lock).
+    // Screens were locked by hand AND forgotten (there is no auto-lock: a forgotten PC stays open until its owner is back).
     const locks = queryEvents(world, { type: 'session.lock', ...since });
     expect(locks.filter((e) => e.details.via === 'loginctl').length).toBeGreaterThan(30);
-    expect(locks.filter((e) => e.details.via === 'idle').length).toBeGreaterThan(5);
+    expect(world.unattended.filter((w) => w.from > START).length).toBeGreaterThan(5);
     // Tailgating happened naturally now and then: more bodies through badge doors than granted taps.
     const taps = queryEvents(world, { type: 'badge.tap', ...since }).length;
     const passes = queryEvents(world, { type: 'door.pass', ...since }).filter((e) => r.map.doors.find((d) => d.code === e.details.door)?.reader).length;
@@ -95,7 +95,8 @@ describe('soak: three hours of a living office', () => {
     // Memory: capped things are capped, and the whole world is still a modest size.
     for (const player of scenario.players) expect(r.game.bots!.observations(player.id).length).toBeLessThanOrEqual(300);
     for (const camera of r.game.cctv.cameras) expect(r.game.cctv.recording(camera.id).length).toBeLessThanOrEqual(6000);
-    expect(Object.keys(world.sessions).length).toBeLessThan(400);
+    // Ended sessions are forgotten: only the ones still on a screen (or in use) remain.
+    expect(Object.keys(world.sessions).length).toBeLessThan(40);
     expect(world.events.length).toBeLessThan(120_000);
     expect(serializeWorld(world).length).toBeLessThan(60_000_000);
   }, 120_000);

@@ -225,31 +225,27 @@ describe('the clock and the screens', () => {
     expect(fast.game.world.time - t0).toBe(60_000);
   });
 
-  it('a seated player sees the screen lock itself after 60 s, and everyone sees the desk change', () => {
+  it('a screen never locks itself; a lock typed at it is seen by the seated player and by everyone', () => {
     const r = new Recorder();
     r.connect('a', 'p1');
     r.sitAt('a', 'p1', 'FIN-LT-07');
     r.type('a', PW['s.alharbi']);
+    r.tick(20 * 600); // ten minutes without a key
     expect(r.game.publicState().desks['FIN-LT-07'].screen).toBe('unlocked');
 
-    r.tick(20 * 59);
-    expect(r.game.publicState().desks['FIN-LT-07'].screen).toBe('unlocked');
-    r.tick(20 * 2);
+    r.type('a', 'loginctl lock-session');
     expect(r.game.publicState().desks['FIN-LT-07']).toMatchObject({ screen: 'locked', lockUser: 's.alharbi', occupantId: 'p1' });
     expect(r.screen('a')).toMatchObject({ screen: 'locked', masked: true, prompt: 'Password: ' });
     expect(r.screen('a').output).toContain('screen locked by s.alharbi');
   });
 
-  it('typing keeps the screen awake even before Enter is pressed', () => {
+  it('the old "someone is typing" message no longer exists and is ignored', () => {
     const r = new Recorder();
     r.connect('a', 'p1');
     r.sitAt('a', 'p1', 'FIN-LT-07');
-    r.type('a', PW['s.alharbi']);
-    for (let i = 0; i < 4; i++) {
-      r.tick(20 * 40);
-      r.send('a', 'term.activity');
-    }
-    expect(r.game.publicState().desks['FIN-LT-07'].screen).toBe('unlocked');
+    const before = r.game.world.events.length;
+    r.send('a', 'term.activity');
+    expect(r.game.world.events.length).toBe(before);
   });
 
   it('switch user works through messages', () => {

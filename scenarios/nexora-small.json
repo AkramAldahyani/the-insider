@@ -4,7 +4,6 @@
   "description": "Ten workstations, one admin server and the badge-system server. The flag is /root/flag.txt on ADMIN-SRV-01.",
   "domain": "nexora.local",
   "startTime": "2026-03-02T09:00:00Z",
-  "autoLockSeconds": 60,
   "badgeSystem": { "server": "SEC-SRV-01", "entranceDoor": "MAIN-ENT" },
 
   "mail": {
@@ -292,7 +291,6 @@
       "users": ["l.haddad", "k.nasser"],
       "sudoers": ["k.nasser"],
       "uptimeMinutes": 4400,
-      "autoLockSeconds": 0,
       "console": { "user": "l.haddad", "state": "unlocked", "loginMinutesAgo": 22 },
       "bashHistory": {
         "l.haddad": ["ls", "cat Documents/onboarding_checklist.txt", "ls -la Documents"]
@@ -408,7 +406,6 @@
       "users": ["y.khalil", "k.nasser"],
       "sudoers": ["k.nasser"],
       "uptimeMinutes": 4400,
-      "autoLockSeconds": 600,
       "console": { "user": "y.khalil", "state": "unlocked", "loginMinutesAgo": 12 },
       "bashHistory": {
         "y.khalil": ["ls designs", "cat notes.txt"]

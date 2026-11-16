@@ -155,8 +155,6 @@ export interface ClientMessages {
   'term.cancel': Record<string, never>;
   /** "Switch user" on a lock screen. */
   'term.switchUser': Record<string, never>;
-  /** A key was pressed but the line is not finished (keeps the screen from auto-locking while typing). */
-  'term.activity': Record<string, never>;
   /** Developer panel (ignored by a production server). */
   'dev.speed': { multiplier: number };
   'dev.jump': { duration: string };
@@ -165,7 +163,7 @@ export interface ClientMessages {
   'dev.dump': Record<string, never>;
   /**
    * Print something only the server knows. `what` is one of: bots, doors,
-   * badges, tasks, cctv (arg = camera id), saw (arg = player id),
+   * badges, tasks, unlocked, cctv (arg = camera id), saw (arg = player id),
    * file (arg = "HOST:/path", shows the end of that file).
    */
   'dev.show': { what: string; arg?: string };

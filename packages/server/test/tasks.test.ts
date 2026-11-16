@@ -150,12 +150,12 @@ describe('doing tasks', () => {
 });
 
 describe('bots doing tasks', () => {
-  it('in twenty minutes every employee finishes tasks, and the work leaves real traces', () => {
+  it('in forty minutes every employee finishes tasks, and the work leaves real traces', () => {
     const r = new Recorder({ bots: true });
-    r.tick(minutes(20));
+    r.tick(minutes(40));
     const done = scenario.players.map((p) => r.game.tasks.completed(p.id));
-    expect(Math.min(...done)).toBeGreaterThanOrEqual(1);
-    expect(done.reduce((a, b) => a + b, 0)).toBeGreaterThanOrEqual(20);
+    expect(Math.min(...done)).toBeGreaterThanOrEqual(3);
+    expect(done.reduce((a, b) => a + b, 0)).toBeGreaterThanOrEqual(60);
     expect(r.game.bots!.list().filter((b) => b.failure)).toEqual([]);
 
     // Files written by the tasks exist on the employees' PCs.

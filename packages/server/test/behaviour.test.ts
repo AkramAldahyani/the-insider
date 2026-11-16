@@ -77,7 +77,7 @@ describe('bots at their desks', () => {
     }
   });
 
-  it('a careful office locks before leaving; a careless one leaves screens open until they lock themselves', () => {
+  it('a careful office locks before leaving; a careless one leaves screens open until the owner returns', () => {
     const careful = new Recorder({ bots: true, botOptions: { forgetLock: 0 } });
     careful.tick(minutes(15));
     const leaves = queryEvents(careful.game.world, { type: 'terminal.leave', since: START });
@@ -86,21 +86,50 @@ describe('bots at their desks', () => {
     expect(manual.length).toBeGreaterThanOrEqual(leaves.length - 2); // (a bot that could not log in has nothing to lock)
     expect(manual.every((e) => e.origin === 'physical' && e.actor !== null)).toBe(true);
 
+    expect(careful.game.world.unattended.filter((w) => w.from > START)).toEqual([]); // nobody ever left a PC open
+
     const careless = new Recorder({ bots: true, botOptions: { forgetLock: 1 } });
     careless.tick(minutes(15));
-    const locks = queryEvents(careless.game.world, { type: 'session.lock', since: START });
-    expect(locks.filter((e) => e.details.via === 'loginctl')).toEqual([]);
-    expect(locks.filter((e) => e.details.via === 'idle').length).toBeGreaterThan(5); // the 60 s auto-lock caught them
-    // Lina's PC never locks itself (scenario setting), so it stayed open behind her back.
-    expect(locks.some((e) => e.host === 'HR-LT-03')).toBe(false);
+    const world = careless.game.world;
+    // Nothing locks a screen by itself: no lock at all.
+    expect(queryEvents(world, { type: 'session.lock', since: START })).toEqual([]);
+    // Every departure left the PC open until its owner came back, and the record says so.
+    const windows = world.unattended.filter((w) => w.from > START);
+    expect(windows.length).toBeGreaterThan(5);
+    for (const w of windows) expect(w.endedBy === 'owner returned' || w.to === null, `${w.host} ${String(w.endedBy)}`).toBe(true);
+    expect(windows.every((w) => w.account === scenario.players.find((p) => p.id === w.ownerPlayer)?.account)).toBe(true);
   });
 
-  it('by default some departures are locked and some are forgotten', () => {
+  it('by default some departures are locked and some are forgotten (about one in four)', () => {
     const r = new Recorder({ bots: true });
-    r.tick(minutes(20));
-    const locks = queryEvents(r.game.world, { type: 'session.lock', since: START });
-    expect(locks.filter((e) => e.details.via === 'loginctl').length).toBeGreaterThan(5);
-    expect(locks.filter((e) => e.details.via === 'idle').length).toBeGreaterThan(0);
+    r.tick(minutes(60));
+    const locks = queryEvents(r.game.world, { type: 'session.lock', since: START }).length;
+    const forgotten = r.game.world.unattended.filter((w) => w.from > START).length;
+    expect(locks).toBeGreaterThan(20);
+    expect(forgotten).toBeGreaterThan(3);
+    const rate = forgotten / (locks + forgotten);
+    expect(rate).toBeGreaterThan(0.12);
+    expect(rate).toBeLessThan(0.4);
+  });
+
+  it('the task pace is configurable: about one task every 3 game minutes by default', () => {
+    const run = (taskMinutes?: number) => {
+      const r = new Recorder({ bots: true, botOptions: taskMinutes ? { taskMinutes } : {} });
+      r.tick(minutes(60));
+      return scenario.players.reduce((n, p) => n + r.game.tasks.completed(p.id), 0) / scenario.players.length;
+    };
+    const normal = run();
+    expect(normal).toBeGreaterThan(12); // 60 minutes / 3 = 20, minus arriving and breaks
+    expect(normal).toBeLessThan(24);
+    expect(run(6)).toBeLessThan(normal * 0.75);
+  }, 30_000);
+
+  it('between tasks bots are often idle: no command for a while', () => {
+    const r = new Recorder({ bots: true });
+    r.tick(minutes(30));
+    const times = queryEvents(r.game.world, { type: 'command', actor: 'p1', since: START }).map((e) => e.time);
+    const gaps = times.slice(1).map((t, i) => t - times[i]);
+    expect(gaps.filter((g) => g >= 40_000).length).toBeGreaterThanOrEqual(5);
   });
 
   it('one occupant per PC also holds between a human and a bot', () => {
@@ -201,6 +230,7 @@ describe('developer views of the living office (development servers only)', () =
     expect(show(r, 'saw', 'p1')).toMatch(/What p1 noticed[\s\S]*Rami Mansour +in Finance/);
     expect(show(r, 'file', 'ADMIN-SRV-01:/var/log/squid/access.log')).toContain('ms TCP_MISS DIRECT/');
     expect(show(r, 'file', 'ADMIN-SRV-01:/no/such/file')).toContain('(no file /no/such/file on ADMIN-SRV-01)');
+    expect(show(r, 'unlocked')).toMatch(/PCs left unlocked by their user[\s\S]*HR-LT-03 +l\.haddad/);
     expect(show(r, 'nonsense')).toContain('Unknown view');
   });
 

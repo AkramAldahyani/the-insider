@@ -121,6 +121,26 @@ export class Doors {
     return { granted: true, text: `Badge accepted: the ${door.def.name.toLowerCase()} is open for ${DOOR_OPEN_MS / 1000} seconds.` };
   }
 
+  /**
+   * Somebody comes in or goes out through a badge door without walking up to
+   * it: a human who picks an employee appears at their desk, but the badge
+   * system must still record that they came to work. Writes the tap, opens
+   * the door for its 3 seconds (you can see it open) and counts one person
+   * through. Returns false if there is no such door or no badge.
+   */
+  passThrough(walker: Walker, code: string, direction: 'IN' | 'OUT'): boolean {
+    const door = this.doors.find((d) => d.def.code === code && d.def.reader);
+    if (!door) return false;
+    const result = tapBadge(this.world, {
+      door: door.def.code, zone: door.def.zone, restricted: door.def.restricted, account: walker.account, direction, actor: walker.playerId,
+    });
+    if (!result.granted) return false;
+    this.open(door, DOOR_OPEN_MS);
+    door.passages++;
+    doorPassed(this.world, door.def.code, walker.account, direction, walker.playerId);
+    return true;
+  }
+
   /** Advances the doors by `realMs` of real time, looking at where everybody is now. */
   tick(realMs: number, walkers: Walker[]): void {
     for (const [key, left] of this.cooldown) {

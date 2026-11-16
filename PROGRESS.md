@@ -9,7 +9,32 @@ Update it at the end of every part.
 |---|---|
 | 1 Simulation core | done |
 | 2 Office in the browser | done |
-| 3 Living office | done (parts below); waiting for the owner's OK before Phase 4 |
+| 3 Living office | done, pushed by the owner |
+| 3+ Owner's changes after Phase 3 | done (section below) |
+| 4 Hacker gameplay | **planned, waiting for the owner's OK** (plan below) |
+
+## Owner's changes after Phase 3 (done)
+
+The owner asked for six changes before Phase 4:
+
+1. **Auto-lock removed completely.** No `autoLockMs`, no `lastPhysicalInput`, no `touchTerminal`, no `term.activity`
+   message, no `autoLockSeconds` in scenarios. A PC stays unlocked until someone locks it (deliberate: the game
+   teaches locking). DESIGN.md section 3 rewritten; section 6's "longer auto-lock" vulnerability replaced by "the
+   sysadmin's bot is extra careless and often leaves the admin PC unlocked" (to implement in Phase 4).
+   New: `engine/src/auth/unattended.ts` keeps `world.unattended`: every window a PC stood unlocked while its
+   user's player was away, how it ended (`locked` + by whom, `logged out`, `owner returned`) and the visitors with
+   the number of lines each typed. For the Phase 5 debrief; never sent to players. Dev panel view `unlocked`.
+2. **Arrival line:** picking an employee taps their badge IN at MAIN-ENT (door opens 3 s, one passage);
+   disconnecting taps OUT. Not when the employee's bot was already inside. `Doors.passThrough`.
+3. **Bot task pace:** `botOptions.taskMinutes` (default 3). A bot starts a new task only after `nextTaskAt`; between
+   tasks an everyday command 60 % of the time, else idle; pauses 15-50 s. Measured: ~21 tasks per bot per hour.
+4. **Camera CAM-06** inside the server room (sees its door from inside and the whole room). Department rooms and
+   the security office stay blind spots.
+5. Bot forget-to-lock rate stays 25 %.
+6. **Ended sessions pruned:** `pruneSessions` (auth/sessions.ts) runs after every clock advance and drops ended
+   sessions nothing points at. Soak: about 10 sessions in memory after hours.
+
+Tests: 226 Vitest, 5 Playwright (3 smoke + the owner's 2 design tests).
 
 ## Phase 3 parts
 
@@ -143,12 +168,9 @@ locally (never push), update this file.
 - Plan routes on `game.map.solid` (doors passable); move bodies against `game.collision`.
 - Humans start at their desks WITHOUT an arrival line in today's badge log; bots walk in and (mostly) have one.
   Left as is for now; tell the owner in the Phase 3 summary (a later lobby/"match start" in Phase 6 can fix it).
-- Phase 3 is complete. Do NOT start Phase 4 without the owner's OK.
+- Do NOT start coding Phase 4 until the owner approves the plan in "Phase 4 plan" below.
 - Known flake: the first Playwright test (keyboard-steered walk) got stuck about 1 run in 10. Cause not found;
   the walker now re-centres when it stops moving and the config allows one retry. The server-side walk tests are stable.
-- Open points to raise with the owner before Phase 4: humans have no arrival line in today's badge log; ended
-  sessions are never removed from `world.sessions`; bots finish about one task a minute, which may be too busy;
-  the department rooms have no camera in the small office.
 - The dev server (`pnpm dev`) restarts itself when server files change; Playwright reuses a running one.
 - Door timers and walking use real time; the game clock can run faster (dev panel). At speed 1 they agree.
 - Writing files from Bash heredocs breaks on apostrophes in this environment: use the Write tool or a script file.
@@ -156,6 +178,4 @@ locally (never push), update this file.
 
 ## Not done / not verified
 
-- README and TESTING.md have short Part A notes only; the full Phase 3 docs are Part G.
-- The dev panel has no door or badge tools yet (Part G).
 - Typing a masked password in the CLI at a real keyboard was never verified by hand (Phase 2 leftover).

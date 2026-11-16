@@ -14,7 +14,7 @@
  */
 import {
   advanceTime, cancelInput, createWorld, dateStamp, leaveTerminal, openTerminal, parseDuration, refreshTerminal,
-  sendInput, serializeWorld, switchUser, touchTerminal, type FsNode, type OpenResult, type Scenario, type TerminalResult, type World,
+  sendInput, serializeWorld, switchUser, type FsNode, type OpenResult, type Scenario, type TerminalResult, type World,
 } from '@insider/engine';
 import {
   INTERACT_DISTANCE, PLAYER_RADIUS, PLAYER_SPEED, moveWithCollision, parseOfficeMap,
@@ -180,6 +180,8 @@ export class OfficeGame {
 
   disconnect(clientId: string): void {
     const avatar = this.avatars.get(clientId);
+    // Going home: the badge system records the departure at the main entrance.
+    if (avatar) this.throughEntrance(avatar, 'OUT');
     this.removeBody(clientId);
     this.clients.delete(clientId);
     // The employee is not left empty: a bot comes to work in their place a little later.
@@ -230,9 +232,6 @@ export class OfficeGame {
       case 'term.switchUser':
         if (avatar.seatedAt) this.screen(avatar, switchUser(this.world, avatar.terminalId));
         return;
-      case 'term.activity':
-        if (avatar.seatedAt) touchTerminal(this.world, avatar.terminalId);
-        return;
       default:
         if (type.startsWith('dev.')) this.devMessage(avatar, type, data);
     }
@@ -246,11 +245,16 @@ export class OfficeGame {
       this.send(clientId, 'notice', { text: `${player.name} is already being played.` });
       return this.sendLobby(clientId);
     }
-    this.bots?.remove(player.id); // the human takes over from this employee's bot
+    // If this employee's bot is already in the building, the human simply takes over from it.
+    const alreadyInside = this.bots?.isPresent(player.id) ?? false;
+    this.bots?.remove(player.id);
     const spawn = this.map.spawns[player.desk] ?? this.map.defaultSpawn;
-    this.avatars.set(clientId, {
+    const avatar: Avatar = {
       clientId, playerId: player.id, account: player.account, name: player.name, x: spawn.x, y: spawn.y, facing: 'up', seatedAt: '', terminalId: '', dx: 0, dy: 0,
-    });
+    };
+    this.avatars.set(clientId, avatar);
+    // Otherwise they "came to work": the main entrance logs their arrival, as it does for everyone.
+    if (!alreadyInside) this.throughEntrance(avatar, 'IN');
     this.send(clientId, 'welcome', { playerId: player.id, card: onboardingCard(this.world, this.scenario, player.id) });
     this.tasks.assign(player.id);
     this.tasks.takeChanged();
@@ -298,6 +302,12 @@ export class OfficeGame {
     if (this.standBody(avatar)) this.send(avatar.clientId, 'term.close', { reason });
   }
 
+  /** Records an arrival or departure at the building's main entrance (badge tap, door open, one person through). */
+  private throughEntrance(avatar: Avatar, direction: 'IN' | 'OUT'): void {
+    const entrance = this.scenario.badgeSystem?.entranceDoor;
+    if (entrance) this.doors.passThrough(this.walker(avatar), entrance, direction);
+  }
+
   /** An avatar as the doors see it. */
   private walker(a: Avatar): Walker {
     return { key: a.clientId, playerId: a.playerId, account: a.account, x: a.x, y: a.y, seated: a.seatedAt !== '' };
@@ -320,7 +330,7 @@ export class OfficeGame {
     const step = (PLAYER_SPEED * realMs) / 1000;
     for (const avatar of [...this.avatars.values()]) {
       if (avatar.seatedAt) {
-        // The screen may have changed without this player typing (auto-lock, a remote lock...).
+        // The screen may have changed without this player typing (a remote lock, a closed connection...).
         const changed = refreshTerminal(this.world, avatar.terminalId);
         if (changed) this.screen(avatar, changed);
         continue;
@@ -390,6 +400,16 @@ export class OfficeGame {
           (shot ? `${shot.id} at ${clock(shot.time)}: ${people.length} in view\n${people.join('\n')}` : 'no snapshot yet') +
           `\n\nMotion log\n${this.tail(badgeHost, '/var/log/cctv/motion.log', 8)}`;
       }
+      case 'unlocked': {
+        const name = (id: string | null) => this.world.players.find((p) => p.id === id)?.name ?? id ?? '-';
+        const rows = this.world.unattended.slice(-15).map((w) => {
+          const minutes = (((w.to ?? this.world.time) - w.from) / 60_000).toFixed(1);
+          const end = w.to === null ? 'STILL OPEN' : w.endedBy === 'locked' ? `locked by ${name(w.lockedBy?.playerId ?? null)}` : w.endedBy;
+          const visitors = w.visitors.map((v) => `${name(v.playerId)} (${v.lines} lines)`).join(', ') || 'nobody';
+          return `${clock(w.from)} ${w.host.padEnd(12)} ${w.account.padEnd(10)} ${minutes.padStart(5)} min  ${String(end).padEnd(22)} used by: ${visitors}`;
+        });
+        return `PCs left unlocked by their user (last ${rows.length} of ${this.world.unattended.length})\n${rows.join('\n') || '(none yet)'}`;
+      }
       case 'saw': {
         const seen = this.bots?.observations(arg) ?? [];
         return `What ${arg} noticed (last ${Math.min(15, seen.length)} of ${seen.length})\n${seen.slice(-15).map((o) => `${clock(o.time)} ${o.name.padEnd(15)} in ${o.room}${o.desk ? `, sitting at ${o.desk}` : ''}`).join('\n') || '(nothing: not a bot, or not arrived yet)'}`;
@@ -399,7 +419,7 @@ export class OfficeGame {
         return `${arg}\n${this.tail(hostname, rest.join(':'), 15)}`;
       }
       default:
-        return 'Unknown view. Try: bots, doors, badges, tasks, cctv, saw, file.';
+        return 'Unknown view. Try: bots, doors, badges, tasks, unlocked, cctv, saw, file.';
     }
   }
 

@@ -101,7 +101,7 @@ The CLI prints the players and their credentials, then waits for input. Lines st
 | `:dump [file]` | Save the whole world to JSON (default: `dumps/`). |
 | `:help` / `:quit` | Help / exit. |
 
-Passwords show as `*` while you type them. Game time also advances by the real time that passes between your inputs, so a screen left alone for 60 seconds locks itself.
+Passwords show as `*` while you type them. Game time also advances by the real time that passes between your inputs. A screen never locks itself: lock it with `loginctl lock-session`.
 
 A step-by-step tour with expected results is in [TESTING.md](TESTING.md).
 
@@ -115,7 +115,7 @@ pnpm test
 pnpm typecheck
 ```
 
-218 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, auto-lock, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, bots, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule).
+226 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, bots, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule).
 
 ```bash
 pnpm e2e
@@ -243,7 +243,9 @@ When `awaitingInput` is present, the next `sendInput` is the answer to a questio
 - **`dmesg` is readable by everyone.** Real Ubuntu restricts it to root; it is open here so employees can later check their own PC for USB events.
 - **`last`, `who` and `w` use a 10-character user column** instead of cutting names to 8 like the real tools.
 - **Hourly cron lines and DHCP renewals** are generated as time passes, so logs keep growing.
-- **Auto-lock counts only physical input.** A screen locks after 60 s without keys pressed at its own keyboard; commands arriving over ssh do not keep it awake. `autoLockSeconds` sets it per scenario or per host (`0` = never).
+- **No auto-lock.** A PC stays unlocked until someone locks it. The engine records every stretch of time a PC stood open while its user was away, and who sat at it meanwhile (`world.unattended`, for the Phase 5 debrief; never sent to players).
+- **Arrivals.** Picking an employee writes their arrival at the main entrance in the badge log; leaving the game writes their departure.
+- **Ended sessions are forgotten** from memory (matches have no time limit); `last`, `auth.log` and `.bash_history` keep the record.
 - **Switch user.** A lock screen accepts any account of that machine as a second login; the locked session stays underneath and returns when the second one logs out.
 - **Remote `loginctl lock-session` / `unlock-session`** write a `REMOTE …` line with the source IP to that machine's `auth.log`.
 - **Every master event has an `origin`**: `physical`, `remote` or `system`.
@@ -254,10 +256,9 @@ When `awaitingInput` is present, the next `sendInput` is the answer to a questio
 - `ssh host command` (remote command without logging in) is not supported; `scp` copies single files only.
 - No symlinks, no background jobs (`&`), no shell scripts: files can be read but not executed.
 - `less` prints the file; there is no pager.
-- A screen that locks itself while a password question (ssh, sudo) is open drops that question.
+- A screen locked remotely while a password question (ssh, sudo) is open drops that question.
 - Humans start at their desk without an arrival line in today's badge log; bots walk in through the main entrance and (mostly) have one.
 - Camera snapshots are recorded but there is no viewer yet (Phase 5); the developer panel can print one.
-- Ended login sessions are kept in memory for the whole match (about 100 per game hour in a full office).
 - Movement in the browser is not predicted locally: your character follows the server's position, which is smooth on a local network but would lag on a slow connection.
 - Reloading the page starts you again at the start screen; the PCs keep their state.
 
@@ -266,7 +267,7 @@ When `awaitingInput` is present, the next `sendInput` is the answer to a questio
 Copy [scenarios/nexora-small.json](scenarios/nexora-small.json) and edit it. The format is documented field by field in [packages/engine/src/core/scenario.ts](packages/engine/src/core/scenario.ts). In short:
 
 - `accounts`: username, full name, password and a `strength` (0–100, for the future password cracker).
-- `hosts`: hostname, MAC, department, which accounts exist there, who has sudo, optional `staticIp`, files, crontabs, an optional `autoLockSeconds`, and who is logged in at the screen when the game starts (`locked` or `unlocked`).
+- `hosts`: hostname, MAC, department, which accounts exist there, who has sudo, optional `staticIp`, files, crontabs, and who is logged in at the screen when the game starts (`locked` or `unlocked`).
 - `dhcp`: the address pool, plus optional old leases.
 - `history`: past logins, failed logins and sudo use. They are replayed through the same code as live actions, so old log lines look exactly like new ones.
 - `players`: who sits where, and their `role` (bots use it for their routine and tasks).

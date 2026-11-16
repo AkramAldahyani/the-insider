@@ -23,10 +23,11 @@ export { createWorld } from './core/world';
 export { advanceTime, advanceTo } from './core/clock';
 export { parseDuration, dateStamp } from './core/time';
 export {
-  openTerminal, leaveTerminal, sendInput, currentPrompt, cancelInput, switchUser, refreshTerminal, touchTerminal, screenState,
+  openTerminal, leaveTerminal, sendInput, currentPrompt, cancelInput, switchUser, refreshTerminal, screenState,
 } from './terminal';
 export type { TerminalResult, OpenResult, ScreenKind, ScreenState } from './terminal';
 export { queryEvents } from './events/log';
+export { unattendedMs } from './auth/unattended';
 export type { EventFilter } from './events/log';
 export { dhcpRequest, dhcpRelease, leaseHistory, leaseHolderAt, activeLease } from './net/dhcp';
 export { resolveHost } from './net/dns';

@@ -20,7 +20,12 @@ const DOORS = '/var/log/badge/doors.log';
 const ticksFor = (ms: number) => Math.ceil((ms / 1000) * TICK_RATE) + 2;
 const look = (r: Recorder, code: string) => r.game.publicState().doors[code].look;
 /** Lines of a badge log written during the match (the file starts with the previous day's lines). */
-const today = (r: Recorder, path: string) => r.file('SEC-SRV-01', path).split('\n').filter((l) => l.startsWith('2026-03-02'));
+const todayAll = (r: Recorder, path: string) => r.file('SEC-SRV-01', path).split('\n').filter((l) => l.startsWith('2026-03-02'));
+/**
+ * The same, without the main entrance. Picking an employee writes their
+ * arrival there (tested on its own below); most tests here are about other doors.
+ */
+const today = (r: Recorder, path: string) => todayAll(r, path).filter((l) => !l.includes('DOOR=MAIN-ENT'));
 
 /** Holds a direction for some ticks, like keeping a key pressed. */
 function hold(r: Recorder, clientId: string, dx: number, dy: number, ticks: number): void {
@@ -59,7 +64,7 @@ describe('doors', () => {
     expect(lines[0]).toMatch(/DOOR=FIN EVENT=OPEN$/);
     expect(lines[1]).toMatch(/DOOR=FIN EVENT=CLOSE OPEN_FOR=3\.[01]s PASSAGES=1$/);
     // The master log (server only) knows WHO walked through.
-    expect(queryEvents(r.game.world, { type: 'door.pass' })).toMatchObject([{ user: 's.alharbi', actor: 'p1', origin: 'physical', details: { door: 'FIN', direction: 'OUT' } }]);
+    expect(queryEvents(r.game.world, { type: 'door.pass' }).filter((e) => e.details.door === 'FIN')).toMatchObject([{ user: 's.alharbi', actor: 'p1', origin: 'physical', details: { door: 'FIN', direction: 'OUT' } }]);
   });
 
   it('a door does not close on someone standing in the doorway', () => {
@@ -159,13 +164,38 @@ describe('doors', () => {
   it('the main entrance logs departures and arrivals', () => {
     const r = new Recorder();
     r.connect('a', 'p9');
+    r.tick(ticksFor(DOOR_OPEN_MS)); // her arrival opened the entrance; let it close
     expect(r.walkToTile('a', 'p9', 6, 32)).toBe(true); // out onto the pavement
     r.tick(ticksFor(DOOR_OPEN_MS));
     expect(r.walkToTile('a', 'p9', 6, 29)).toBe(true); // and back in
-    const taps = today(r, ACCESS);
-    expect(taps).toHaveLength(2);
-    expect(taps[0]).toMatch(/DOOR=MAIN-ENT BADGE=0233 USER=m\.yousef RESULT=GRANTED DIR=OUT$/);
-    expect(taps[1]).toMatch(/DOOR=MAIN-ENT BADGE=0233 USER=m\.yousef RESULT=GRANTED DIR=IN$/);
+    const taps = todayAll(r, ACCESS);
+    expect(taps).toHaveLength(3);
+    expect(taps[0]).toMatch(/^2026-03-02 09:00:00 DOOR=MAIN-ENT BADGE=0233 USER=m\.yousef RESULT=GRANTED DIR=IN$/); // arriving at work
+    expect(taps[1]).toMatch(/DOOR=MAIN-ENT BADGE=0233 USER=m\.yousef RESULT=GRANTED DIR=OUT$/);
+    expect(taps[2]).toMatch(/DOOR=MAIN-ENT BADGE=0233 USER=m\.yousef RESULT=GRANTED DIR=IN$/);
+  });
+
+  it('picking an employee writes their arrival; leaving the game writes their departure', () => {
+    const r = new Recorder();
+    r.connect('a', 'p1');
+    expect(todayAll(r, ACCESS)).toEqual([expect.stringMatching(/^2026-03-02 09:00:00 DOOR=MAIN-ENT BADGE=0412 USER=s\.alharbi RESULT=GRANTED DIR=IN$/)]);
+    expect(look(r, 'MAIN-ENT')).toBe('open'); // anyone in Reception sees the door open as she "comes in"
+    r.tick(ticksFor(DOOR_OPEN_MS));
+    expect(todayAll(r, DOORS)).toEqual([
+      expect.stringMatching(/DOOR=MAIN-ENT EVENT=OPEN$/),
+      expect.stringMatching(/DOOR=MAIN-ENT EVENT=CLOSE OPEN_FOR=3\.[01]s PASSAGES=1$/),
+    ]);
+    r.game.disconnect('a');
+    expect(todayAll(r, ACCESS).at(-1)).toMatch(/DOOR=MAIN-ENT BADGE=0412 USER=s\.alharbi RESULT=GRANTED DIR=OUT$/);
+  });
+
+  it('taking over an employee whose bot is already inside writes no second arrival', () => {
+    const r = new Recorder({ bots: true });
+    r.tick(TICK_RATE * 250); // everyone has arrived
+    const before = todayAll(r, ACCESS).filter((l) => l.includes('USER=l.haddad') && l.includes('DOOR=MAIN-ENT')).length;
+    expect(before).toBeLessThanOrEqual(1); // her bot came in (with or without tapping behind someone)
+    r.connect('a', 'p3');
+    expect(todayAll(r, ACCESS).filter((l) => l.includes('USER=l.haddad') && l.includes('DOOR=MAIN-ENT'))).toHaveLength(before);
   });
 
   it('the server measures the distance to the reader and ignores nonsense', () => {

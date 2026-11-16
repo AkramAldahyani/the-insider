@@ -52,6 +52,7 @@ function playMatch(): Recorder {
   r.type('sara', PW['s.alharbi']);
   r.type('sara', 'last');
   r.type('sara', 'exit');
+  r.type('sara', 'loginctl lock-session'); // (there is no auto-lock)
 
   r.sitAt('omar', 'p4', 'HR-LT-03');
   r.type('omar', 'whoami');
@@ -71,7 +72,7 @@ function playMatch(): Recorder {
     r.send(client, 'dev.teleport', { hostname: 'ADMIN-SRV-01' });
     for (const what of ['bots', 'doors', 'badges', 'tasks', 'cctv', 'saw', 'file']) r.send(client, 'dev.show', { what, arg: 'ADMIN-SRV-01:/etc/shadow' });
   }
-  r.tick(20 * 70); // long enough for Sara's screen to lock itself
+  r.tick(20 * 70);
   return r;
 }
 
@@ -81,7 +82,7 @@ describe('visibility: what the game sends', () => {
   const states = JSON.stringify(r.states);
 
   it('the match really happened (so the checks below mean something)', () => {
-    expect(r.screen('sara').screen).toBe('locked'); // auto-lock reached her
+    expect(r.screen('sara').screen).toBe('locked'); // she locked it before leaving
     expect(streamOf('sara')).toContain(SARA_FILE_LINE);
     expect(streamOf('sara')).toContain('s.alharbi is not in the sudoers file');
     expect(streamOf('omar')).toContain('l.haddad\\n');

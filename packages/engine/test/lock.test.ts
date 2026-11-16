@@ -111,7 +111,7 @@ describe('screen lock', () => {
     expect(new Term(world, 'HR-LT-03', 'p3').prompt).toBe('Password: ');
   });
 
-  it('records last activity time for the future auto-lock', () => {
+  it('records the last activity time (shown as IDLE by `w`)', () => {
     const world = newWorld();
     const t = atDesk(world, 'l.haddad');
     t.type('ls');

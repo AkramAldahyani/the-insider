@@ -145,7 +145,7 @@ That second line is a clue: someone logged into Sara's account from a **differen
 ### Locking: the most important habit
 
 - When you walk away, your PC **stays unlocked** unless you lock it.
-- It **auto-locks** after about 60 seconds of inactivity.
+- It does **not** lock by itself: there is no auto-lock, on purpose.
 - **Anyone** who reaches an unlocked PC can use it — including the hacker.
 
 This single mechanic teaches a real lesson better than any slideshow: *lock your screen*.
@@ -227,7 +227,7 @@ Every match randomly opens 2–4 weaknesses, so no two games are the same:
 - The sysadmin uses a weak, crackable password.
 - A regular employee was accidentally given admin (`sudo`) rights.
 - A password was left in plain text inside a script or backup file.
-- The admin's screen takes longer than usual to auto-lock.
+- The sysadmin is extra careless and often leaves the admin PC unlocked.
 - The server room door can be **tailgated** — slip in right behind someone with access.
 
 ---

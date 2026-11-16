@@ -20,6 +20,7 @@
  * not touched - it stays logged in and locked, "parked" behind the new one -
  * and both logins are in the logs.
  */
+import { noteUnattendedInput, syncUnattended } from './auth/unattended';
 import { findUser, verifyPassword } from './auth/accounts';
 import { openSession, topSession } from './auth/sessions';
 import './commands/index';
@@ -62,7 +63,7 @@ export interface ScreenState {
 const terminalId = (hostname: string) => `term-${hostname}`;
 
 function newTerminal(world: World, hostname: string): Terminal {
-  return { id: terminalId(hostname), host: hostname, playerId: null, stack: [], parked: [], pending: null, notice: '', lastPhysicalInput: world.time };
+  return { id: terminalId(hostname), host: hostname, playerId: null, stack: [], parked: [], pending: null, notice: '' };
 }
 
 function loginPending(hostname: string): Pending {
@@ -123,6 +124,7 @@ function screenKind(world: World, terminal: Terminal): ScreenKind {
 }
 
 function finish(world: World, terminal: Terminal, run: Run, firstEvent: number): TerminalResult {
+  syncUnattended(world, terminal);
   const session = topSession(world, terminal);
   const result: TerminalResult = {
     output: run.out.join(''),
@@ -184,6 +186,7 @@ export function leaveTerminal(world: World, id: string): void {
     emit(world, { host: terminal.host, user: topSession(world, terminal)?.user ?? '', type: 'terminal.leave', details: { player: terminal.playerId } });
   }, terminal.host);
   terminal.playerId = null;
+  syncUnattended(world, terminal); // walking away from an unlocked screen starts the clock
 }
 
 /** The prompt a terminal is currently showing, without sending any input. */
@@ -201,19 +204,11 @@ export function screenState(world: World, hostname: string): ScreenState {
   return { state: session.locked ? 'locked' : 'unlocked', user: session.user };
 }
 
-/**
- * A key was pressed at this PC but no line was sent yet (someone is typing a
- * long command). Only resets the auto-lock timer.
- */
-export function touchTerminal(world: World, id: string): void {
-  getTerminal(world, id).lastPhysicalInput = world.time;
-}
-
 /** One line typed at the keyboard of a terminal. */
 export function sendInput(world: World, id: string, text: string): TerminalResult {
   const terminal = getTerminal(world, id);
   const line = text.replace(/[\r\n]+$/, '');
-  terminal.lastPhysicalInput = world.time;
+  noteUnattendedInput(world, terminal);
 
   return atKeyboard(world, terminal, (run) => {
     if (terminal.notice) {
@@ -240,8 +235,8 @@ export function sendInput(world: World, id: string, text: string): TerminalResul
 }
 
 /**
- * The screen changed without anyone typing here (the idle timer locked it, a
- * remote command locked/unlocked it, a connection was killed). Returns what to
+ * The screen changed without anyone typing here (a remote command
+ * locked/unlocked it, a connection was killed). Returns what to
  * draw now, or null when nothing changed. The game server calls this for
  * seated players after time passes.
  */
@@ -270,7 +265,6 @@ export function refreshTerminal(world: World, id: string): TerminalResult | null
  */
 export function cancelInput(world: World, id: string): TerminalResult {
   const terminal = getTerminal(world, id);
-  terminal.lastPhysicalInput = world.time;
   return atKeyboard(world, terminal, (run) => {
     const pending = terminal.pending;
     if (!pending) {
@@ -299,7 +293,6 @@ export function cancelInput(world: World, id: string): TerminalResult {
  */
 export function switchUser(world: World, id: string): TerminalResult {
   const terminal = getTerminal(world, id);
-  terminal.lastPhysicalInput = world.time;
   return atKeyboard(world, terminal, (run) => {
     syncScreen(run);
     if (terminal.pending?.kind !== 'unlock') return; // only offered on a lock screen

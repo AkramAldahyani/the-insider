@@ -12,6 +12,7 @@
  * not yet left a history file - and one whose shell is killed with `kill -9`
  * never does.
  */
+import { syncUnattended } from './unattended';
 import { randInt } from '../core/rng';
 import { emit } from '../events/log';
 import { getNode, sysWrite } from '../fs/vfs';
@@ -172,6 +173,7 @@ export function closeSession(world: World, session: Session, opts: { writeHistor
     clientHost.connections = clientHost.connections.filter((c) => c.sessionId !== session.id);
   }
   if (host.consoleSessionId === session.id) host.consoleSessionId = null;
+  syncHost(world, host.hostname);
 
   const base = { host: host.hostname, user: session.user, sourceIp: session.sourceIp };
   if (session.kind === 'ssh') {
@@ -232,10 +234,10 @@ export function terminateSession(world: World, session: Session, hard: boolean):
 
 /** How a lock or unlock was requested (ends up in the event and in the logs). */
 export interface LockRequest {
-  /** The account that asked, or "idle-timer" for the automatic lock. */
+  /** The account that asked. */
   by: string;
-  /** "loginctl" (a typed command), "idle" (auto-lock) or "scenario" (how the match starts). */
-  via: 'loginctl' | 'idle' | 'scenario';
+  /** "loginctl" (a typed command) or "scenario" (how the match starts). There is no auto-lock. */
+  via: 'loginctl' | 'scenario';
   /** Set when the command was typed in an ssh session: the address it came from. */
   sourceIp?: string | null;
   tty?: string;
@@ -249,9 +251,10 @@ export function lockConsole(world: World, host: Host, req: LockRequest): boolean
     session.locked = true;
     emit(world, {
       host: host.hostname, user: session.user, sourceIp: req.sourceIp ?? null, type: 'session.lock',
-      details: { logindId: session.logindId, by: req.by, via: req.via, tty: req.tty ?? '', idleSeconds: Math.round(host.autoLockMs / 1000) },
+      details: { logindId: session.logindId, by: req.by, via: req.via, tty: req.tty ?? '' },
     });
   }
+  syncHost(world, host.hostname);
   return true;
 }
 
@@ -271,5 +274,35 @@ export function unlockConsole(world: World, host: Host, req: LockRequest): boole
       details: { logindId: session.logindId, by: req.by, via: req.via, tty: req.tty ?? '' },
     });
   }
+  syncHost(world, host.hostname);
   return true;
+}
+
+/** Updates the unattended-PC record of a host's screen (see unattended.ts). */
+function syncHost(world: World, hostname: string): void {
+  const terminal = Object.values(world.terminals).find((t) => t.host === hostname);
+  if (terminal) syncUnattended(world, terminal);
+}
+
+/**
+ * Forgets sessions that have ended, so a match can run for hours without
+ * growing. Called by the clock after every advance.
+ *
+ * Nothing is lost that a player could look at: logins and logouts are in
+ * wtmp (`last`) and auth.log, commands were saved to ~/.bash_history when the
+ * shell ended. A session is kept while anything still points at it (a
+ * terminal's screen, or a live session it was started from).
+ */
+export function pruneSessions(world: World): void {
+  const referenced = new Set<string>();
+  for (const terminal of Object.values(world.terminals)) {
+    for (const id of terminal.stack) referenced.add(id);
+    for (const stack of terminal.parked) for (const id of stack) referenced.add(id);
+  }
+  for (const session of Object.values(world.sessions)) {
+    if (session.logoutTime === null && session.parentId) referenced.add(session.parentId);
+  }
+  for (const [id, session] of Object.entries(world.sessions)) {
+    if (session.logoutTime !== null && !referenced.has(id)) delete world.sessions[id];
+  }
 }

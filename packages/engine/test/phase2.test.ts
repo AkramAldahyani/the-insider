@@ -1,93 +1,125 @@
 /**
- * Phase 2 engine features: auto-lock, switch user, remote lock/unlock logging,
- * physical vs remote input, Ctrl+C.
+ * Screen locking without auto-lock (and the record of unattended PCs),
+ * switch user, remote lock/unlock logging, physical vs remote input, Ctrl+C,
+ * and forgetting ended sessions.
  */
 import { describe, expect, it } from 'vitest';
 import {
-  advanceTime, cancelInput, queryEvents, refreshTerminal, screenState, switchUser, touchTerminal,
+  advanceTime, cancelInput, leaveTerminal, queryEvents, refreshTerminal, screenState, switchUser, unattendedMs,
 } from '../src/index';
-import { PW, SERVER, Term, atDesk, authLog, newWorld, ssh } from './helpers';
+import { PW, SERVER, Term, atDesk, authLog, newWorld, scenario, ssh } from './helpers';
 
 const SECOND = 1000;
+const START = Date.parse(scenario.startTime);
 
-describe('auto-lock', () => {
-  it('locks a screen after 60 s without physical input, and logs why', () => {
-    const world = newWorld(1, true);
-    const sara = atDesk(world, 's.alharbi');
+describe('no auto-lock: screens stay open until someone locks them', () => {
+  it('an unlocked PC is still unlocked hours later, with nobody touching it', () => {
+    const world = newWorld();
+    atDesk(world, 's.alharbi').type('pwd');
+    advanceTime(world, 5 * 3600 * SECOND);
     expect(screenState(world, 'FIN-LT-07')).toEqual({ state: 'unlocked', user: 's.alharbi' });
-
-    advanceTime(world, 59 * SECOND);
-    expect(screenState(world, 'FIN-LT-07').state).toBe('unlocked');
-    expect(refreshTerminal(world, sara.id)).toBeNull(); // nothing changed on screen
-
-    advanceTime(world, 1 * SECOND);
-    expect(screenState(world, 'FIN-LT-07')).toEqual({ state: 'locked', user: 's.alharbi' });
-    expect(authLog(world, 'FIN-LT-07')).toContain('of user s.alharbi locked (idle timeout, 60s without keyboard input).');
-
-    // The seated player's screen is redrawn as a lock screen.
-    const redraw = refreshTerminal(world, sara.id)!;
-    expect(redraw.output).toContain('screen locked by s.alharbi');
-    expect(redraw.screen).toBe('locked');
-    expect(redraw.awaitingInput).toEqual({ masked: true });
-    expect(refreshTerminal(world, sara.id)).toBeNull();
-
-    const lock = queryEvents(world, { type: 'session.lock', host: 'FIN-LT-07' }).pop()!;
-    expect(lock.details.via).toBe('idle');
-    expect(lock.origin).toBe('system');
-    expect(lock.actor).toBeNull();
+    expect(queryEvents(world, { type: 'session.lock', host: 'FIN-LT-07', since: START })).toEqual([]);
+    // The scenario's PCs that start unlocked stay that way too.
+    expect(screenState(world, 'HR-LT-03').state).toBe('unlocked');
+    expect(screenState(world, 'MKT-LT-09').state).toBe('unlocked');
   });
 
-  it('every physical input restarts the timer, including keys pressed before Enter', () => {
-    const world = newWorld(1, true);
+  it('a lock is always somebody\'s doing, and logged as such', () => {
+    const world = newWorld();
     const sara = atDesk(world, 's.alharbi');
-    for (let i = 0; i < 5; i++) {
-      advanceTime(world, 40 * SECOND);
-      sara.type('pwd');
-    }
-    expect(screenState(world, 'FIN-LT-07').state).toBe('unlocked');
-    advanceTime(world, 50 * SECOND);
-    touchTerminal(world, sara.id); // still typing a long command
-    advanceTime(world, 50 * SECOND);
-    expect(screenState(world, 'FIN-LT-07').state).toBe('unlocked');
-    advanceTime(world, 10 * SECOND);
-    expect(screenState(world, 'FIN-LT-07').state).toBe('locked');
+    sara.type('loginctl lock-session');
+    const lock = queryEvents(world, { type: 'session.lock', host: 'FIN-LT-07', since: START }).pop()!;
+    expect(lock).toMatchObject({ actor: 'p1', origin: 'physical', details: { via: 'loginctl', by: 's.alharbi' } });
+    expect(authLog(world, 'FIN-LT-07')).toContain('Session 2 of user s.alharbi locked.');
+  });
+});
+
+describe('unattended PCs (ground truth for the debrief)', () => {
+  it('records how long a PC stood unlocked after its owner walked away, and who used it', () => {
+    const world = newWorld();
+    const sara = atDesk(world, 's.alharbi');
+    sara.type('pwd');
+    leaveTerminal(world, sara.id); // she walks away without locking
+    const left = world.time;
+    expect(world.unattended.filter((w) => w.host === 'FIN-LT-07')).toMatchObject([{ account: 's.alharbi', ownerPlayer: 'p1', from: left, to: null, visitors: [] }]);
+
+    advanceTime(world, 90 * SECOND);
+    const omar = new Term(world, 'FIN-LT-07', 'p4'); // Omar sits at her open PC
+    omar.type('whoami');
+    omar.type('cat Documents/invoices_feb.csv');
+    leaveTerminal(world, omar.id);
+    advanceTime(world, 60 * SECOND);
+    expect(unattendedMs(world, 'FIN-LT-07')).toBe(world.time - left);
+
+    // Sara comes back: the window closes.
+    new Term(world, 'FIN-LT-07', 'p1');
+    const window = world.unattended.find((w) => w.host === 'FIN-LT-07')!;
+    expect(window).toMatchObject({ to: world.time, endedBy: 'owner returned' });
+    expect(window.visitors).toMatchObject([{ playerId: 'p4', lines: 2 }]);
+    expect(window.visitors[0].firstAt).toBe(left + 90 * SECOND);
   });
 
-  it('input that arrives over ssh does NOT keep the target screen awake', () => {
-    const world = newWorld(1, true);
-    // Sara unlocks her PC and walks away; Khalid works on it remotely the whole time.
-    atDesk(world, 's.alharbi');
+  it('a window ends when someone locks the screen, and says who did', () => {
+    const world = newWorld();
+    const sara = atDesk(world, 's.alharbi');
+    leaveTerminal(world, sara.id);
+    const helper = new Term(world, 'FIN-LT-07', 'p8'); // Dana passes by and locks it for her
+    helper.type('loginctl lock-session');
+    expect(world.unattended.find((w) => w.host === 'FIN-LT-07')).toMatchObject({ endedBy: 'locked', lockedBy: { account: 's.alharbi', playerId: 'p8' } });
+  });
+
+  it('the PCs that start unlocked are open windows from the first second', () => {
+    const world = newWorld();
+    const open = world.unattended.filter((w) => w.to === null).map((w) => `${w.host}:${w.account}`).sort();
+    expect(open).toEqual(['HR-LT-03:l.haddad', 'MKT-LT-09:y.khalil']);
+    expect(world.unattended.every((w) => w.from === START)).toBe(true);
+  });
+
+  it('locking before leaving leaves no window; a remote lock closes one', () => {
+    const world = newWorld();
+    const sara = atDesk(world, 's.alharbi');
+    sara.type('loginctl lock-session');
+    leaveTerminal(world, sara.id);
+    expect(world.unattended.some((w) => w.host === 'FIN-LT-07')).toBe(false);
+
     const khalid = atDesk(world, 'k.nasser');
-    ssh(khalid, 'k.nasser', 'FIN-LT-07');
-    for (let i = 0; i < 7; i++) {
-      advanceTime(world, 9 * SECOND);
-      expect(khalid.type('hostname')).toBe('FIN-LT-07\n');
+    ssh(khalid, 'l.haddad', 'HR-LT-03');
+    khalid.type('loginctl lock-session');
+    expect(world.unattended.find((w) => w.host === 'HR-LT-03')).toMatchObject({ endedBy: 'locked', lockedBy: { account: 'l.haddad', playerId: 'p5' } });
+  });
+
+  it('logging out closes a window', () => {
+    const world = newWorld();
+    const omar = new Term(world, 'HR-LT-03', 'p4');
+    omar.type('exit');
+    expect(world.unattended.find((w) => w.host === 'HR-LT-03')).toMatchObject({ endedBy: 'logged out', visitors: [{ playerId: 'p4', lines: 1 }] });
+  });
+});
+
+describe('ended sessions are forgotten', () => {
+  it('a long day of ssh logins does not keep growing the session list; the logs keep the record', () => {
+    const world = newWorld();
+    const sara = atDesk(world, 's.alharbi');
+    const before = Object.keys(world.sessions).length;
+    for (let i = 0; i < 40; i++) {
+      ssh(sara, 's.alharbi', SERVER);
+      sara.type('exit');
     }
-    expect(screenState(world, 'FIN-LT-07').state).toBe('locked');
-    // ...while Khalid's own PC, where his fingers are, stays unlocked.
-    expect(screenState(world, 'IT-WS-02').state).toBe('unlocked');
+    advanceTime(world, SECOND);
+    expect(Object.keys(world.sessions).length).toBeLessThanOrEqual(before);
+    const server = new Term(world, SERVER, 'p5');
+    expect(server.prompt).toBe('ADMIN-SRV-01 login: ');
+    expect((authLog(world, SERVER).match(/Accepted password for s\.alharbi/g) ?? []).length).toBeGreaterThanOrEqual(40);
   });
 
-  it('respects per-machine settings: off on HR-LT-03, 10 minutes on MKT-LT-09', () => {
-    const world = newWorld(1, true);
-    expect(screenState(world, 'HR-LT-03').state).toBe('unlocked');
-    expect(screenState(world, 'MKT-LT-09').state).toBe('unlocked');
-    advanceTime(world, 9 * 60 * SECOND);
-    expect(screenState(world, 'MKT-LT-09').state).toBe('unlocked');
-    advanceTime(world, 61 * SECOND);
-    expect(screenState(world, 'MKT-LT-09').state).toBe('locked');
-    advanceTime(world, 3 * 3600 * SECOND);
-    expect(screenState(world, 'HR-LT-03').state).toBe('unlocked');
-  });
-
-  it('standing up does not lock, and sitting down does not count as input', () => {
-    const world = newWorld(1, true);
-    atDesk(world, 's.alharbi');
-    advanceTime(world, 30 * SECOND);
-    const stranger = new Term(world, 'FIN-LT-07', 'p4');
-    expect(stranger.prompt).toBe('s.alharbi@FIN-LT-07:~$ ');
-    advanceTime(world, 31 * SECOND);
-    expect(screenState(world, 'FIN-LT-07').state).toBe('locked');
+  it('a session that is still on a screen, or under a live su, is kept', () => {
+    const world = newWorld();
+    const t = atDesk(world, 'k.nasser');
+    ssh(t, 'k.nasser', SERVER);
+    advanceTime(world, SECOND);
+    const live = Object.values(world.sessions).filter((x) => x.logoutTime === null);
+    for (const session of live) expect(world.sessions[session.id]).toBeDefined();
+    expect(t.type('whoami')).toBe('k.nasser\n');
   });
 });
 

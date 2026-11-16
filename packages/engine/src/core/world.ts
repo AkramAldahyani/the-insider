@@ -17,6 +17,7 @@ import { dhcpRequest } from '../net/dhcp';
 import { allocPid, bootProcesses } from '../proc/processes';
 import type { Host, Session, World } from '../types';
 import { advanceTo } from './clock';
+import { syncAllUnattended } from '../auth/unattended';
 import { sendMail } from '../commands/mail';
 import { doorClosed, doorOpened, tapBadge } from '../physical/badges';
 import { randInt, randString } from './rng';
@@ -92,7 +93,6 @@ function buildHost(world: World, scenario: Scenario, sh: ScenarioHost, uids: Map
     wtmp: [],
     journal: [],
     consoleSessionId: null,
-    autoLockMs: 0, // switched on at the end of createWorld, see there
   };
   const dir = (path: string, mode = 0o755, owner = 'root', group = 'root') => sysMkdir(host, path, { owner, group, mode, time: t0 });
   const file = (path: string, content: string, mode = 0o644, owner = 'root', group = 'root', time = t0) =>
@@ -229,6 +229,7 @@ export function createWorld(scenario: Scenario, seed = 1): World {
       serverHost: scenario.badgeSystem?.server ?? '',
       holders: Object.fromEntries(scenario.accounts.filter((a) => a.badge).map((a) => [a.username, { id: a.badge!.id, access: a.badge!.access ?? [] }])),
     },
+    unattended: [],
     mail: { serverHost: scenario.mail?.server ?? scenario.dhcp.server, messages: [] },
     web: {
       proxyHost: scenario.web ? (scenario.web.proxy ?? scenario.dhcp.server) : '',
@@ -269,7 +270,7 @@ export function createWorld(scenario: Scenario, seed = 1): World {
       at(c.loginMinutesAgo, () => {
         const session = openSession(world, { host, user: c.user, kind: 'console' });
         const id = `term-${host.hostname}`;
-        world.terminals[id] = { id, host: host.hostname, playerId: null, stack: [session.id], parked: [], pending: null, notice: '', lastPhysicalInput: world.time };
+        world.terminals[id] = { id, host: host.hostname, playerId: null, stack: [session.id], parked: [], pending: null, notice: '' };
       });
       if (c.state === 'locked') at(Math.max(0, c.loginMinutesAgo - 3), () => lockConsole(world, host, { by: c.user, via: 'scenario' }));
     }
@@ -350,13 +351,10 @@ export function createWorld(scenario: Scenario, seed = 1): World {
   }
   advanceTo(world, start);
 
-  // Auto-lock starts counting only now. During the replay above it was off, so
-  // a PC the scenario wants UNLOCKED at the start really is unlocked: its owner
-  // "just walked away" and the idle timer begins at the first second of play.
-  for (const sh of scenario.hosts) {
-    world.hosts[sh.hostname].autoLockMs = (sh.autoLockSeconds ?? scenario.autoLockSeconds ?? 60) * 1000;
-  }
-  for (const terminal of Object.values(world.terminals)) terminal.lastPhysicalInput = start;
+  // There is no auto-lock: a PC the scenario starts UNLOCKED stays open until
+  // somebody locks it. Its owner "just walked away", which the record of
+  // unattended PCs notes from the first second of play.
+  syncAllUnattended(world);
   // Background noise starts with the match (see core/noise.ts for why not earlier).
   world.noise = { from: start, done: start };
   return world;

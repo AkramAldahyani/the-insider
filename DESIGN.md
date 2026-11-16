@@ -38,7 +38,7 @@ Rooms:
 - **Server room** — badge-restricted; contains `ADMIN-SRV-01`
 - **Security office** — CCTV monitors and badge logs
 - **Cafeteria / meeting room** — emergency meeting button
-- **Printer room, storage, bathrooms** — camera blind spots
+- **Printer room, storage, bathrooms** — camera blind spots (in the small office also the department rooms and the security office)
 
 Physical security systems:
 - **Badge readers** log every door entry (who, which door, when).
@@ -47,10 +47,10 @@ Physical security systems:
 
 ### CCTV recording (decided in Phase 3)
 
-- Each camera watches **one room up to a range**; both are properties of the camera on the map. In the small office: reception, the corridor (two cameras that overlap), the IT side of the server room door, and the cafeteria.
+- Each camera watches **one room up to a range**; both are properties of the camera on the map. In the small office: reception, the corridor (two cameras that overlap), the IT side of the server room door, the cafeteria, and the server room itself (its door from the inside and the whole room).
 - Every 2 game seconds a camera's scene is compared with its last stored **snapshot**; a new one is stored when something changed, and once a minute anyway. A snapshot is data (who, where, facing, sitting at which desk), from which the Phase 5 viewer will draw the picture.
 - The recorder writes a **motion log** on `SEC-SRV-01` (`/var/log/cctv/motion.log`): camera, head count, snapshot id. It names nobody: to know who it was, someone must look at the picture.
-- **Blind spots:** rooms without a camera are never recorded (printer room, storage, bathrooms; in the small office also the department rooms, the security office and the inside of the server room).
+- **Blind spots:** rooms without a camera are never recorded (printer room, storage, bathrooms; in the small office also the department rooms and the security office).
 - Snapshots stay on the server until the viewer exists.
 
 ### Doors and badges (decided in Phase 3)
@@ -88,8 +88,8 @@ Map size scales with lobby size:
   - **Locked PC:** a lock screen asking for the password of the user who locked it. It also offers **switch user**: any valid credentials *for that machine* start a second session. The first session stays logged in and locked underneath, and both logins are logged.
   - **PC with nobody logged in:** a Linux-style login prompt.
   - **Unlocked PC:** you get that user's shell and act **as that user**.
-- PCs stay unlocked when the owner walks away, until they lock manually (`loginctl lock-session`) or auto-lock triggers after 60 seconds idle. **Standing up never locks.**
-- **Auto-lock** is part of the engine and driven by the game clock. Only **physical** input (keys pressed at that machine's own keyboard) resets the timer; input arriving over ssh does not. The time is set per scenario (`autoLockSeconds`, default 60) and can be overridden per machine (`0` = never), which is how a scenario gets PCs that start unlocked and how the "longer auto-lock timer" vulnerability of §6 will be expressed.
+- **There is no auto-lock.** A PC stays unlocked until someone locks it (`loginctl lock-session`, at the PC or remotely). This is deliberate: the game teaches players to lock their own screen. **Standing up never locks.**
+- **Unattended PCs are recorded** for the debrief (Phase 5): every stretch of time a PC stood unlocked while the person logged in was away, how it ended (locked, logged out, owner came back) and which other players sat at it meanwhile, with how many lines each typed. This is ground truth only: players never see it, and it writes no log line.
 - **Remote lock/unlock:** `loginctl lock-session` / `unlock-session` also work over ssh for the session's own user and for root (this is what the helpdesk's force-lock will use). Because a remote *unlock* opens a PC for whoever stands at it, each one writes a line to that machine's `auth.log` naming who asked and from which IP.
 - **Time:** the server owns the clock and advances it in real time: 1 game second per real second, with a configurable multiplier. The engine itself never reads a real clock.
 - Every event in the master log records the **account** used, the **player** physically at the keyboard, and whether the input was **physical** (typed at that machine) or **remote** (arrived over ssh).
@@ -165,7 +165,7 @@ Each match randomly enables 2–4 vulnerabilities so routes cannot be memorized:
 - The sysadmin uses a weak (crackable) password.
 - A regular employee has `sudo` rights by mistake.
 - A plaintext password sits in a script or backup file.
-- An admin session has a longer auto-lock timer than normal.
+- The sysadmin's bot is extra careless and often leaves the admin PC unlocked.
 - The server room door can be tailgated (enter within 2 s after someone with access).
 
 Alerts become more frequent as the hacker progresses, without revealing exact progress.
@@ -236,11 +236,12 @@ Decided in Phase 3:
 Decided in Phase 3 (bot employees; the bot hacker, chat and voting come in Phase 5):
 
 - **A bot is an ordinary body.** It is the same server object as a human player and acts through the same functions (walk, tap a badge, sit, type), so it obeys the same rules and leaves the same logs under its own account. A browser receives exactly the same fields for a bot as for a human. Nothing sent to a browser says who is a bot, and the start screen does not mark bot-played employees as taken.
-- **One bot per employee nobody plays.** Bots come to work through the main entrance during the first four minutes; humans start at their desks. A human who picks an employee replaces that employee's bot; when the human leaves, a bot takes over again.
-- **Routine** (a behaviour tree): walk to the own desk, sit, log in or unlock (or switch user if someone else's session is locked there), work, and every few minutes take a break: lock the screen or forget to (25 % by default, a future difficulty setting), walk to the cafeteria, bathrooms, printer room or a colleague, come back. The guard patrols, the helpdesk visits desks, the sysadmin sometimes goes to the server room.
-- **Work** is the bot's job tasks, typed as real commands with human pauses, plus everyday commands, mail and browsing. Bots know only their own credentials. They mistype a password about once in sixteen times.
+- **One bot per employee nobody plays.** Bots come to work through the main entrance during the first four minutes; humans start at their desks, and picking an employee writes their arrival in the badge log (leaving the game writes their departure). A human who picks an employee replaces that employee's bot; when the human leaves, a bot takes over again.
+- **Routine** (a behaviour tree): walk to the own desk, sit, log in or unlock (or switch user if someone else's session is locked there), work, and every few minutes take a break: lock the screen or forget to (25 % by default, a future difficulty setting; a forgotten PC stays open until its owner returns, since there is no auto-lock), walk to the cafeteria, bathrooms, printer room or a colleague, come back. The guard patrols, the helpdesk visits desks, the sysadmin sometimes goes to the server room.
+- **Work** is the bot's job tasks, typed as real commands with human pauses, plus everyday commands, mail and browsing. **Pace:** a bot starts a new task about every 3 game minutes (configurable, `botOptions.taskMinutes`); between tasks it types an everyday command now and then and is otherwise idle. Bots know only their own credentials. They mistype a password about once in sixteen times.
 - **Bots do not try doors their badge cannot open**, but about one time in four they walk through a door someone else just opened without tapping. That is the natural tailgating in the logs.
 - **Observations:** each bot remembers who it saw in the room it was in (appeared, sat down at which desk, stood up), with the time. Nothing uses this yet; in Phase 5 it is what bots will say in meetings and vote on.
+- **Ended login sessions are dropped from memory** as soon as nothing refers to them, because matches have no time limit. The log files (`auth.log`, `last`, `.bash_history`) remain the full record.
 - Bots have their own seeded random numbers, separate from the engine's, so adding or removing a bot never changes the simulated network.
 - **Route finding** is A* on the map's tile grid; doors are handled by whoever walks the route.
 

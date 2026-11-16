@@ -25,8 +25,6 @@ export interface EditorEvents {
   onEscape(): void;
   /** F2: switch user. */
   onSwitchUser(): void;
-  /** Any key that changed the line (used to keep the screen from auto-locking while typing). */
-  onActivity(): void;
 }
 
 const ESC = '\x1b';
@@ -149,7 +147,6 @@ export class LineEditor {
     this.text = this.text.slice(0, this.cursor) + chars + this.text.slice(this.cursor);
     this.cursor += chars.length;
     this.redraw();
-    this.events.onActivity();
   }
 
   private erase(from: number, to: number): void {
@@ -157,7 +154,6 @@ export class LineEditor {
     this.text = this.text.slice(0, from) + this.text.slice(to);
     this.cursor = from;
     this.redraw();
-    this.events.onActivity();
   }
 
   private move(to: number): void {

@@ -192,12 +192,11 @@ export function materialize(world: World, e: GameEvent): void {
     // ── Screen lock ──
     // Three ways a screen gets locked/unlocked, each with its own evidence:
     //  - by password at the keyboard  -> the gdm line (only for unlock);
-    //  - by the idle timer            -> "(idle timeout ...)";
     //  - by `loginctl` over ssh       -> an extra line naming WHO asked and
     //    FROM WHICH ADDRESS. Real systemd does not log that address; we add it
     //    on purpose so a remote lock/unlock can always be traced.
     case 'session.lock':
-      logind(`Session ${str(d.logindId)} of user ${e.user} locked${d.via === 'idle' ? ` (idle timeout, ${str(d.idleSeconds)}s without keyboard input)` : ''}.`);
+      logind(`Session ${str(d.logindId)} of user ${e.user} locked.`);
       if (e.sourceIp) auth('loginctl', null, `REMOTE lock-session: session ${str(d.logindId)} of user ${e.user} locked by ${str(d.by)} from ${e.sourceIp} (${str(d.tty)})`);
       break;
     case 'session.unlock':

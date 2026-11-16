@@ -68,6 +68,8 @@ export interface Persona {
   commands: string[];
   /** Probability of walking away without locking the screen. */
   forgetLock: number;
+  /** Average game time between the starts of two job tasks (ms). */
+  taskEveryMs: number;
 }
 
 /** A bot's memory. Plain data, so it is easy to show in the developer panel. */
@@ -92,8 +94,8 @@ export interface Mind {
   /** A task step that sends the bot to a room: the room and how long to stay (game ms). "" = none. */
   errand: string;
   errandMs: number;
-  /** Everyday commands still to type before starting the next task. */
-  fillers: number;
+  /** Game time before which the bot does not START a new job task (it may finish the current one). */
+  nextTaskAt: number;
   /** The task step last attempted and how often, to give up on one that never completes. */
   stepKey: string;
   stepTries: number;
@@ -101,12 +103,13 @@ export interface Mind {
   doing: string;
 }
 
-export function newMind(now: number, random: Random): Mind {
+export function newMind(now: number, random: Random, taskEveryMs: number): Mind {
   return {
     nextBreakAt: now + random.between(120, 360) * SECOND,
     breakSpot: null, breakRoom: '', atBreakSpot: false, breakUntil: 0,
     nextKeyAt: 0, screen: null, loginSteps: 0, leaving: 'undecided', doing: 'arriving',
-    typing: false, errand: '', errandMs: 0, fillers: random.int(1, 3), stepKey: '', stepTries: 0,
+    // The first task starts some time after sitting down, not all at once.
+    typing: false, errand: '', errandMs: 0, nextTaskAt: now + random.between(0.2, 0.8) * taskEveryMs, stepKey: '', stepTries: 0,
   };
 }
 
@@ -332,7 +335,13 @@ function work(b: BotSubject): Status {
     return 'running';
   }
 
-  const step = mind.fillers > 0 && !inRemoteShell(b) ? null : b.world.nextStep();
+  // The next task step - unless it would START a new task before it is time (task pace).
+  const next = b.world.nextStep();
+  const step = next && (next.index > 0 || inRemoteShell(b) || b.world.now() >= mind.nextTaskAt) ? next : null;
+  if (step?.index === 0 && mind.stepKey !== `${step.taskId}/0`) {
+    // Starting a task: the one after it may start about one pace from now (between 0.7 and 1.3 of it).
+    mind.nextTaskAt = b.world.now() + b.random.between(0.7, 1.3) * persona.taskEveryMs;
+  }
   if (step?.visit) {
     // A step somewhere else in the building: handled like a break with a destination.
     mind.errand = step.visit;
@@ -354,19 +363,22 @@ function work(b: BotSubject): Status {
     }
     mind.screen = b.world.type(step.run);
     mind.doing = `task: ${step.title}`;
-    if (step.last) mind.fillers = b.random.int(1, 4); // potter about a little before the next task
     pause(b, 3, 10);
     return 'running';
   }
 
-  // Nothing from a task right now.
-  if (inRemoteShell(b)) mind.screen = b.world.type('exit');
-  else {
-    mind.screen = b.world.type(b.random.pick(persona.commands));
-    mind.fillers = Math.max(0, mind.fillers - 1);
-    mind.doing = 'working';
+  // Nothing from a task right now: now and then an everyday command, otherwise
+  // reading, thinking, a phone call... (idle time: no keys pressed at all).
+  if (inRemoteShell(b)) {
+    mind.screen = b.world.type('exit');
+    pause(b, 2, 6);
+    return 'running';
   }
-  pause(b, 6, 24);
+  if (b.random.chance(0.6)) {
+    mind.screen = b.world.type(b.random.pick(persona.commands));
+    mind.doing = 'working';
+  } else mind.doing = 'reading';
+  pause(b, 15, 50);
   return 'running';
 }
 

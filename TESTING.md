@@ -11,9 +11,9 @@ Both use the same scenario. With the default seed the machines are:
 |---|---|---|---|---|---|
 | FIN-LT-07 | Finance | 10.0.2.58 | s.alharbi | `Riyadh2024!` | locked |
 | FIN-LT-04 | Finance | 10.0.2.142 | r.mansour | `football7` | login prompt |
-| HR-LT-03 | HR | 10.0.2.115 | l.haddad | `Lina@HR#2025` | **unlocked**, never locks itself |
+| HR-LT-03 | HR | 10.0.2.115 | l.haddad | `Lina@HR#2025` | **unlocked** |
 | HR-LT-05 | HR | 10.0.2.134 | n.saleh | `Noor!Saleh#88` | locked |
-| MKT-LT-09 | Marketing | 10.0.2.168 | y.khalil | `pixel1234` | **unlocked**, locks after 10 min |
+| MKT-LT-09 | Marketing | 10.0.2.168 | y.khalil | `pixel1234` | **unlocked** |
 | MKT-LT-11 | Marketing | 10.0.2.71 | o.farouk | `summer2025` | locked |
 | IT-WS-01 | IT | 10.0.2.128 | d.aziz (helpdesk) | `H3lpdesk-Dana-42` | login prompt |
 | IT-WS-02 | IT | 10.0.2.50 | k.nasser (sysadmin) | `Tr0ub4dor&3xK9` | locked |
@@ -82,13 +82,12 @@ Open http://localhost:5173. To start from a clean office at any time, stop `pnpm
 | Press `E` again within a minute | Your shell is still there. No password. |
 | Type `loginctl lock-session` | The lock screen. Press `Esc`: the monitor is amber, "LOCKED s.alharbi". |
 
-## E. Auto-lock
+## E. No auto-lock
 
 | Do | Expect |
 |---|---|
-| Unlock FIN-LT-07 again, then do not touch the keyboard for 60 seconds | The lock screen appears by itself. |
-| Unlock, press `Esc`, wait 60 seconds while watching the monitor | It turns from green to amber. |
-| Unlock and keep typing slowly (a key every few seconds) for more than a minute | It does not lock: typing at this keyboard counts. |
+| Unlock FIN-LT-07 again, then do not touch the keyboard for a few minutes | It stays unlocked: nothing locks a screen except a person. |
+| Press `Esc` and watch the monitor | It stays green until someone locks it. |
 
 ## F. Someone else's unlocked PC
 
@@ -128,7 +127,7 @@ Open http://localhost:5173. To start from a clean office at any time, stop `pnpm
 | `ssh k.nasser@HR-LT-05` and the password | `k.nasser@HR-LT-05:~$` |
 | `sudo loginctl unlock-session` and the password | No output. |
 | `sudo grep REMOTE /var/log/auth.log` | `REMOTE unlock-session: session … of user n.saleh unlocked by k.nasser from 10.0.2.50 (pts/0)` |
-| `exit`, `Esc`, look at HR-LT-05 | Green for a minute, then it locks itself again. |
+| `exit`, `Esc`, look at HR-LT-05 | Green, and it stays green: there is no auto-lock. |
 
 ## J. Developer panel (development only)
 
@@ -180,7 +179,7 @@ To speed things up, open the developer panel (`` ` ``) and set the speed to ×10
 
 1. Stand in the corridor and watch. Within four minutes of the match starting, the other nine employees appear at the bottom left (the main entrance in Reception), badge in and walk to their desks. They have name labels and look exactly like you.
 2. Follow one into a department room: they sit, their monitor turns green (unlocked), and they stay for a few minutes.
-3. Wait for someone to get up. Most monitors turn amber (they locked the screen) just before they stand; now and then one stays green for a minute before it locks itself. That one was forgotten.
+3. Wait for someone to get up. Most monitors turn amber (they locked the screen) just before they stand; about one in four stays green until its owner comes back. That one was forgotten, and anyone could have used it.
 4. Open the developer panel and press **bots**. Expected: nine lines, each with a desk or `walking`, a count of finished tasks and what the bot is doing (`working`, `task: …`, `in Cafeteria / meeting room`…), and one line `HUMAN` for you.
 5. Press **doors**: every door with its kind and whether it is open.
 
@@ -253,6 +252,13 @@ tail -n 15 /var/log/syslog
 
 Expected: `systemd-timesyncd … Contacted time server 10.0.1.10:123`, `systemd[1]: Starting Cleanup of Temporary Directories...` and similar lines with timestamps spread over the hour, plus the hourly `CRON` lines. Nobody typed anything to cause them.
 
+## T2. Changes made after Phase 3
+
+1. **Arrival line.** Start as anyone, then as Tariq read `tail -n 3 /var/log/badge/access.log` on SEC-SRV-01: your employee's `DOOR=MAIN-ENT … DIR=IN` at the second you picked them. The main entrance door also opened for 3 seconds. Close the browser tab: a `DIR=OUT` line follows.
+2. **Server room camera.** Developer panel → camera `CAM-06` → **snapshot** while someone is in the server room: they are listed.
+3. **Unattended PCs.** Developer panel → **Show: unlocked**: every PC that stood open while its user was away, for how long, how it ended and who sat at it.
+4. **Task pace.** After 30 minutes, developer panel → **tasks**: about 8-10 finished per bot, not 30.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -265,7 +271,7 @@ Expected: `systemd-timesyncd … Contacted time server 10.0.1.10:123`, `systemd[
 pnpm test
 ```
 
-Expected: `Test Files 19 passed (19)` and `Tests 218 passed (218)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
+Expected: `Test Files 19 passed (19)` and `Tests 226 passed (226)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
 
 ```bash
 pnpm e2e
@@ -287,7 +293,6 @@ Things that will differ from the text below, and are fine:
 
 - **Times.** Game time starts at Mon Mar 2 2026 09:00 UTC and follows the real time you take.
 - **Process ids and port numbers.**
-- **Auto-lock.** If you leave a PC alone for 60 seconds its screen locks. The CLI then prints the lock screen instead of running your line; type the password and repeat the command.
 
 ---
 

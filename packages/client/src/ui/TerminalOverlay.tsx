@@ -39,18 +39,11 @@ export function TerminalOverlay({ hostname }: { hostname: string }) {
     term.focus();
     focus.current = () => term.focus();
 
-    let lastActivity = 0;
     const editor = new LineEditor(term, {
       onLine: (text) => store.send('term.line', { text }),
       onCancel: () => store.send('term.cancel', {}),
       onEscape: () => store.send('stand', {}),
       onSwitchUser: () => store.send('term.switchUser', {}),
-      onActivity: () => {
-        // Tell the server "someone is typing" at most every 5 seconds.
-        if (Date.now() - lastActivity < 5000) return;
-        lastActivity = Date.now();
-        store.send('term.activity', {});
-      },
     });
     const typing = term.onData((data) => editor.input(data));
 

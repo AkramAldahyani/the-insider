@@ -3,8 +3,8 @@
  *
  * Cameras on the shipped map: CAM-01 Reception, CAM-02 / CAM-03 the corridor
  * (west and east end), CAM-04 the IT side of the server room door, CAM-05
- * the cafeteria. Finance, HR, Marketing, the security office, the server
- * room, the printer room, storage and the bathrooms have no camera.
+ * the cafeteria, CAM-06 inside the server room. Finance, HR, Marketing, the
+ * security office, the printer room, storage and the bathrooms have no camera.
  */
 import { describe, expect, it } from 'vitest';
 import { TICK_RATE, parseOfficeMap } from '@insider/shared';
@@ -19,11 +19,17 @@ const onAnyCamera = (r: Recorder, playerId: string) =>
 const motionLog = (r: Recorder) => r.file('SEC-SRV-01', '/var/log/cctv/motion.log').split('\n').filter(Boolean);
 
 describe('cameras', () => {
-  it('the map has five cameras, each watching a room up to a range', () => {
+  it('the map has six cameras, each watching a room up to a range', () => {
     const r = new Recorder();
     expect(r.game.cctv.cameras.map((c) => `${c.id} ${c.covers}`)).toEqual([
-      'CAM-01 Reception', 'CAM-02 Corridor', 'CAM-03 Corridor', 'CAM-04 IT department', 'CAM-05 Cafeteria / meeting room',
+      'CAM-01 Reception', 'CAM-02 Corridor', 'CAM-03 Corridor', 'CAM-04 IT department', 'CAM-05 Cafeteria / meeting room', 'CAM-06 Server room',
     ]);
+    // The server room camera sees the whole room, its door from the inside, and nothing outside it.
+    const cam6 = r.game.cctv.cameras[5];
+    for (let col = 50; col <= 54; col++) for (let row = 1; row <= 7; row++) {
+      expect(r.game.cctv.sees(cam6, (col + 0.5) * TILE, (row + 0.5) * TILE), `tile ${col},${row}`).toBe(true);
+    }
+    expect(r.game.cctv.sees(cam6, 48.5 * TILE, 4.5 * TILE)).toBe(false); // IT side of the door
     const cam4 = r.game.cctv.cameras[3];
     expect(r.game.cctv.sees(cam4, 48.5 * TILE, 4.5 * TILE)).toBe(true); // in front of the server room door
     expect(r.game.cctv.sees(cam4, 51.5 * TILE, 4.5 * TILE)).toBe(false); // inside the server room: another room
@@ -115,11 +121,12 @@ describe('snapshots', () => {
     const tapTime = r.game.world.time;
     const picture = r.game.cctv.at('CAM-04', tapTime)!;
     expect(picture.people.map((p) => p.playerId).sort()).toEqual(['p1', 'p5']);
-    // Both go in; the camera does not see into the server room, so the next picture is empty.
+    // Both go in. CAM-04 (IT side) loses them; CAM-06 inside the server room picks both up.
     r.game.handle('k', 'move', { dx: 1, dy: 0 });
     r.game.handle('s', 'move', { dx: 1, dy: 0 });
     r.tick(seconds(3));
     expect(r.game.cctv.at('CAM-04', r.game.world.time)!.people).toEqual([]);
+    expect(r.game.cctv.at('CAM-06', r.game.world.time)!.people.map((p) => p.playerId).sort()).toEqual(['p1', 'p5']);
   });
 });
 
