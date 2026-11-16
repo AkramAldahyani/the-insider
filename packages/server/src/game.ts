@@ -14,13 +14,13 @@
  */
 import {
   advanceTime, cancelInput, createWorld, dateStamp, leaveTerminal, openTerminal, parseDuration, refreshTerminal,
-  sendInput, serializeWorld, switchUser, touchTerminal, type Scenario, type TerminalResult, type World,
+  sendInput, serializeWorld, switchUser, touchTerminal, type OpenResult, type Scenario, type TerminalResult, type World,
 } from '@insider/engine';
 import {
   INTERACT_DISTANCE, PLAYER_RADIUS, PLAYER_SPEED, moveWithCollision, parseOfficeMap,
   type ClientMessages, type Facing, type OfficeMap, type PublicState, type ServerMessages, type ServerMessageType, type TiledMap,
 } from '@insider/shared';
-import { BotManager } from './bots/manager';
+import { BotManager, type BotOptions } from './bots/manager';
 import { Doors, type Walker } from './doors';
 import { checkMapAgainstScenario } from './mapCheck';
 import { employeeChoices, onboardingCard, publicDesk, publicDoor, publicPlayer, termScreen, type Avatar } from './visibility';
@@ -34,6 +34,8 @@ export interface OfficeGameOptions {
   speed?: number;
   /** Bots play every employee no human has picked (default true). */
   bots?: boolean;
+  /** How the bots behave (see BotOptions). */
+  botOptions?: BotOptions;
   /** Enables the developer messages (dev.*). MUST be false in production. */
   dev?: boolean;
   /** Dev only: saves a world dump and returns where it went. The game itself never touches the disk. */
@@ -92,11 +94,18 @@ export class OfficeGame {
     this.bots = options.bots === false
       ? null
       : new BotManager({
-          world: this.world, map: this.map, collision: this.collision, doors: this.doors,
+          world: this.world, scenario: this.scenario, map: this.map, collision: this.collision, doors: this.doors,
           walker: (a) => this.walker(a),
           addBody: (a) => void this.avatars.set(a.clientId, a),
           removeBody: (key) => this.removeBody(key),
-        }, options.seed ?? 1);
+          bodies: () => [...this.avatars.values()],
+          // A bot acts through the same functions as a human's messages: same checks, same logs.
+          sit: (a, hostname) => this.sitBody(a, hostname),
+          stand: (a) => void this.standBody(a),
+          type: (a, line) => sendInput(this.world, a.terminalId, line.slice(0, MAX_LINE)),
+          cancel: (a) => cancelInput(this.world, a.terminalId),
+          switchUser: (a) => switchUser(this.world, a.terminalId),
+        }, options.seed ?? 1, options.botOptions);
   }
 
   // ───────────────────────────── Sending ─────────────────────────────
@@ -236,29 +245,44 @@ export class OfficeGame {
     for (const other of this.clients) if (!this.avatars.has(other)) this.sendLobby(other);
   }
 
-  private sit(avatar: Avatar, data: Record<string, unknown>): void {
-    if (avatar.seatedAt) return;
-    const desk = this.map.desks.find((d) => d.hostname === data.hostname);
-    if (!desk) return;
+  /**
+   * A body (human or bot) sits down at a desk. Returns the PC's screen, or a
+   * sentence saying why it cannot: the rules are the same for everyone.
+   */
+  private sitBody(avatar: Avatar, hostname: unknown): OpenResult | string {
+    const desk = this.map.desks.find((d) => d.hostname === hostname);
+    if (!desk || avatar.seatedAt) return '';
     // The browser says "I am at the desk"; the server measures it itself.
-    if (Math.hypot(desk.seatX - avatar.x, desk.seatY - avatar.y) > INTERACT_DISTANCE) {
-      return this.send(avatar.clientId, 'notice', { text: `You are too far from ${desk.hostname}.` });
-    }
+    if (Math.hypot(desk.seatX - avatar.x, desk.seatY - avatar.y) > INTERACT_DISTANCE) return `You are too far from ${desk.hostname}.`;
+    // One occupant per PC.
     const occupant = [...this.avatars.values()].find((a) => a.seatedAt === desk.hostname);
-    if (occupant) return this.send(avatar.clientId, 'notice', { text: `${occupant.name} is sitting at ${desk.hostname}.` });
+    if (occupant) return `${occupant.name} is sitting at ${desk.hostname}.`;
 
     const opened = openTerminal(this.world, desk.hostname, avatar.playerId);
     Object.assign(avatar, { seatedAt: desk.hostname, terminalId: opened.terminalId, x: desk.seatX, y: desk.seatY, facing: 'up' as Facing, dx: 0, dy: 0 });
-    this.send(avatar.clientId, 'term.open', { hostname: desk.hostname, ...termScreen(opened) });
+    return opened;
+  }
+
+  private sit(avatar: Avatar, data: Record<string, unknown>): void {
+    const result = this.sitBody(avatar, data.hostname);
+    if (typeof result === 'string') {
+      if (result) this.send(avatar.clientId, 'notice', { text: result });
+      return;
+    }
+    this.send(avatar.clientId, 'term.open', { hostname: avatar.seatedAt, ...termScreen(result) });
   }
 
   /** Standing up never locks or logs out: the screen stays exactly as it is. */
-  private stand(avatar: Avatar, reason: string): void {
-    if (!avatar.seatedAt) return;
+  private standBody(avatar: Avatar): boolean {
+    if (!avatar.seatedAt) return false;
     leaveTerminal(this.world, avatar.terminalId);
     avatar.seatedAt = '';
     avatar.terminalId = '';
-    this.send(avatar.clientId, 'term.close', { reason });
+    return true;
+  }
+
+  private stand(avatar: Avatar, reason: string): void {
+    if (this.standBody(avatar)) this.send(avatar.clientId, 'term.close', { reason });
   }
 
   /** An avatar as the doors see it. */
@@ -267,6 +291,7 @@ export class OfficeGame {
   }
 
   private screen(avatar: Avatar, result: TerminalResult): void {
+    if (!this.clients.has(avatar.clientId)) return void this.bots?.sees(avatar.playerId, result); // a bot looks at its screen
     this.send(avatar.clientId, 'term.output', termScreen(result));
   }
 

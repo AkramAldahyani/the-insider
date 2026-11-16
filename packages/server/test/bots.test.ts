@@ -116,25 +116,27 @@ describe('bot employees in a match', () => {
   it('every employee comes in through the main entrance and reaches their own desk', () => {
     const r = new Recorder({ bots: true });
     expect(Object.keys(r.game.publicState().players)).toEqual([]); // nobody has arrived at 09:00:00
+    /** Employees who have sat down at their own desk at least once. */
+    const reached = new Set<string>();
     let ticks = 0;
-    while (ticks++ < seconds(420) && r.game.bots!.list().some((b) => b.moving !== 'arrived')) {
+    while (ticks++ < seconds(420) && reached.size < scenario.players.length) {
       r.game.tick(1000 / TICK_RATE);
-      // Nobody is ever inside a wall, a desk or furniture.
-      if (ticks % 5 === 0) for (const p of Object.values(r.game.publicState().players)) expect(isFree(r.map, p.x, p.y, PLAYER_RADIUS), p.name).toBe(true);
+      if (ticks % 5 !== 0) continue;
+      for (const p of Object.values(r.game.publicState().players)) {
+        // Nobody is ever inside a wall, a desk or furniture.
+        expect(isFree(r.map, p.x, p.y, PLAYER_RADIUS), p.name).toBe(true);
+        if (p.seatedAt === scenario.players.find((x) => x.id === p.id)!.desk) reached.add(p.id);
+      }
     }
-    expect(r.game.bots!.list().filter((b) => b.moving !== 'arrived')).toEqual([]);
-    const state = r.game.publicState();
-    for (const player of scenario.players) {
-      const desk = r.map.desks.find((d) => d.hostname === player.desk)!;
-      expect(state.players[player.id], player.name).toMatchObject({ x: desk.seatX, y: desk.seatY });
-    }
+    expect([...reached].sort()).toEqual(scenario.players.map((p) => p.id).sort());
+    expect(r.game.bots!.list().filter((b) => b.failure)).toEqual([]);
 
     const taps = accessToday(r);
     expect(taps.some((l) => l.includes('RESULT=DENIED'))).toBe(false); // bots do not try doors their badge cannot open
     // Arrivals: most badge in; a few walk in behind a colleague while the door is open.
     const arrivals = taps.filter((l) => l.includes('DOOR=MAIN-ENT') && l.endsWith('DIR=IN'));
     expect(arrivals.length).toBeGreaterThanOrEqual(6);
-    expect(arrivals.length).toBeLessThanOrEqual(10);
+    expect(new Set(arrivals.map((l) => /USER=(\S+)/.exec(l)![1])).size).toBe(arrivals.length); // nobody arrived twice
     expect(taps.some((l) => /DOOR=SEC-OFFICE BADGE=0119 USER=t\.omar RESULT=GRANTED DIR=IN$/.test(l))).toBe(true);
     // The door log's body count is at least the number of taps: everyone who came in was counted.
     const passages = r.file('SEC-SRV-01', '/var/log/badge/doors.log').split('\n')
@@ -170,7 +172,7 @@ describe('bot employees in a match', () => {
     expect(r.last('a', 'welcome')).toBeDefined();
     expect(r.game.bots!.has('p3')).toBe(false);
     const spawn = r.map.spawns['HR-LT-03'];
-    expect(r.game.publicState().players.p3).toMatchObject({ x: spawn.x, y: spawn.y }); // one Lina, at her desk
+    expect(r.game.publicState().players.p3).toMatchObject({ x: spawn.x, y: spawn.y, seatedAt: '' }); // one Lina, next to her desk
     expect(Object.keys(r.game.publicState().players)).toHaveLength(10);
 
     // When the human leaves, a bot comes to work as Lina again.

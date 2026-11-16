@@ -17,8 +17,8 @@ Update it at the end of every part.
 |---|---|---|
 | A | Decisions, doors and badges | **done** |
 | B | Bot movement and pathfinding | **done** |
-| C | Bot behaviour (routines, desk use, observations) | next |
-| D | Job tasks (bots and humans) | not started |
+| C | Bot behaviour (routines, desk use, observations) | **done** |
+| D | Job tasks (bots and humans) | next |
 | E | Internal email, network/DNS/proxy logs, background service noise | not started |
 | F | CCTV recording | not started |
 | G | Dev panel additions, soak test, docs | not started |
@@ -68,6 +68,21 @@ locally (never push), update this file.
 - Adding SEC-SRV-01 in Part A shifted the seed-1 DHCP addresses (a new host draws random numbers while booting);
   TESTING.md's tables were updated in this part.
 
+## Part C: what exists now
+
+- `bots/tree.ts`: a tiny behaviour tree (`sequence`, `selector`, `condition`; nodes answer success / failure / running).
+- `bots/brain.ts`: `employeeTree` = break time (lock or forget, stand, walk somewhere, linger) OR work (walk to own
+  desk, sit, log in / unlock / switch user, type an everyday command every 6-24 s). All memory is in `Mind` (plain data).
+  Rhythm and break places depend on the scenario role: the guard patrols, the helpdesk visits desks, the sysadmin
+  sometimes goes to the server room. A 6 % password typo leaves honest auth failures.
+- `bots/manager.ts`: builds each bot's `Persona` (own account and password, own files to `cat`), gives the brain its
+  hands (`BrainWorld`), and records **observations** once a game second: who a bot saw in its own room within 320 px,
+  only when that changes (appeared / sat down / stood up). `bots.observations(playerId)`, `bots.mind(playerId)`, `bots.list()`.
+- `game.ts`: `sitBody` / `standBody` are the one implementation of sitting and standing for humans and bots;
+  option `botOptions.forgetLock` (default 0.25).
+- Playwright now starts its own server (ports 2577 / 5183, `BOTS=0`), independent of `pnpm dev`.
+- 175 Vitest tests (new: `behaviour.test.ts`), 3 Playwright tests.
+
 ## Things the next part must know
 
 - Bots must use the same paths as humans: `Doors.tap(walker, code)` for badge doors, and the `Walker`
@@ -75,10 +90,10 @@ locally (never push), update this file.
 - Plan routes on `game.map.solid` (doors passable); move bodies against `game.collision`.
 - Humans start at their desks WITHOUT an arrival line in today's badge log; bots walk in and (mostly) have one.
   Left as is for now; tell the owner in the Phase 3 summary (a later lobby/"match start" in Phase 6 can fix it).
-- Part C plan: `bots/brain.ts`, a small behaviour tree per bot (sit at own desk, log in or unlock, work, take
-  breaks to cafeteria/bathroom/printer, sometimes leave the PC unlocked, lock otherwise). Bots type through the
-  engine (`openTerminal` / `sendInput`) so their logs look like a human's. A seated bot occupies the desk, so the
-  Playwright test that sits at HR-LT-03 needs either `BOTS=0` for that test server or a different free desk.
+- Part D plan: task definitions in the scenario (`tasks[]`: id, title, who may get it, steps as shell commands or
+  "go to room"), an engine/server task tracker that marks a step done from master events, the same tasks handed to
+  bots (the `work` leaf picks task commands instead of random ones) and to humans (a HUD list, key `T`).
+  Private per player: a player's task list goes only to that player (visibility rule).
 - The dev server (`pnpm dev`) restarts itself when server files change; Playwright reuses a running one.
 - Door timers and walking use real time; the game clock can run faster (dev panel). At speed 1 they agree.
 - Writing files from Bash heredocs breaks on apostrophes in this environment: use the Write tool or a script file.

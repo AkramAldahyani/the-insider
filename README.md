@@ -2,7 +2,7 @@
 
 A multiplayer social-deduction game that teaches real Linux forensics. The full design is in [DESIGN.md](DESIGN.md).
 
-**Current state: Phase 3 (in progress) — a living office.** Doors and badges work and bot employees walk in to their desks; bot behaviour, tasks, email and CCTV are being added part by part (see `PROGRESS.md`). Phase 2 is complete:
+**Current state: Phase 3 (in progress) — a living office.** Doors and badges work, and bot employees walk in, log in, work, take breaks and sometimes forget to lock their screen; tasks, email, network logs and CCTV are being added part by part (see `PROGRESS.md`). Phase 2 is complete:
 
 **Phase 2 — the office in the browser.** You can walk around a top-down office, sit at any PC and use its simulated Linux shell in a real-looking terminal. There are no bots, tasks, hacker tools, roles or meetings yet, and the art is placeholder shapes.
 
@@ -113,7 +113,7 @@ pnpm test
 pnpm typecheck
 ```
 
-163 Vitest tests cover the engine (permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, auto-lock, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, bots, map checks, and the visibility rule).
+175 Vitest tests cover the engine (permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, auto-lock, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, bots, map checks, and the visibility rule).
 
 ```bash
 pnpm e2e
