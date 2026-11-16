@@ -13,6 +13,55 @@ Update it at the end of every part.
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | **planned, waiting for the owner's OK** (plan below) |
 
+## Phase 4 plan (hacker gameplay) - NOT APPROVED YET
+
+Goal (DESIGN.md section 15): win as the hacker by at least 2 routes; every action is traceable.
+Sources: DESIGN.md sections 5 (toolkit), 6 (vulnerabilities), 15. Everything stays simulated game logic.
+Not in Phase 4: roles and their powers, SIEM, viewers, meetings, voting, bot hacker, debrief UI (all Phase 5).
+After each part: all tests, commit locally, update this file.
+
+| Part | What |
+|---|---|
+| A | Match secrets: the hacker and the vulnerabilities |
+| B | Tool framework: `~/.tools`, action time, cooldown, noise, background jobs |
+| C | Physical tools: BadUSB, shoulder surfing |
+| D | Remote tools: implant, keylogger, hash cracker, network scanner (+ IDS) |
+| E | Phishing kit and log cleaner |
+| F | The flag, exfiltration and winning; escalating global alerts |
+| G | Route tests (2+ complete routes) and the traceability test |
+| H | Dev panel, browser test of one route, CLI support, docs |
+
+A. `engine/src/mission/`: `world.mission = { hacker, vulnerabilities, ... }`, secret (never sent except the
+   hacker's own briefing). Vulnerabilities drawn from their own seeded generator, 2-4 per match, forceable with
+   env `VULNS=`: weak sysadmin password (strength ~10); a regular employee in group sudo by mistake (server and their
+   own PC); root password in plain text in an old backup script on the shared folder; the sysadmin's bot extra
+   careless (forgets to lock ~80 %); server room door tailgatable. When tailgating is OFF the server room door
+   becomes one-person: it closes as soon as one body has passed. Hacker's PC gets `~/.tools/` (hidden folder).
+   Visibility test: no other browser learns who the hacker is or which weaknesses exist.
+B. Tools are shell commands that exist only as files in the hacker's `~/.tools` (`~/.tools/scan ...`). Each has a
+   cooldown, an action time and a noise level. Long actions (cracking) run as a background process, visible in
+   `ps aux` (a trace), and write their result to `~/.tools/loot/`. Every tool run is a master event with the actor.
+C. BadUSB: an item; hold `E` 5 s at an UNLOCKED PC -> backdoor service on that PC (USB lines in dmesg/kern.log,
+   CCTV if in view, the hacker shows a visible "busy at desk" pose to everyone). Shoulder surfing: stand right
+   behind a seated person while they type a password -> a few characters revealed privately to the hacker
+   (visible behaviour; bots note "X stood behind me" in their observations).
+D. Implant: shell on a backdoored PC as its user, no password (ESTAB connection in `ss -tnp` both ends, odd
+   process). Keylogger: installed from a shell on a PC; captures the next password typed there (hidden process,
+   file in /tmp). Hash cracker: needs a copy of a shadow file; time depends on password strength; reading
+   /etc/shadow writes an audit line on that host. Network scanner: lists hosts and services; triggers an IDS
+   alert in a new IDS log on the server and a vague global HUD alert.
+E. Phishing: spoofed "IT password reset" mail (From: IT, Received: the hacker's real PC/IP, SPF fail) with a link to
+   a fake site; a victim who opens it "submits" their password (proxy + DNS logs show the visit); bots fall for it
+   sometimes. Log cleaner: removes matching lines from a log the hacker can write (root); leaves a "log cleared"
+   event and a visible time gap.
+F. Flag `/root/flag.txt` on ADMIN-SRV-01. The hacker wins by exfiltrating it with a tool (upload to an external drop
+   site: a large request in the proxy log). Global announcement and a simple end screen; the match record is kept
+   for the Phase 5 debrief. Global alerts get more frequent as the hacker reaches milestones, without saying which.
+G. Server tests play full routes: (1) careless sysadmin -> his unlocked PC -> keylogger catches his sudo password ->
+   root on the server -> flag; (2) plaintext root password in the backup script -> su root -> flag; (3) sudo-by-mistake
+   employee phished -> sudo on the server -> flag; (4) weak sysadmin password: shadow copied from the sudo-by-mistake
+   employee's PC -> cracked quickly. A traceability test checks every tool left at least one trace a defender can find.
+
 ## Owner's changes after Phase 3 (done)
 
 The owner asked for six changes before Phase 4:
