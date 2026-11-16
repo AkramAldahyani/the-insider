@@ -5,7 +5,8 @@
  * own file so that `sudo` (which needs to run OTHER commands) can import the
  * dispatcher without creating a circular import.
  */
-import { FsError, basename, dirname, resolvePath, walk } from '../fs/vfs';
+import { FsError, basename, canExec, canRead, dirname, resolvePath, walk } from '../fs/vfs';
+import { runTool, toolMarker } from '../tools/toolkit';
 import type { CmdCtx, CmdResult, Handler, PendingHandler } from './types';
 
 export const commands: Record<string, Handler> = {};
@@ -29,7 +30,14 @@ export function dispatch(c: CmdCtx, argv: string[], stdin: string): CmdResult {
       try {
         const node = walk(c.host, abs, c.cred);
         if (node.type === 'dir') return { stderr: `${shell}: ${name}: Is a directory\n`, exit: 126 };
-        if (!(node.mode & 0o111)) return { stderr: `${shell}: ${name}: Permission denied\n`, exit: 126 };
+        if (!canExec(node, c.cred)) return { stderr: `${shell}: ${name}: Permission denied\n`, exit: 126 };
+        // A toolkit file (game item, see tools/toolkit.ts) runs its tool. Other programs and scripts do not run.
+        const tool = toolMarker(node.content);
+        if (tool) {
+          // Like any program, it must be readable to be run as a script.
+          if (!canRead(node, c.cred)) return { stderr: `${shell}: ${name}: Permission denied\n`, exit: 126 };
+          return runTool(c, abs, tool, argv.slice(1));
+        }
         return { stderr: `${shell}: ${name}: programs and scripts cannot be executed in this simulation (use cat to read them)\n`, exit: 126 };
       } catch (e) {
         const msg = e instanceof FsError ? e.message : 'No such file or directory';

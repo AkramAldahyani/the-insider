@@ -13,12 +13,12 @@ Update it at the end of every part.
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | **planned, waiting for the owner's OK** (plan below) |
 
-## Phase 4 status: plan approved by the owner; Part A DONE, Part B next
+## Phase 4 status: plan approved by the owner; Parts A and B DONE, Part C next
 
 | Part | State |
 |---|---|
 | A Match secrets: the hacker and the weaknesses | **done** |
-| B Tool framework | next |
+| B Tool framework | **done** (mechanism + the harmless `selftest` tool only) |
 | C to H | not started |
 
 Owner-approved defaults: "join as the hacker" on the start screen (one per match); the hacker is NOT told which
@@ -45,11 +45,27 @@ weaknesses are on; winning = exfiltrating the flag; bots fall for phishing about
   `nexora2026`, not the one in TESTING.md's table (noted there).
 - 250 Vitest tests (new: engine and server `mission.test.ts`), 6 Playwright tests.
 
-### Notes for Part B
+### Part B: what exists now
 
-- Tools should be files in `~/.tools` that the shell can run (`~/.tools/NAME args`); the shell cannot execute files
-  yet (`shell/exec.ts` only knows the command table). Tool logic belongs in a new `engine/src/tools/`.
-- Keep every tool's effect inside the simulation and give each at least one trace (DESIGN.md section 5).
+- **Safety-filter note:** under the Fable 5.2 model, three attempts at Part B were stopped by a safety classifier
+  before any file changed. The owner switched to Opus 5.5 and Part B went through. If Parts C to E get stopped,
+  tell the owner plainly and offer the defender-side work (audit log, IDS log, win condition) or Phase 5 work instead.
+- `engine/src/tools/toolkit.ts`: `ToolDefinition` (name, summary, usage, cooldownMs, actionMs(args), noise,
+  traces[], start(c, args), finish?(world, host, job)); `TOOLS` registry (only `selftest` so far); `installTools`
+  (called by `setHacker`: one 700 file per tool with a `# toolkit: NAME` marker line, plus README and loot/);
+  `runTool` (cooldown per player+tool in `world.toolkit.cooldowns`, master event `tool.run` with tool, args, noise,
+  background, path); background jobs (`world.toolkit.jobs`, a `ps aux` process not tied to the login session;
+  `nextToolJob` is scheduled by the clock; on finish `tool.done` with result done or killed); `writeLoot`.
+- `commands/table.ts` dispatcher: an executable, readable file with the marker runs its tool; other scripts still
+  do not run. Bare names do not work (tools are not on PATH): `~/.tools/NAME`.
+- A test enforces that every tool lists at least one trace.
+- 265 Vitest tests (new: `engine/test/toolkit.test.ts`, one server test).
+
+### Notes for Part C onwards
+
+- Add a tool = add a `ToolDefinition` to `TOOLS`; it gets its file, README line, cooldown and job handling for free.
+- Physical tools (BadUSB: hold E 5 s at an unlocked PC; shoulder surfing) also need server/client work: a hold
+  action and a "busy at desk" look in the public state.
 
 ## Phase 4 plan (hacker gameplay)
 

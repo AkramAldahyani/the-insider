@@ -22,6 +22,8 @@ export { validateScenario } from './core/scenario';
 export { createWorld } from './core/world';
 export type { WorldOptions } from './core/world';
 export { ALL_WEAKNESSES, briefing, chooseWeaknesses, setHacker } from './mission/mission';
+export { TOOLS, toolByName, toolAt } from './tools/toolkit';
+export type { ToolDefinition, Noise } from './tools/toolkit';
 export type { WeaknessChoice } from './mission/mission';
 export { advanceTime, advanceTo } from './core/clock';
 export { parseDuration, dateStamp } from './core/time';

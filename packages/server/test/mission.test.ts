@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { ALL_WEAKNESSES, queryEvents } from '@insider/engine';
 import { TICK_RATE, type MissionBriefing } from '@insider/shared';
 import { loadGameOptions } from '../src/app';
-import { Recorder, scenario } from './helpers';
+import { PW, Recorder, scenario } from './helpers';
 
 const TILE = 32;
 const START = Date.parse(scenario.startTime);
@@ -104,6 +104,23 @@ describe('what the other players learn', () => {
     prod.connect('a', 'p1');
     prod.send('a', 'dev.show', { what: 'mission' });
     expect(prod.messages('a', 'dev.result')).toEqual([]);
+  });
+});
+
+describe('the toolkit in a match', () => {
+  it('the hacker runs a tool at his desk; nobody else receives anything about it', () => {
+    const r = new Recorder();
+    r.connect('h');
+    r.send('h', 'choose', { playerId: 'p4', hacker: true });
+    r.connect('e', 'p3'); // Lina, also in the office
+    r.sitAt('h', 'p4', 'MKT-LT-11');
+    r.type('h', PW['o.farouk']);
+    expect(r.type('h', '~/.tools/selftest')).toContain('toolkit OK on MKT-LT-11');
+    r.type('h', '~/.tools/selftest --long'); // (cooling down: refused, and still private)
+    r.tick(seconds(40));
+    const other = JSON.stringify(r.sent.get('e'));
+    for (const word of ['selftest', 'toolkit', '.tools', 'cooling']) expect(other.includes(word), word).toBe(false);
+    expect(JSON.stringify(r.states)).not.toMatch(/selftest|toolkit/);
   });
 });
 

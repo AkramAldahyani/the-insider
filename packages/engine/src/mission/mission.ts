@@ -19,7 +19,7 @@
 import { hashString } from '../core/rng';
 import type { Scenario } from '../core/scenario';
 import type { Mission, WeaknessId, World } from '../types';
-import { sysMkdir, sysWrite } from '../fs/vfs';
+import { installTools } from '../tools/toolkit';
 
 export const ALL_WEAKNESSES: WeaknessId[] = ['weak-admin-password', 'extra-sudo', 'plaintext-password', 'careless-admin', 'tailgate'];
 
@@ -110,7 +110,7 @@ export function applyWeaknesses(scenario: Scenario, seed: number, choice: Weakne
 /**
  * Makes a player the hacker of this match (the server calls this when someone
  * joins in that role). Creates the hidden tools folder in their home on their
- * own PC; the tools themselves are added by tools/ (Phase 4, part B).
+ * own PC, with every tool of tools/toolkit.ts in it.
  * Returns false if the match already has another hacker.
  */
 export function setHacker(world: World, playerId: string): boolean {
@@ -119,18 +119,7 @@ export function setHacker(world: World, playerId: string): boolean {
   const host = player && world.hosts[player.desk];
   if (!player || !host) return false;
   world.mission.hacker = playerId;
-  const home = `/home/${player.account}`;
-  const opts = { owner: player.account, group: player.account, mode: 0o700, time: world.time };
-  sysMkdir(host, `${home}/.tools`, opts);
-  sysMkdir(host, `${home}/.tools/loot`, opts);
-  sysWrite(host, `${home}/.tools/README`, [
-    'Your toolkit. Nobody else can read this folder (but root can).',
-    'Every tool leaves a trace somewhere. There is no perfect crime, only well-hidden ones.',
-    '',
-    `Goal: get ${world.mission.flag?.path ?? 'the flag'} from ${world.mission.flag?.host ?? 'the server'} out of the building.`,
-    'loot/ is where your tools put what they find.',
-    '',
-  ].join('\n'), { ...opts, mode: 0o600 });
+  installTools(world, host, player.account);
   return true;
 }
 

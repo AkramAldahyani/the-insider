@@ -8,7 +8,8 @@
  * moments so logs get correct timestamps:
  *  - every hour at :17 cron runs its hourly job on each machine (log noise);
  *  - online machines renew their DHCP lease halfway through it;
- *  - machines write their background noise (noise.ts).
+ *  - machines write their background noise (noise.ts);
+ *  - toolkit jobs running in the background finish (tools/toolkit.ts).
  *
  * There is deliberately NO auto-lock: a screen stays unlocked until someone
  * locks it (DESIGN.md section 3). Locking your own PC is a habit the game
@@ -22,6 +23,7 @@ import { syslog, pidOf } from '../events/journal';
 import { dhcpRequest, expireLeases } from '../net/dhcp';
 import { allocPid } from '../proc/processes';
 import type { World } from '../types';
+import { nextToolJob } from '../tools/toolkit';
 import { nextNoise } from './noise';
 import { HOUR, MINUTE } from './time';
 
@@ -62,6 +64,12 @@ export function advanceTo(world: World, target: number): void {
     if (noise.when < when) {
       when = Math.max(noise.when, world.time);
       action = noise.run;
+    }
+    // A toolkit job running in the background finishes (see tools/toolkit.ts).
+    const job = nextToolJob(world);
+    if (job.when < when) {
+      when = Math.max(job.when, world.time);
+      action = job.run;
     }
     if (when > target) break;
     world.time = when;

@@ -269,6 +269,23 @@ Each match now switches on 2-4 random weaknesses. **With the default seed, `pnpm
 4. Developer panel -> **mission**: the hacker, the flag, today's weaknesses.
 5. With `VULNS=none`: bring Khalid and Sara to the server room door. Khalid taps and walks in; Sara is stopped although the door looked open, and it closes right behind him. With `VULNS=tailgate` both get in.
 
+## V. Phase 4, part B: the toolkit mechanism
+
+As the hacker (Omar), sitting at `MKT-LT-11`:
+
+| Type | Expected |
+|---|---|
+| `ls -l .tools` | `README`, `loot` and `selftest`, all private to `o.farouk` (`-rwx------` / `drwx------`). |
+| `~/.tools/selftest` | `selftest: toolkit OK on MKT-LT-11 (running as o.farouk)` and the list of tools. |
+| the same again at once | `selftest: still cooling down (… s left)`. |
+| `selftest` (without the path) | `command not found`: tools are not on the PATH. |
+| `~/.tools/selftest --long` | Starts a background job and prints `[1] <pid>`. |
+| `ps aux \| grep selftest` | The job's process, owned by `o.farouk`. |
+| wait 30 s, then `cat ~/.tools/loot/selftest.txt` | `self-test passed on MKT-LT-11 at …`; the process is gone. |
+| run `--long` again and `kill <pid>` | No result file appears: the job was stopped. |
+
+As anybody else: `ls /home/o.farouk/.tools` says `Permission denied`. Developer panel -> **Events -> show last** lists `tool.run` and `tool.done` with Omar's player id.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -281,7 +298,7 @@ Each match now switches on 2-4 random weaknesses. **With the default seed, `pnpm
 pnpm test
 ```
 
-Expected: `Test Files 21 passed (21)` and `Tests 250 passed (250)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
+Expected: `Test Files 22 passed (22)` and `Tests 265 passed (265)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
 
 ```bash
 pnpm e2e

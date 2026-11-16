@@ -286,6 +286,30 @@ export interface Mission {
   won: number | null;
 }
 
+// ───────────────────────────── Toolkit ─────────────────────────────
+
+/** A tool running in the background (see tools/toolkit.ts). Plain data, so a world can be saved mid-job. */
+export interface ToolJob {
+  id: number;
+  tool: string;
+  args: string[];
+  host: string;
+  /** Its process in `ps aux`. Killing that process stops the job. */
+  pid: number;
+  /** The account it runs as, and the player who started it. */
+  account: string;
+  player: string | null;
+  startedAt: number;
+  finishAt: number;
+}
+
+export interface ToolkitState {
+  /** "playerId/tool" -> game time from which it may be used again. */
+  cooldowns: Record<string, number>;
+  jobs: ToolJob[];
+  nextJob: number;
+}
+
 // ───────────────────────────── Unattended PCs ─────────────────────────────
 
 /**
@@ -389,6 +413,8 @@ export interface World {
   mail: MailSystem;
   /** The match's secrets: the hacker and today's weaknesses. Never sent to players. */
   mission: Mission;
+  /** Tool cooldowns and background jobs (see tools/toolkit.ts). */
+  toolkit: ToolkitState;
   /** Every time a PC stood unlocked with its user away (see auth/unattended.ts). Never sent to players. */
   unattended: UnattendedWindow[];
   /** The simulated web and its proxy (see `curl` in commands/net.ts). */
