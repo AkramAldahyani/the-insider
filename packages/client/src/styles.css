@@ -202,3 +202,19 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
   .tasks-seated { max-height: 27%; width: calc(100% - 32px); }
 }
 @media (prefers-reduced-motion: reduce) { .employee { transition: none; } }
+
+/* ── Join as the hacker (start screen) and the hacker's private briefing ── */
+.start-hacker { display: flex; gap: 10px; align-items: flex-start; margin-top: 22px; padding: 10px 12px; border: 1px dashed var(--amber); border-radius: 8px; font-size: 13px; line-height: 1.45; max-width: 62ch; cursor: pointer; }
+.start-hacker input { margin-top: 3px; }
+.start-hacker-off { opacity: 0.55; cursor: default; }
+.mission {
+  position: absolute; right: 12px; bottom: 56px; width: 320px; max-height: calc(100% - 260px); overflow: auto; padding: 12px 14px; border-radius: 8px; z-index: 5;
+  background: rgba(22, 14, 14, 0.95); border: 1px solid var(--amber); font-size: 12.5px; line-height: 1.45;
+}
+.mission-head { display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: var(--amber); }
+.mission-head button { background: none; border: 0; color: var(--amber); font-size: 18px; line-height: 1; }
+.mission-goal { font-weight: 600; margin: 8px 0; }
+.mission p { margin: 6px 0; }
+.mission ul { margin: 4px 0; padding-left: 18px; color: #c9c2b8; }
+.mission code { font-family: var(--mono); color: var(--amber); }
+.mission-sub { color: #9a938a; }

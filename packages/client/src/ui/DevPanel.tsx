@@ -64,6 +64,7 @@ export default function DevPanel({ ui }: { ui: UiState }) {
         <button type="button" onClick={() => show('doors')}>doors</button>
         <button type="button" onClick={() => show('badges')}>badge log</button>
         <button type="button" onClick={() => show('unlocked')}>unlocked</button>
+        <button type="button" onClick={() => show('mission')}>mission</button>
       </div>
       <div className="dev-row">
         <span>CCTV</span>

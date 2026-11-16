@@ -131,7 +131,8 @@ export class Mover {
       if (this.door?.code !== ahead.code) {
         const open = this.world.doors.inspect(ahead.code)?.open ?? false;
         // An open door: most people badge anyway, some just walk through behind a colleague.
-        const skip = open && this.random.chance(0.25);
+        // (Not at a one-person door: there the open door is still a wall for anyone who did not badge.)
+        const skip = open && !this.world.doors.isOnePerson(ahead.code) && this.random.chance(0.25);
         this.door = { code: ahead.code, waitMs: skip ? 0 : this.random.between(250, 700), tapped: skip };
       }
       if (!this.door.tapped) {
@@ -153,7 +154,7 @@ export class Mover {
     const dy = next.y - body.y;
     const distance = Math.hypot(dx, dy);
     const scale = distance <= step ? 1 : step / distance;
-    const moved = moveWithCollision(this.world.collision, body.x, body.y, dx * scale, dy * scale, PLAYER_RADIUS);
+    const moved = this.world.doors.withAccess(body.clientId, body.x, body.y, () => moveWithCollision(this.world.collision, body.x, body.y, dx * scale, dy * scale, PLAYER_RADIUS));
     const progress = Math.hypot(moved.x - body.x, moved.y - body.y);
     if (progress > 0.01) {
       if (Math.abs(dx) > Math.abs(dy)) body.facing = dx < 0 ? 'left' : 'right';

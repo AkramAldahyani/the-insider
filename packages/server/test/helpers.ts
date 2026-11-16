@@ -28,7 +28,7 @@ export class Recorder {
 
   constructor(options: Partial<OfficeGameOptions> = {}) {
     // Tests get an empty office unless they ask for bots: other people walking about would make most checks unpredictable.
-    this.game = new OfficeGame({ ...loaded, scenario: clone(scenario), map: clone(tiledMap), dev: false, bots: false, ...options });
+    this.game = new OfficeGame({ ...loaded, scenario: clone(scenario), map: clone(tiledMap), dev: false, bots: false, weaknesses: ['tailgate'], ...options }); // tests get a plain office whose server room door can be tailgated, unless they ask otherwise
   }
 
   get map(): OfficeMap {

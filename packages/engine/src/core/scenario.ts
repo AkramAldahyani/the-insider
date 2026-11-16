@@ -181,6 +181,25 @@ export interface Scenario {
     /** The site workstations fetch updates from in the background (must be in `sites`). */
     updateSite?: string;
   };
+  /**
+   * The hacker's mission: where the flag is, and the weaknesses a match may
+   * have. Each match switches on 2-4 of those described here (see
+   * mission/mission.ts). Leave one out and it can never be chosen.
+   */
+  mission?: {
+    flagHost: string;
+    flagPath: string;
+    /** The sysadmin uses this easy password instead of their normal one. */
+    weakAdminPassword?: { account: string; password: string; strength: number };
+    /** One of `candidates` is in group sudo on `hosts` (and on their own PC) by mistake. */
+    extraSudo?: { candidates: string[]; hosts: string[] };
+    /** A world-readable file on `host`; "{password}" in `content` becomes that host's root password. */
+    plaintextPassword?: { host: string; path: string; content: string | string[]; ageMinutes?: number };
+    /** The bot of this player (the sysadmin) forgets to lock its screen with probability `forgetLock`. */
+    carelessAdmin?: { player: string; forgetLock: number };
+    /** Code of the door that can be tailgated when this weakness is on, and is one-person otherwise. */
+    tailgateDoor?: string;
+  };
   players: ScenarioPlayer[];
   history?: ScenarioHistoryItem[];
   /** Job tasks handed to players and bots. */
@@ -246,6 +265,17 @@ export function validateScenario(s: Scenario): void {
   }
   if (s.web?.proxy) need(hosts.has(s.web.proxy), `web.proxy "${s.web.proxy}" is not a host`);
   if (s.web?.updateSite) need(s.web.sites.some((site) => site.host === s.web!.updateSite), `web.updateSite "${s.web.updateSite}" is not in web.sites`);
+
+  if (s.mission) {
+    const m = s.mission;
+    need(hosts.has(m.flagHost) && m.flagPath?.startsWith('/'), 'mission: flagHost must be a host and flagPath an absolute path');
+    if (m.weakAdminPassword) need(accounts.has(m.weakAdminPassword.account) && m.weakAdminPassword.password, 'mission.weakAdminPassword: unknown account or empty password');
+    for (const u of m.extraSudo?.candidates ?? []) need(accounts.has(u), `mission.extraSudo: unknown account "${u}"`);
+    for (const h of m.extraSudo?.hosts ?? []) need(hosts.has(h), `mission.extraSudo: unknown host "${h}"`);
+    if (m.extraSudo) need(m.extraSudo.candidates.length > 0, 'mission.extraSudo needs at least one candidate');
+    if (m.plaintextPassword) need(hosts.get(m.plaintextPassword.host)?.rootPassword && m.plaintextPassword.path?.startsWith('/'), 'mission.plaintextPassword: host must have a rootPassword and path must be absolute');
+    if (m.carelessAdmin) need((s.players ?? []).some((p) => p.id === m.carelessAdmin!.player), `mission.carelessAdmin: unknown player "${m.carelessAdmin.player}"`);
+  }
 
   const taskIds = new Set<string>();
   for (const t of s.tasks ?? []) {

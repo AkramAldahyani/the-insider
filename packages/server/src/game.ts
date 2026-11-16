@@ -14,7 +14,7 @@
  */
 import {
   advanceTime, cancelInput, createWorld, dateStamp, leaveTerminal, openTerminal, parseDuration, refreshTerminal,
-  sendInput, serializeWorld, switchUser, type FsNode, type OpenResult, type Scenario, type TerminalResult, type World,
+  sendInput, serializeWorld, setHacker, switchUser, type FsNode, type OpenResult, type Scenario, type TerminalResult, type WeaknessChoice, type World,
 } from '@insider/engine';
 import {
   INTERACT_DISTANCE, PLAYER_RADIUS, PLAYER_SPEED, moveWithCollision, parseOfficeMap,
@@ -26,7 +26,7 @@ import { Random } from './bots/random';
 import { Cctv } from './cctv';
 import { checkMapAgainstScenario } from './mapCheck';
 import { TaskBoard } from './tasks';
-import { employeeChoices, onboardingCard, publicDesk, publicDoor, publicPlayer, taskList, termScreen, type Avatar } from './visibility';
+import { employeeChoices, missionBriefing, onboardingCard, publicDesk, publicDoor, publicPlayer, taskList, termScreen, type Avatar } from './visibility';
 
 export interface OfficeGameOptions {
   scenario: Scenario;
@@ -39,6 +39,12 @@ export interface OfficeGameOptions {
   bots?: boolean;
   /** How the bots behave (see BotOptions). */
   botOptions?: BotOptions;
+  /**
+   * Today's weaknesses (DESIGN.md section 6): "random" picks 2-4 from the
+   * seed, a list forces exactly those, [] gives an office without any.
+   * Default "random".
+   */
+  weaknesses?: WeaknessChoice;
   /** Enables the developer messages (dev.*). MUST be false in production. */
   dev?: boolean;
   /** Dev only: saves a world dump and returns where it went. The game itself never touches the disk. */
@@ -92,9 +98,9 @@ export class OfficeGame {
     this.map = parseOfficeMap(options.map);
     // Fail loudly, before anyone joins, if the map and the scenario disagree.
     checkMapAgainstScenario(this.map, options.scenario, options.mapName);
-    this.world = createWorld(options.scenario, options.seed ?? 1);
+    this.world = createWorld(options.scenario, options.seed ?? 1, { weaknesses: options.weaknesses ?? 'random' });
     this.collision = { ...this.map, solid: this.map.solid.map((row) => [...row]) };
-    this.doors = new Doors(this.world, this.map, this.collision.solid);
+    this.doors = new Doors(this.world, this.map, this.collision.solid, this.world.mission.onePersonDoors);
     this.speed = options.speed ?? 1;
     this.dev = options.dev ?? false;
     this.writeDump = options.writeDump;
@@ -156,6 +162,8 @@ export class OfficeGame {
       mapName: this.mapName,
       employees: employeeChoices(this.world, this.scenario, taken),
       dev: this.dev,
+      // Everybody knows a match has one hacker; whether the role is still free is no secret. WHO it is, is.
+      hackerOpen: this.world.mission.flag !== null && !this.humans().some((a) => a.playerId === this.world.mission.hacker),
     });
   }
 
@@ -245,6 +253,19 @@ export class OfficeGame {
       this.send(clientId, 'notice', { text: `${player.name} is already being played.` });
       return this.sendLobby(clientId);
     }
+    // Joining as the hacker: one per match. (Roles are assigned properly in Phase 5; until then a player asks for it.)
+    const asHacker = data.hacker === true;
+    if (asHacker) {
+      const current = this.world.mission.hacker;
+      const taken = current !== null && current !== player.id && this.humans().some((a) => a.playerId === current);
+      if (taken || this.world.mission.flag === null) {
+        this.send(clientId, 'notice', { text: 'This match already has its hacker. Join as an employee.' });
+        return this.sendLobby(clientId);
+      }
+      // The role moves with the player: a hacker who left is replaced by whoever asks next.
+      this.world.mission.hacker = null;
+      setHacker(this.world, player.id);
+    }
     // If this employee's bot is already in the building, the human simply takes over from it.
     const alreadyInside = this.bots?.isPresent(player.id) ?? false;
     this.bots?.remove(player.id);
@@ -255,7 +276,12 @@ export class OfficeGame {
     this.avatars.set(clientId, avatar);
     // Otherwise they "came to work": the main entrance logs their arrival, as it does for everyone.
     if (!alreadyInside) this.throughEntrance(avatar, 'IN');
-    this.send(clientId, 'welcome', { playerId: player.id, card: onboardingCard(this.world, this.scenario, player.id) });
+    this.send(clientId, 'welcome', {
+      playerId: player.id,
+      card: onboardingCard(this.world, this.scenario, player.id),
+      // Only the hacker's own browser ever receives a briefing.
+      mission: this.world.mission.hacker === player.id ? missionBriefing(this.world) : null,
+    });
     this.tasks.assign(player.id);
     this.tasks.takeChanged();
     this.send(clientId, 'tasks', taskList(this.tasks.view(player.id)));
@@ -338,7 +364,8 @@ export class OfficeGame {
       if (avatar.dx === 0 && avatar.dy === 0) continue;
       // Diagonal walking must not be faster than straight walking.
       const scale = avatar.dx !== 0 && avatar.dy !== 0 ? Math.SQRT1_2 : 1;
-      const moved = moveWithCollision(this.collision, avatar.x, avatar.y, avatar.dx * step * scale, avatar.dy * step * scale, PLAYER_RADIUS);
+      const moved = this.doors.withAccess(avatar.clientId, avatar.x, avatar.y, () =>
+        moveWithCollision(this.collision, avatar.x, avatar.y, avatar.dx * step * scale, avatar.dy * step * scale, PLAYER_RADIUS));
       avatar.x = moved.x;
       avatar.y = moved.y;
       avatar.facing = avatar.dx < 0 ? 'left' : avatar.dx > 0 ? 'right' : avatar.dy < 0 ? 'up' : 'down';
@@ -410,6 +437,20 @@ export class OfficeGame {
         });
         return `PCs left unlocked by their user (last ${rows.length} of ${this.world.unattended.length})\n${rows.join('\n') || '(none yet)'}`;
       }
+      case 'mission': {
+        const m = this.world.mission;
+        const name = (id: string | null) => this.world.players.find((p) => p.id === id)?.name ?? '-';
+        return [
+          'Mission (match secrets)',
+          `hacker:      ${m.hacker ? `${m.hacker} ${name(m.hacker)}${this.humans().some((a) => a.playerId === m.hacker) ? '' : ' (not connected)'}` : 'nobody yet'}`,
+          `flag:        ${m.flag ? `${m.flag.host}:${m.flag.path}` : '-'}`,
+          `weaknesses:  ${m.weaknesses.join(', ') || 'none'}`,
+          `extra sudo:  ${m.extraSudoAccount || '-'}`,
+          `careless:    ${m.carelessPlayer ? `${m.carelessPlayer} ${name(m.carelessPlayer)}` : '-'}`,
+          `one-person doors: ${m.onePersonDoors.join(', ') || 'none (the server room can be tailgated)'}`,
+          `won:         ${m.won ? clock(m.won) : 'no'}`,
+        ].join('\n');
+      }
       case 'saw': {
         const seen = this.bots?.observations(arg) ?? [];
         return `What ${arg} noticed (last ${Math.min(15, seen.length)} of ${seen.length})\n${seen.slice(-15).map((o) => `${clock(o.time)} ${o.name.padEnd(15)} in ${o.room}${o.desk ? `, sitting at ${o.desk}` : ''}`).join('\n') || '(nothing: not a bot, or not arrived yet)'}`;
@@ -419,7 +460,7 @@ export class OfficeGame {
         return `${arg}\n${this.tail(hostname, rest.join(':'), 15)}`;
       }
       default:
-        return 'Unknown view. Try: bots, doors, badges, tasks, unlocked, cctv, saw, file.';
+        return 'Unknown view. Try: bots, doors, badges, tasks, unlocked, mission, cctv, saw, file.';
     }
   }
 

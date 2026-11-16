@@ -259,6 +259,16 @@ Expected: `systemd-timesyncd … Contacted time server 10.0.1.10:123`, `systemd[
 3. **Unattended PCs.** Developer panel → **Show: unlocked**: every PC that stood open while its user was away, for how long, how it ended and who sat at it.
 4. **Task pace.** After 30 minutes, developer panel → **tasks**: about 8-10 finished per bot, not 30.
 
+## U. Phase 4, part A: the hacker role and today's weaknesses
+
+Each match now switches on 2-4 random weaknesses. **With the default seed, `pnpm dev` has two: the sysadmin's password is `nexora2026` (not the one in the table at the top), and Rami (`r.mansour`) has sudo by mistake.** For the office exactly as in the table, start with `VULNS=none` (PowerShell: `$env:VULNS='none'; pnpm dev`).
+
+1. On the start screen tick **Join as the hacker**, then pick Omar. Close the onboarding card (`C`): a private briefing appears at the bottom right with the goal and some rumours. `M` hides it. It does not say which weaknesses are on.
+2. Sit at `MKT-LT-11`, unlock it. `ls` shows nothing unusual; `ls -a` shows `.tools`; `cat .tools/README`.
+3. Open a second browser tab: **Join as the hacker** is greyed out. Pick Sara: she gets no briefing.
+4. Developer panel -> **mission**: the hacker, the flag, today's weaknesses.
+5. With `VULNS=none`: bring Khalid and Sara to the server room door. Khalid taps and walks in; Sara is stopped although the door looked open, and it closes right behind him. With `VULNS=tailgate` both get in.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -271,13 +281,13 @@ Expected: `systemd-timesyncd … Contacted time server 10.0.1.10:123`, `systemd[
 pnpm test
 ```
 
-Expected: `Test Files 19 passed (19)` and `Tests 226 passed (226)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
+Expected: `Test Files 21 passed (21)` and `Tests 250 passed (250)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
 
 ```bash
 pnpm e2e
 ```
 
-Expected: `3 passed`. Playwright starts its own game (ports 2577 and 5183, no bots), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes ten screenshots to `e2e/screenshots/`.
+Expected: `6 passed`. Playwright starts its own game (ports 2577 and 5183, no bots, no random weaknesses), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes ten screenshots to `e2e/screenshots/`.
 
 ---
 

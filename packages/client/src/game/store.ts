@@ -15,7 +15,7 @@
 import { Client, type Room } from 'colyseus.js';
 import {
   ROOM_NAME, SERVER_PORT, parseOfficeMap,
-  type ClientMessages, type EmployeeChoice, type OfficeMap, type OnboardingCard, type PublicDesk, type PublicDoor, type PublicPlayer,
+  type ClientMessages, type EmployeeChoice, type MissionBriefing, type OfficeMap, type OnboardingCard, type PublicDesk, type PublicDoor, type PublicPlayer,
   type ServerMessages, type TaskView, type TermScreen, type TiledMap,
 } from '@insider/shared';
 
@@ -42,6 +42,12 @@ export interface UiState {
   playerId: string;
   card: OnboardingCard | null;
   cardOpen: boolean;
+  /** Start screen: is the hacker role still free, and did this player tick "join as the hacker"? */
+  hackerOpen: boolean;
+  asHacker: boolean;
+  /** The hacker's private briefing (null for everybody else) and whether it is shown. */
+  briefing: MissionBriefing | null;
+  briefingOpen: boolean;
   /** Game time (ms since 1970, UTC) and speed, refreshed about once per second. */
   clock: number;
   speed: number;
@@ -76,7 +82,7 @@ export class Store {
   rawMap: TiledMap | null = null;
 
   private ui: UiState = {
-    phase: 'connecting', error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false,
+    phase: 'connecting', error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false,
     clock: 0, speed: 1, roomName: '', nearDesk: '', nearDoor: '', nearDoorName: '', seatedAt: '', notice: '', tasks: [], tasksCompleted: 0, tasksOpen: true, devOpen: false, devLog: [],
   };
   private listeners = new Set<Listener>();
@@ -143,9 +149,9 @@ export class Store {
         if (!file) return this.set({ phase: 'error', error: `This page does not have the map "${lobby.mapName}".` });
         this.rawMap = file[1];
         this.map = parseOfficeMap(file[1]);
-        this.set({ scenarioName: lobby.scenarioName, employees: lobby.employees, dev: lobby.dev, phase: this.ui.phase === 'playing' ? 'playing' : 'lobby' });
+        this.set({ scenarioName: lobby.scenarioName, employees: lobby.employees, dev: lobby.dev, hackerOpen: lobby.hackerOpen, asHacker: this.ui.asHacker && lobby.hackerOpen, phase: this.ui.phase === 'playing' ? 'playing' : 'lobby' });
       });
-      on('welcome', ({ playerId, card }) => this.set({ phase: 'playing', playerId, card, cardOpen: true }));
+      on('welcome', ({ playerId, card, mission }) => this.set({ phase: 'playing', playerId, card, cardOpen: true, briefing: mission, briefingOpen: mission !== null }));
       on('term.open', ({ hostname, ...screen }) => {
         this.termBacklog = [];
         this.term({ kind: 'open', hostname, screen });

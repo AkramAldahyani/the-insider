@@ -18,6 +18,7 @@ import { allocPid, bootProcesses } from '../proc/processes';
 import type { Host, Session, World } from '../types';
 import { advanceTo } from './clock';
 import { syncAllUnattended } from '../auth/unattended';
+import { applyWeaknesses, type WeaknessChoice } from '../mission/mission';
 import { sendMail } from '../commands/mail';
 import { doorClosed, doorOpened, tapBadge } from '../physical/badges';
 import { randInt, randString } from './rng';
@@ -202,8 +203,19 @@ function bootHost(world: World, host: Host): void {
   if (!host.staticIp) dhcpRequest(world, host);
 }
 
-export function createWorld(scenario: Scenario, seed = 1): World {
-  validateScenario(scenario);
+/** Extra settings for building a world. */
+export interface WorldOptions {
+  /**
+   * Which weaknesses of the scenario's `mission` this match has: a list, or
+   * "random" for 2-4 chosen from the seed. Default: none (a plain office).
+   */
+  weaknesses?: WeaknessChoice;
+}
+
+export function createWorld(original: Scenario, seed = 1, options: WorldOptions = {}): World {
+  validateScenario(original);
+  // The weaknesses are written into a copy of the scenario; the rest of this function never knows.
+  const { scenario, mission } = applyWeaknesses(original, seed, options.weaknesses ?? []);
   const start = Date.parse(scenario.startTime);
   const t0 = start - 90 * DAY; // "installation day" of all machines
 
@@ -230,6 +242,7 @@ export function createWorld(scenario: Scenario, seed = 1): World {
       holders: Object.fromEntries(scenario.accounts.filter((a) => a.badge).map((a) => [a.username, { id: a.badge!.id, access: a.badge!.access ?? [] }])),
     },
     unattended: [],
+    mission,
     mail: { serverHost: scenario.mail?.server ?? scenario.dhcp.server, messages: [] },
     web: {
       proxyHost: scenario.web ? (scenario.web.proxy ?? scenario.dhcp.server) : '',

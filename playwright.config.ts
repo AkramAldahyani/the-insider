@@ -7,6 +7,7 @@ import { defineConfig } from '@playwright/test';
  * `pnpm dev` uses (2577 and 5183), so the tests never share an office with a
  * game you have open, and every run starts from a fresh one.
  *
+ * It also runs with VULNS=none (no random weaknesses), so every run sees the same office.
  * That server runs with BOTS=0: these tests walk to particular desks and
  * expect to find them free, which a bot sitting at its own desk would break.
  * The bots are tested in packages/server/test (and by hand: TESTING.md).
@@ -31,7 +32,7 @@ export default defineConfig({
   webServer: {
     command: 'node scripts/dev.mjs',
     url: `http://localhost:${PAGE_PORT}`,
-    env: { GAME_PORT, CLIENT_PORT: PAGE_PORT, VITE_SERVER_URL: `ws://localhost:${GAME_PORT}`, BOTS: '0' },
+    env: { GAME_PORT, CLIENT_PORT: PAGE_PORT, VITE_SERVER_URL: `ws://localhost:${GAME_PORT}`, BOTS: '0', VULNS: 'none' },
     reuseExistingServer: false,
     timeout: 60_000,
   },

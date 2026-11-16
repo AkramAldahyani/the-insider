@@ -16,6 +16,13 @@
  *
  * A door never closes on a person: it waits until the doorway is empty.
  *
+ * ONE-PERSON DOORS. A door can be set up to let exactly one person through
+ * per badge (the server room, unless today's match has the "tailgate"
+ * weakness). Such a door looks open to everybody but stays solid for
+ * everyone except the people whose badge it accepted; when they are through,
+ * it closes. Movement of each body is wrapped in `withAccess`, which lifts
+ * the wall for that body only.
+ *
  * Door timers run in REAL time, like walking does. The game clock can be sped
  * up, but bodies do not move faster, so a door must not close faster either.
  */
@@ -54,6 +61,8 @@ interface DoorState {
   passages: number;
   /** Walker key -> which side of the door they were on at the last look. */
   sides: Map<string, 1 | -1>;
+  /** One-person doors only: the walkers the open door lets through (null = an ordinary door). */
+  allowed: Set<string> | null;
 }
 
 /** Minimum real time between two taps by the same person (a held-down key must not fill the log). */
@@ -68,9 +77,10 @@ export class Doors {
    * @param solid   the collision grid players are moved against. This class
    *                switches the door tiles in it on and off.
    */
-  constructor(private readonly world: World, private readonly map: OfficeMap, private readonly solid: boolean[][]) {
+  constructor(private readonly world: World, private readonly map: OfficeMap, private readonly solid: boolean[][], onePerson: string[] = []) {
     this.doors = map.doors.map((def) => ({
       def, approach: doorApproach(def, map.tile), open: false, openedAt: 0, holdMs: 0, deniedMs: 0, passages: 0, sides: new Map(),
+      allowed: onePerson.includes(def.code) ? new Set<string>() : null,
     }));
     for (const door of this.doors) this.setSolid(door, true); // every door starts closed
   }
@@ -85,12 +95,13 @@ export class Doors {
     door.open = true;
     door.openedAt = this.world.time;
     door.passages = 0;
-    this.setSolid(door, false);
+    if (!door.allowed) this.setSolid(door, false); // a one-person door stays a wall for everybody else
     if (door.def.reader) doorOpened(this.world, door.def.code);
   }
 
   private close(door: DoorState): void {
     door.open = false;
+    door.allowed?.clear();
     this.setSolid(door, true);
     if (door.def.reader) doorClosed(this.world, door.def.code, door.openedAt, door.passages);
   }
@@ -117,6 +128,7 @@ export class Doors {
       return { granted: false, text: `Access denied: your badge does not open the ${door.def.name.toLowerCase()}.` };
     }
     door.deniedMs = 0;
+    door.allowed?.add(walker.key);
     this.open(door, DOOR_OPEN_MS);
     return { granted: true, text: `Badge accepted: the ${door.def.name.toLowerCase()} is open for ${DOOR_OPEN_MS / 1000} seconds.` };
   }
@@ -160,6 +172,8 @@ export class Doors {
         if (before !== undefined && before !== side && door.open) {
           door.passages++;
           doorPassed(this.world, door.def.code, w.account, side === door.def.inside ? 'IN' : 'OUT', w.playerId);
+          // One badge, one person: once they are through, the door has no reason to stay open.
+          if (door.allowed?.delete(w.key) && door.allowed.size === 0) door.holdMs = 0;
         }
         door.sides.set(w.key, side);
       }
@@ -174,6 +188,26 @@ export class Doors {
       door.holdMs -= realMs;
       const blocked = walking.some((w) => distanceToRect(door.def, w.x, w.y) < PLAYER_RADIUS);
       if (door.holdMs <= 0 && !blocked) this.close(door);
+    }
+  }
+
+  /** Does this door let only the badge holder through? (Bots must not count on slipping in behind someone.) */
+  isOnePerson(code: string): boolean {
+    return this.doors.some((d) => d.def.code === code && d.allowed !== null);
+  }
+
+  /**
+   * Runs `move` (which moves ONE body against the collision grid) with the
+   * one-person doors that accepted this body's badge lifted for the duration.
+   * A body already standing in such a doorway is always let out of it.
+   */
+  withAccess<T>(key: string, x: number, y: number, move: () => T): T {
+    const lifted = this.doors.filter((d) => d.allowed && d.open && (d.allowed.has(key) || distanceToRect(d.def, x, y) < PLAYER_RADIUS));
+    for (const door of lifted) this.setSolid(door, false);
+    try {
+      return move();
+    } finally {
+      for (const door of lifted) this.setSolid(door, true);
     }
   }
 

@@ -6,6 +6,28 @@
   "startTime": "2026-03-02T09:00:00Z",
   "badgeSystem": { "server": "SEC-SRV-01", "entranceDoor": "MAIN-ENT" },
 
+  "mission": {
+    "flagHost": "ADMIN-SRV-01",
+    "flagPath": "/root/flag.txt",
+    "weakAdminPassword": { "account": "k.nasser", "password": "nexora2026", "strength": 8 },
+    "extraSudo": { "candidates": ["o.farouk", "y.khalil", "r.mansour"], "hosts": ["ADMIN-SRV-01"] },
+    "plaintextPassword": {
+      "host": "ADMIN-SRV-01",
+      "path": "/srv/shared/old/backup-2025.sh",
+      "ageMinutes": 260000,
+      "content": [
+        "#!/bin/bash",
+        "# OLD backup script (2025). Replaced by /opt/backup/backup.sh - delete me!",
+        "# It logged in as root over ssh to copy the archive to the second disk.",
+        "ROOT_PW='{password}'",
+        "tar -czf /tmp/shared.tar.gz /srv/shared",
+        "sshpass -p \"$ROOT_PW\" scp /tmp/shared.tar.gz root@localhost:/mnt/disk2/"
+      ]
+    },
+    "carelessAdmin": { "player": "p5", "forgetLock": 0.8 },
+    "tailgateDoor": "SRV-ROOM"
+  },
+
   "mail": {
     "server": "ADMIN-SRV-01",
     "history": [

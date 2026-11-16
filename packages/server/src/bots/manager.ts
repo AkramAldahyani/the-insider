@@ -191,7 +191,10 @@ export class BotManager {
       password: world.credentials[player.account]?.password ?? '',
       chair: { x: desk.seatX, y: desk.seatY },
       commands: commands.length > 0 ? commands : ['ls'],
-      forgetLock: this.options.forgetLock ?? 0.25,
+      // Today's match may have a sysadmin who is careless about locking (a weakness, see engine mission.ts).
+      forgetLock: world.mission.carelessPlayer === playerId
+        ? (scenario.mission?.carelessAdmin?.forgetLock ?? 0.8)
+        : (this.options.forgetLock ?? 0.25),
       taskEveryMs: (this.options.taskMinutes ?? 3) * 60_000,
     };
   }

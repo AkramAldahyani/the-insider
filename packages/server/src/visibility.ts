@@ -13,8 +13,8 @@
  *
  * test/visibility.test.ts plays a match and checks every byte sent.
  */
-import { screenState, type Scenario, type TerminalResult, type World } from '@insider/engine';
-import type { DoorLook, EmployeeChoice, OnboardingCard, PublicDesk, PublicDoor, PublicPlayer, ServerMessages, TaskView, TermScreen, Facing } from '@insider/shared';
+import { briefing, screenState, type Scenario, type TerminalResult, type World } from '@insider/engine';
+import type { DoorLook, EmployeeChoice, MissionBriefing, OnboardingCard, PublicDesk, PublicDoor, PublicPlayer, ServerMessages, TaskView, TermScreen, Facing } from '@insider/shared';
 
 /** A player's body in the office (server-side record). */
 export interface Avatar {
@@ -88,6 +88,16 @@ export function termScreen(result: TerminalResult): TermScreen {
     screen: result.screen,
     canSwitchUser: result.canSwitchUser,
   };
+}
+
+/**
+ * The hacker's private briefing: the goal, where the tools are, and rumours
+ * about what MIGHT be wrong with this office. It does not contain the list
+ * of today's weaknesses, and it is sent to the hacker's own browser only.
+ */
+export function missionBriefing(world: World): MissionBriefing {
+  const b = briefing(world);
+  return { goal: b.goal, toolsPath: b.toolsPath, rumours: [...b.rumours] };
 }
 
 /**

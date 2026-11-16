@@ -13,7 +13,45 @@ Update it at the end of every part.
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | **planned, waiting for the owner's OK** (plan below) |
 
-## Phase 4 plan (hacker gameplay) - NOT APPROVED YET
+## Phase 4 status: plan approved by the owner; Part A DONE, Part B next
+
+| Part | State |
+|---|---|
+| A Match secrets: the hacker and the weaknesses | **done** |
+| B Tool framework | next |
+| C to H | not started |
+
+Owner-approved defaults: "join as the hacker" on the start screen (one per match); the hacker is NOT told which
+weaknesses are on; winning = exfiltrating the flag; bots fall for phishing about 30 %; scanner alerts go to everyone.
+
+### Part A: what exists now
+
+- Engine `mission/mission.ts`: `applyWeaknesses` rewrites a COPY of the scenario before the world is built
+  (weak sysadmin password, extra sudo for one of three candidates on the server and their own PC, an old backup
+  script with the root password on the shared folder); `world.mission` (hacker, flag, weaknesses, extraSudoAccount,
+  carelessPlayer, onePersonDoors, won); `setHacker` creates `~/.tools` (+ `loot/`, README) on the hacker's own PC;
+  `briefing` (goal, tools path, rumours; never today's weaknesses). Its own random sequence: seed-1 IPs unchanged.
+  `createWorld(scenario, seed, { weaknesses })`: default NONE (engine tests and the CLI get a plain office).
+- Scenario `mission` block (data) + validation.
+- Server: `weaknesses` option, default "random"; env `VULNS=random|none|id,id`. `choose { playerId, hacker: true }`,
+  `welcome.mission` (hacker only, else null), `lobby.hackerOpen`. The role frees up when the hacker disconnects.
+  One-person doors: `Doors` keeps such a door solid for everyone except walkers whose badge it accepted
+  (`withAccess` wraps every body's movement; `isOnePerson`); it closes as soon as that person is through. The server
+  room is one-person unless the "tailgate" weakness is on. Careless sysadmin: persona `forgetLock` from the scenario (0.8).
+  Dev view `mission`.
+- Client: start screen option, private briefing panel (`M`; shown once the onboarding card is closed), dev button.
+- Test defaults: `Recorder` uses `weaknesses: ['tailgate']`; Playwright server uses `VULNS=none`. Vitest timeout is 30 s.
+- With the default seed 1, `pnpm dev` has weak-admin-password + extra-sudo (r.mansour): Khalid's password is then
+  `nexora2026`, not the one in TESTING.md's table (noted there).
+- 250 Vitest tests (new: engine and server `mission.test.ts`), 6 Playwright tests.
+
+### Notes for Part B
+
+- Tools should be files in `~/.tools` that the shell can run (`~/.tools/NAME args`); the shell cannot execute files
+  yet (`shell/exec.ts` only knows the command table). Tool logic belongs in a new `engine/src/tools/`.
+- Keep every tool's effect inside the simulation and give each at least one trace (DESIGN.md section 5).
+
+## Phase 4 plan (hacker gameplay)
 
 Goal (DESIGN.md section 15): win as the hacker by at least 2 routes; every action is traceable.
 Sources: DESIGN.md sections 5 (toolkit), 6 (vulnerabilities), 15. Everything stays simulated game logic.

@@ -9,5 +9,8 @@ export default defineConfig({
     // server talks to a parent process when it has one, which confuses
     // Vitest's own child-process channel; threads have no such channel.
     pool: 'threads',
+    // Several tests simulate long stretches of a full office (minutes to hours of game time).
+    // Alone each takes a second or two; with every file running at once they need more room than the default 5 s.
+    testTimeout: 30_000,
   },
 });

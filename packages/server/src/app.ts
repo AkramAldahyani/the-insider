@@ -11,7 +11,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Server } from '@colyseus/core';
 import { WebSocketTransport } from '@colyseus/ws-transport';
-import type { Scenario } from '@insider/engine';
+import { ALL_WEAKNESSES, type Scenario, type WeaknessChoice } from '@insider/engine';
 import { ROOM_NAME, type TiledMap } from '@insider/shared';
 import { officeRoom } from './OfficeRoom';
 import type { OfficeGameOptions } from './game';
@@ -29,6 +29,18 @@ export interface AppOptions {
   dev?: boolean;
   /** Bot employees on? Default true. */
   bots?: boolean;
+  /** Today's weaknesses: "random" (default), "none", or a comma-separated list of weakness ids. */
+  weaknesses?: string;
+}
+
+/** "random" / "none" / "extra-sudo,tailgate" -> what the game expects. Unknown names stop the server. */
+function parseWeaknesses(text = 'random'): WeaknessChoice {
+  if (text === 'random') return 'random';
+  if (text === 'none' || text === '') return [];
+  const ids = text.split(',').map((t) => t.trim());
+  const unknown = ids.filter((id) => !(ALL_WEAKNESSES as string[]).includes(id));
+  if (unknown.length > 0) throw new Error(`Unknown weakness "${unknown.join(', ')}". Known: ${ALL_WEAKNESSES.join(', ')}, or "random" / "none".`);
+  return ids as WeaknessChoice;
 }
 
 /** Loads the content files and returns what a room needs to create its game. */
@@ -41,6 +53,7 @@ export function loadGameOptions(options: AppOptions = {}): OfficeGameOptions {
   return {
     scenario, map, mapName, dev,
     bots: options.bots ?? true,
+    weaknesses: parseWeaknesses(options.weaknesses),
     seed: options.seed ?? 1,
     speed: options.speed ?? 1,
     writeDump: dev

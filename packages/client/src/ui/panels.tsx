@@ -43,7 +43,7 @@ export function StartScreen({ ui }: { ui: UiState }) {
                   style={{ '--department': departmentColor(e.department) } as CSSProperties}
                   disabled={e.taken}
                   data-testid={`employee-${e.id}`}
-                  onClick={() => store.send('choose', { playerId: e.id })}
+                  onClick={() => store.send('choose', { playerId: e.id, hacker: ui.asHacker })}
                 >
                   <Portrait id={e.id} department={e.department} />
                   <span className="employee-copy">
@@ -56,6 +56,21 @@ export function StartScreen({ ui }: { ui: UiState }) {
             </div>
           </section>
         ))}
+        <label className={`start-hacker ${ui.hackerOpen ? '' : 'start-hacker-off'}`}>
+          <input
+            type="checkbox"
+            data-testid="join-as-hacker"
+            checked={ui.asHacker}
+            disabled={!ui.hackerOpen}
+            onChange={(e) => store.set({ asHacker: e.target.checked })}
+          />
+          <span>
+            <strong>Join as the hacker</strong>
+            {ui.hackerOpen
+              ? ' — you look like the employee you pick, but your goal is to get the flag off the admin server. One per match.'
+              : ' — this match already has its hacker.'}
+          </span>
+        </label>
         <p className="start-note">
           You start next to your desk with an onboarding card (username, password, PC). Everything is simulated: no real
           commands run and no real network is touched.
@@ -131,6 +146,28 @@ function PlayerRoster({ ui }: { ui: UiState }) {
     </div>}
     {open && <div className="roster-foot">EMPLOYEE DIRECTORY</div>}
   </aside>;
+}
+
+// ───────────────────────────── Hacker briefing ─────────────────────────────
+
+/** The hacker's private briefing. Only the hacker's browser ever receives the data for it. */
+export function MissionPanel({ ui }: { ui: UiState }) {
+  if (!ui.briefing || !ui.briefingOpen) return null;
+  return (
+    <div className="mission" data-testid="mission">
+      <div className="mission-head">
+        <span>YOUR MISSION · PRIVATE</span>
+        <button type="button" onClick={() => store.set({ briefingOpen: false })} aria-label="Close briefing">×</button>
+      </div>
+      <p className="mission-goal" data-testid="mission-goal">{ui.briefing.goal}</p>
+      <p>Your tools are in <code>{ui.briefing.toolsPath}</code> on your own PC (a hidden folder: <code>ls -a</code>).</p>
+      <p className="mission-sub">Rumours about offices like this one:</p>
+      <ul>
+        {ui.briefing.rumours.map((r) => <li key={r}>{r}</li>)}
+      </ul>
+      <p className="mission-sub">Press <kbd>M</kbd> to show or hide this.</p>
+    </div>
+  );
 }
 
 // ───────────────────────────── Task list ─────────────────────────────

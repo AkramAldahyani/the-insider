@@ -25,8 +25,8 @@ const SARA_FILE_LINE = 'INV-2043,Najd Catering';
 
 /** The allowed fields of every message type. Anything else is a leak. */
 const ALLOWED_FIELDS: Record<string, string[]> = {
-  lobby: ['scenarioName', 'mapName', 'employees', 'dev'],
-  welcome: ['playerId', 'card'],
+  lobby: ['scenarioName', 'mapName', 'employees', 'dev', 'hackerOpen'],
+  welcome: ['playerId', 'card', 'mission'],
   'term.open': ['hostname', 'output', 'prompt', 'masked', 'screen', 'canSwitchUser'],
   'term.output': ['output', 'prompt', 'masked', 'screen', 'canSwitchUser'],
   'term.close': ['reason'],

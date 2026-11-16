@@ -104,6 +104,15 @@ export interface TaskView {
   }[];
 }
 
+/** The hacker's private briefing (only the hacker's own browser ever receives one). */
+export interface MissionBriefing {
+  goal: string;
+  /** Where the tools folder is on the hacker's own PC. */
+  toolsPath: string;
+  /** Things that MIGHT be wrong with this office. Which of them are true today is not told. */
+  rumours: string[];
+}
+
 /** What a PC's screen shows after something happened. */
 export interface TermScreen {
   /** Text to print. */
@@ -120,9 +129,9 @@ export interface TermScreen {
 
 export interface ServerMessages {
   /** Sent on connect: who can be played. */
-  lobby: { scenarioName: string; mapName: string; employees: EmployeeChoice[]; dev: boolean };
+  lobby: { scenarioName: string; mapName: string; employees: EmployeeChoice[]; dev: boolean; hackerOpen: boolean };
   /** Sent after choosing an employee. */
-  welcome: { playerId: string; card: OnboardingCard };
+  welcome: { playerId: string; card: OnboardingCard; mission: MissionBriefing | null };
   /** The player sat down: the screen as it was left. */
   'term.open': TermScreen & { hostname: string };
   /** New text on the screen of the PC the player is sitting at. */
@@ -141,7 +150,7 @@ export interface ServerMessages {
 
 export interface ClientMessages {
   /** Pick an employee on the start screen. */
-  choose: { playerId: string };
+  choose: { playerId: string; hacker?: boolean };
   /** Which way the player wants to walk: each of dx, dy is -1, 0 or 1. The SERVER decides the position. */
   move: { dx: number; dy: number };
   /** Sit at a desk (the server checks the distance). */
@@ -163,7 +172,7 @@ export interface ClientMessages {
   'dev.dump': Record<string, never>;
   /**
    * Print something only the server knows. `what` is one of: bots, doors,
-   * badges, tasks, unlocked, cctv (arg = camera id), saw (arg = player id),
+   * badges, tasks, unlocked, mission, cctv (arg = camera id), saw (arg = player id),
    * file (arg = "HOST:/path", shows the end of that file).
    */
   'dev.show': { what: string; arg?: string };

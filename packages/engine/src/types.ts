@@ -263,6 +263,29 @@ export interface BadgeSystem {
   holders: Record<string, Badge>;
 }
 
+// ───────────────────────────── Mission ─────────────────────────────
+
+/** A weakness a match can have (DESIGN.md section 6). */
+export type WeaknessId = 'weak-admin-password' | 'extra-sudo' | 'plaintext-password' | 'careless-admin' | 'tailgate';
+
+/** The match's secrets (see mission/mission.ts). NEVER send this to a game client. */
+export interface Mission {
+  /** Player id of the hacker (null = this match has none yet). */
+  hacker: string | null;
+  /** Where the flag is. */
+  flag: { host: string; path: string } | null;
+  /** The weaknesses switched on for this match. */
+  weaknesses: WeaknessId[];
+  /** "extra-sudo": the account that got sudo by mistake ("" if that weakness is off). */
+  extraSudoAccount: string;
+  /** "careless-admin": the player whose bot rarely locks its screen ("" if off). */
+  carelessPlayer: string;
+  /** Door codes that let exactly one person through per badge tap (the server room, unless "tailgate" is on). */
+  onePersonDoors: string[];
+  /** Set when the hacker has won: the game time it happened. */
+  won: number | null;
+}
+
 // ───────────────────────────── Unattended PCs ─────────────────────────────
 
 /**
@@ -364,6 +387,8 @@ export interface World {
   badges: BadgeSystem;
   /** Internal email (see commands/mail.ts). */
   mail: MailSystem;
+  /** The match's secrets: the hacker and today's weaknesses. Never sent to players. */
+  mission: Mission;
   /** Every time a PC stood unlocked with its user away (see auth/unattended.ts). Never sent to players. */
   unattended: UnattendedWindow[];
   /** The simulated web and its proxy (see `curl` in commands/net.ts). */

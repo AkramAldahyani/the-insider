@@ -170,6 +170,14 @@ Each match randomly enables 2–4 vulnerabilities so routes cannot be memorized:
 
 Alerts become more frequent as the hacker progresses, without revealing exact progress.
 
+Decided in Phase 4:
+
+- **Weaknesses are scenario data.** The scenario's `mission` block describes each one; a match switches on 2-4 of them, chosen from the seed (or forced with `VULNS`). They are written into a copy of the scenario before the world is built, so nothing in the simulation treats them specially.
+- **The hacker is not told which are on.** The private briefing gives the goal, where the tools are, and rumours. Finding the weak spot is part of the game, and every attempt leaves traces.
+- **Until roles exist (Phase 5), a player asks for the role**: "join as the hacker" on the start screen, one per match. Everybody may know whether the role is taken; nobody is told who took it.
+- **Tailgating is the exception, not the rule, at the server room.** Normally that door lets exactly one person through per badge and closes behind them; only with the tailgating weakness does it stay open for 3 seconds like the other doors.
+- The match's secrets (`world.mission`) are never sent to a browser.
+
 ---
 
 ## 7. Roles

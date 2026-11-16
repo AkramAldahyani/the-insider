@@ -273,3 +273,46 @@ test('badge doors: a refused badge keeps the security office shut', async ({ pag
   await expect(page.getByTestId('room')).toHaveText('Corridor');
   await expect.poll(() => look('SEC-OFFICE')).toBe('closed');
 });
+
+test('joining as the hacker: a private briefing and a hidden tools folder; the role is then taken', async ({ page, browser }) => {
+  await page.goto('/');
+  const option = page.getByTestId('join-as-hacker');
+  await expect(option).toBeEnabled();
+  await option.check();
+  await page.getByTestId('employee-p4').click(); // Omar, Marketing
+  // First the ordinary onboarding card (he looks like any employee); closing it shows the briefing.
+  const password = await page.getByTestId('card-password').innerText();
+  await page.keyboard.press('c');
+  await expect(page.getByTestId('mission')).toBeVisible();
+  await expect(page.getByTestId('mission-goal')).toContainText('/root/flag.txt');
+  await page.screenshot({ path: `${SHOTS}/11-hacker-briefing.png` });
+
+  // M hides and shows the briefing.
+  await page.keyboard.press('m');
+  await expect(page.getByTestId('mission')).toBeHidden();
+  await page.keyboard.press('m');
+  await expect(page.getByTestId('mission')).toBeVisible();
+
+  // Someone else opening the game sees that the role is taken, and gets no briefing.
+  const other = await (await browser.newContext()).newPage();
+  await other.goto('/');
+  await expect(other.getByTestId('join-as-hacker')).toBeDisabled();
+  await other.getByTestId('employee-p1').click();
+  await expect(other.getByTestId('card')).toBeVisible();
+  await expect(other.getByTestId('mission')).toHaveCount(0);
+  await other.close();
+
+  // On his own PC the tools folder is there, but only `ls -a` shows it.
+  await walkToDesk(page, 'MKT-LT-11');
+  await page.keyboard.press('e');
+  await expect(page.getByTestId('terminal')).toHaveAttribute('data-screen', 'locked');
+  await page.keyboard.type(password);
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('terminal')).toHaveAttribute('data-screen', 'shell');
+  await page.keyboard.type('ls -a');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => terminalText(page)).toContain('.tools');
+  await page.keyboard.type('cat .tools/README');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => terminalText(page)).toContain('Every tool leaves a trace');
+});
