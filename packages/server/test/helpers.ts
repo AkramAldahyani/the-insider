@@ -27,7 +27,8 @@ export class Recorder {
   states: PublicState[] = [];
 
   constructor(options: Partial<OfficeGameOptions> = {}) {
-    this.game = new OfficeGame({ ...loaded, scenario: clone(scenario), map: clone(tiledMap), dev: false, ...options });
+    // Tests get an empty office unless they ask for bots: other people walking about would make most checks unpredictable.
+    this.game = new OfficeGame({ ...loaded, scenario: clone(scenario), map: clone(tiledMap), dev: false, bots: false, ...options });
   }
 
   get map(): OfficeMap {

@@ -10,6 +10,7 @@
  *   MAP=office-small
  *   SEED=1              random seed of the simulated world
  *   TIME_SPEED=1        game seconds per real second
+ *   BOTS=0              an empty office: no bot employees
  *   NODE_ENV=production switches the developer panel OFF
  */
 import { OfficeGame } from './game';
@@ -21,6 +22,7 @@ const options: AppOptions = {
   map: process.env.MAP,
   seed: process.env.SEED ? Number(process.env.SEED) : undefined,
   speed: process.env.TIME_SPEED ? Number(process.env.TIME_SPEED) : undefined,
+  bots: process.env.BOTS === undefined ? undefined : process.env.BOTS !== '0',
 };
 const port = Number(process.env.GAME_PORT ?? SERVER_PORT);
 
@@ -31,7 +33,7 @@ try {
   const loaded = loadGameOptions(options);
   new OfficeGame(loaded);
   await createGameServer(options).listen(port);
-  console.log(`[insider] game server on ws://localhost:${port}  scenario=${loaded.scenario.id} map=${loaded.mapName} dev=${String(loaded.dev)}`);
+  console.log(`[insider] game server on ws://localhost:${port}  scenario=${loaded.scenario.id} map=${loaded.mapName} dev=${String(loaded.dev)} bots=${String(loaded.bots)}`);
 } catch (error) {
   console.error(`[insider] cannot start:\n${(error as Error).message}`);
   process.exit(1);

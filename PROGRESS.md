@@ -16,8 +16,8 @@ Update it at the end of every part.
 | Part | What | State |
 |---|---|---|
 | A | Decisions, doors and badges | **done** |
-| B | Bot movement and pathfinding | next |
-| C | Bot behaviour (routines, desk use, observations) | not started |
+| B | Bot movement and pathfinding | **done** |
+| C | Bot behaviour (routines, desk use, observations) | next |
 | D | Job tasks (bots and humans) | not started |
 | E | Internal email, network/DNS/proxy logs, background service noise | not started |
 | F | CCTV recording | not started |
@@ -52,14 +52,34 @@ locally (never push), update this file.
 - **Client**: doors drawn live, reader light, `E` taps, hint, badge on the onboarding card, beep placeholders (`game/sound.ts`).
 - **Tests**: 153 Vitest tests (new: `packages/server/test/doors.test.ts`), 3 Playwright tests.
 
+## Part B: what exists now
+
+- `packages/shared/src/path.ts`: `findPath` (A*, 4 directions, corner points, optional `avoid` tiles).
+- `packages/server/src/bots/random.ts`: the bots' own seeded generator (separate from the engine's, so bots do not change IPs).
+- `packages/server/src/bots/mover.ts`: `Mover` walks one body along a route at human speed against `game.collision`;
+  taps badge doors after a short pause (sometimes walks through an already open door without tapping);
+  plans around restricted doors its badge does not open; reports `arrived` or `failed` (`no-route`, `denied`, `stuck`).
+- `packages/server/src/bots/manager.ts`: `BotManager`. One bot per employee no human plays. Bots appear on the
+  pavement 4-240 game seconds after the match starts, enter through MAIN-ENT and walk to their own chair, then stand there
+  (Part C gives them things to do). A bot body is a normal `Avatar` with key `bot:<playerId>`; it is not in `game.clients`.
+- `game.ts`: option `bots` (default true; env `BOTS=0` for an empty office). A human choosing an employee removes
+  that employee's bot; a human disconnecting schedules a bot for that employee. The lobby's `taken` flag counts humans only.
+- Tests run with `bots: false` unless they ask (`new Recorder({ bots: true })`). 163 Vitest tests (new: `bots.test.ts`).
+- Adding SEC-SRV-01 in Part A shifted the seed-1 DHCP addresses (a new host draws random numbers while booting);
+  TESTING.md's tables were updated in this part.
+
 ## Things the next part must know
 
 - Bots must use the same paths as humans: `Doors.tap(walker, code)` for badge doors, and the `Walker`
   shape in `doors.ts`. A bot body should be an `Avatar` like a human's, so the public state cannot tell them apart.
 - Plan routes on `game.map.solid` (doors passable); move bodies against `game.collision`.
-- Open question for Part B: humans start at their desks without an arrival line in today's badge log, while
-  bots will walk in through the main entrance. Decide whether to write an arrival line for a human when they
-  pick an employee, or leave it (currently: no line).
+- Humans start at their desks WITHOUT an arrival line in today's badge log; bots walk in and (mostly) have one.
+  Left as is for now; tell the owner in the Phase 3 summary (a later lobby/"match start" in Phase 6 can fix it).
+- Part C plan: `bots/brain.ts`, a small behaviour tree per bot (sit at own desk, log in or unlock, work, take
+  breaks to cafeteria/bathroom/printer, sometimes leave the PC unlocked, lock otherwise). Bots type through the
+  engine (`openTerminal` / `sendInput`) so their logs look like a human's. A seated bot occupies the desk, so the
+  Playwright test that sits at HR-LT-03 needs either `BOTS=0` for that test server or a different free desk.
+- The dev server (`pnpm dev`) restarts itself when server files change; Playwright reuses a running one.
 - Door timers and walking use real time; the game clock can run faster (dev panel). At speed 1 they agree.
 - Writing files from Bash heredocs breaks on apostrophes in this environment: use the Write tool or a script file.
 - `pnpm` is not on PATH here: use `corepack pnpm ...`.

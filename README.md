@@ -2,7 +2,7 @@
 
 A multiplayer social-deduction game that teaches real Linux forensics. The full design is in [DESIGN.md](DESIGN.md).
 
-**Current state: Phase 3 (in progress) — a living office.** Doors and badges work; bots, tasks, email and CCTV are being added part by part (see `PROGRESS.md`). Phase 2 is complete:
+**Current state: Phase 3 (in progress) — a living office.** Doors and badges work and bot employees walk in to their desks; bot behaviour, tasks, email and CCTV are being added part by part (see `PROGRESS.md`). Phase 2 is complete:
 
 **Phase 2 — the office in the browser.** You can walk around a top-down office, sit at any PC and use its simulated Linux shell in a real-looking terminal. There are no bots, tasks, hacker tools, roles or meetings yet, and the art is placeholder shapes.
 
@@ -75,7 +75,7 @@ Other commands:
 | `pnpm build` | production build of the web page (`packages/client/dist`) |
 | `pnpm map` | regenerate `maps/office-small.json` from `maps/build-office.ts` (overwrites edits made in Tiled) |
 
-Server settings are environment variables: `GAME_PORT` (2567), `SCENARIO` (`nexora-small`), `MAP` (`office-small`), `SEED` (1), `TIME_SPEED` (game seconds per real second, 1), and `NODE_ENV=production` to switch the developer tools off.
+Server settings are environment variables: `GAME_PORT` (2567), `SCENARIO` (`nexora-small`), `MAP` (`office-small`), `SEED` (1), `TIME_SPEED` (game seconds per real second, 1), `BOTS` (`0` = an empty office with no bot employees), and `NODE_ENV=production` to switch the developer tools off.
 
 ## Run the CLI
 
@@ -113,7 +113,7 @@ pnpm test
 pnpm typecheck
 ```
 
-153 Vitest tests cover the engine (permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, auto-lock, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, map checks, and the visibility rule).
+163 Vitest tests cover the engine (permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, auto-lock, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, bots, map checks, and the visibility rule).
 
 ```bash
 pnpm e2e

@@ -192,7 +192,7 @@ describe('visibility: what goes over the wire', () => {
         });
       }
     } as typeof WebSocket;
-    server = createGameServer({ dev: false });
+    server = createGameServer({ dev: false, bots: false }); // an empty office: this test is about what two humans receive
     await server.listen(PORT);
   });
 

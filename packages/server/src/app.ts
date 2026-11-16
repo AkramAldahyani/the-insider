@@ -27,6 +27,8 @@ export interface AppOptions {
   speed?: number;
   /** Developer tools on? Default: only when NODE_ENV is not "production". */
   dev?: boolean;
+  /** Bot employees on? Default true. */
+  bots?: boolean;
 }
 
 /** Loads the content files and returns what a room needs to create its game. */
@@ -38,6 +40,7 @@ export function loadGameOptions(options: AppOptions = {}): OfficeGameOptions {
   const dev = options.dev ?? process.env.NODE_ENV !== 'production';
   return {
     scenario, map, mapName, dev,
+    bots: options.bots ?? true,
     seed: options.seed ?? 1,
     speed: options.speed ?? 1,
     writeDump: dev

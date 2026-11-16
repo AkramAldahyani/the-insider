@@ -10,15 +10,15 @@ Both use the same scenario. With the default seed the machines are:
 | Host | Room | IP | Owner | Password | Screen at start |
 |---|---|---|---|---|---|
 | FIN-LT-07 | Finance | 10.0.2.58 | s.alharbi | `Riyadh2024!` | locked |
-| FIN-LT-04 | Finance | 10.0.2.167 | r.mansour | `football7` | login prompt |
-| HR-LT-03 | HR | 10.0.2.146 | l.haddad | `Lina@HR#2025` | **unlocked**, never locks itself |
-| HR-LT-05 | HR | 10.0.2.67 | n.saleh | `Noor!Saleh#88` | locked |
-| MKT-LT-09 | Marketing | 10.0.2.77 | y.khalil | `pixel1234` | **unlocked**, locks after 10 min |
+| FIN-LT-04 | Finance | 10.0.2.142 | r.mansour | `football7` | login prompt |
+| HR-LT-03 | HR | 10.0.2.115 | l.haddad | `Lina@HR#2025` | **unlocked**, never locks itself |
+| HR-LT-05 | HR | 10.0.2.134 | n.saleh | `Noor!Saleh#88` | locked |
+| MKT-LT-09 | Marketing | 10.0.2.168 | y.khalil | `pixel1234` | **unlocked**, locks after 10 min |
 | MKT-LT-11 | Marketing | 10.0.2.71 | o.farouk | `summer2025` | locked |
-| IT-WS-01 | IT | 10.0.2.84 | d.aziz (helpdesk) | `H3lpdesk-Dana-42` | login prompt |
-| IT-WS-02 | IT | 10.0.2.43 | k.nasser (sysadmin) | `Tr0ub4dor&3xK9` | locked |
-| REC-PC-01 | Reception | 10.0.2.179 | m.yousef | `welcome2026` | locked |
-| SEC-WS-01 | Security office | 10.0.2.33 | t.omar | `Falcon-Gate-7` | locked |
+| IT-WS-01 | IT | 10.0.2.128 | d.aziz (helpdesk) | `H3lpdesk-Dana-42` | login prompt |
+| IT-WS-02 | IT | 10.0.2.50 | k.nasser (sysadmin) | `Tr0ub4dor&3xK9` | locked |
+| REC-PC-01 | Reception | 10.0.2.42 | m.yousef | `welcome2026` | locked |
+| SEC-WS-01 | Security office | 10.0.2.166 | t.omar | `Falcon-Gate-7` | locked |
 | ADMIN-SRV-01 | Server room | 10.0.1.10 | — | root: `N3x0ra-R00t-Vault!92` | login prompt |
 
 k.nasser has an account (with sudo) on every machine. Everyone has an account on ADMIN-SRV-01.
@@ -127,7 +127,7 @@ Open http://localhost:5173. To start from a clean office at any time, stop `pnpm
 | Sit at IT-WS-02 and unlock it | `k.nasser@IT-WS-02:~$` |
 | `ssh k.nasser@HR-LT-05` and the password | `k.nasser@HR-LT-05:~$` |
 | `sudo loginctl unlock-session` and the password | No output. |
-| `sudo grep REMOTE /var/log/auth.log` | `REMOTE unlock-session: session … of user n.saleh unlocked by k.nasser from 10.0.2.43 (pts/0)` |
+| `sudo grep REMOTE /var/log/auth.log` | `REMOTE unlock-session: session … of user n.saleh unlocked by k.nasser from 10.0.2.50 (pts/0)` |
 | `exit`, `Esc`, look at HR-LT-05 | Green for a minute, then it locks itself again. |
 
 ## J. Developer panel (development only)
@@ -183,7 +183,7 @@ Open http://localhost:5173, pick an employee and press the backtick key: nothing
 pnpm test
 ```
 
-Expected: `Test Files 13 passed (13)` and `Tests 153 passed (153)`.
+Expected: `Test Files 14 passed (14)` and `Tests 163 passed (163)`.
 
 ```bash
 pnpm e2e
@@ -283,7 +283,7 @@ The CLI prints the scenario name, the game time, and a table of ten players with
 | `:sit IT-WS-02` | Lock screen for k.nasser. |
 | `Tr0ub4dor&3xK9` | `k.nasser@IT-WS-02:~$ ` |
 | `ssh k.nasser@ADMIN-SRV-01` then the password | `k.nasser@ADMIN-SRV-01:~$ ` |
-| `last -n 4` | First line: you, from `10.0.2.43`, `still logged in`. Second line: `s.alharbi  pts/0  10.0.2.58  Mon Mar  2 09:0x - 09:0x`. |
+| `last -n 4` | First line: you, from `10.0.2.50`, `still logged in`. Second line: `s.alharbi  pts/0  10.0.2.58  Mon Mar  2 09:0x - 09:0x`. |
 | `grep s.alharbi /var/log/auth.log \| tail -n 11` | In order: `Failed password for s.alharbi from 10.0.2.58`, `Accepted password for s.alharbi from 10.0.2.58` (same `sshd[pid]` and port as the failure), `session opened`, `sudo: s.alharbi : user NOT in sudoers ; TTY=pts/0 ; PWD=/home/s.alharbi ; USER=root ; COMMAND=/usr/bin/cat /root/flag.txt`, `session closed`. |
 | `sudo cat /home/s.alharbi/.bash_history` then your password | Sara's commands from step 4, including `cat /root/flag.txt` and `sudo cat /root/flag.txt`, ending with `exit`. Her passwords are not in it. |
 | `grep -B 4 f1:07:07 /var/lib/dhcp/dhcpd.leases` | Two leases for `10.0.2.58` with that MAC: an old one (`binding state free`) and the current one (`binding state active`). This is how an IP is tied to a device. |
@@ -300,7 +300,7 @@ The CLI prints the scenario name, the game time, and a table of ten players with
 | `whoami` | `root` |
 | `exit` | `logout`, back to `k.nasser@ADMIN-SRV-01:~$ ` |
 | `sudo tail -n 4 /var/log/auth.log` | Your own sudo lines: `sudo: k.nasser : TTY=pts/0 ; PWD=/home/k.nasser ; USER=root ; COMMAND=…` |
-| `sudo ss -tnp` | One `ESTAB` line: `10.0.1.10:22` ↔ `10.0.2.43:<port>` with `users:(("sshd",pid=…` |
+| `sudo ss -tnp` | One `ESTAB` line: `10.0.1.10:22` ↔ `10.0.2.50:<port>` with `users:(("sshd",pid=…` |
 | `ps aux \| grep sshd` | The listener plus `sshd: k.nasser [priv]` and `sshd: k.nasser@pts/0`. |
 | `su - s.alharbi` then `wrong` | `su: Authentication failure` |
 | `exit` | Back to `k.nasser@IT-WS-02:~$ ` |
@@ -354,7 +354,7 @@ The CLI prints the scenario name, the game time, and a table of ten players with
 - `stat todo.txt`, `file /usr/bin/ls`
 - `chmod 600 todo.txt && ls -l todo.txt`
 - `journalctl -u ssh -n 10`, `dmesg`, `crontab -l` (on IT-WS-02 as k.nasser)
-- Pivot: as p1 on FIN-LT-07, `ssh k.nasser@IT-WS-02`, then from there `ssh k.nasser@ADMIN-SRV-01`. On the server, `last -n 1` shows `10.0.2.43` (IT-WS-02), not Sara's `10.0.2.58`.
+- Pivot: as p1 on FIN-LT-07, `ssh k.nasser@IT-WS-02`, then from there `ssh k.nasser@ADMIN-SRV-01`. On the server, `last -n 1` shows `10.0.2.50` (IT-WS-02), not Sara's `10.0.2.58`.
 - Kick an intruder: find their shell with `ps aux` on the server and `sudo kill -9 <pid>`. Their next keypress shows `Connection to ADMIN-SRV-01 closed by remote host.` and their history on the server is not saved.
 
 ## Automated tests (Phase 1)

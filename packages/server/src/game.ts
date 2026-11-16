@@ -20,6 +20,7 @@ import {
   INTERACT_DISTANCE, PLAYER_RADIUS, PLAYER_SPEED, moveWithCollision, parseOfficeMap,
   type ClientMessages, type Facing, type OfficeMap, type PublicState, type ServerMessages, type ServerMessageType, type TiledMap,
 } from '@insider/shared';
+import { BotManager } from './bots/manager';
 import { Doors, type Walker } from './doors';
 import { checkMapAgainstScenario } from './mapCheck';
 import { employeeChoices, onboardingCard, publicDesk, publicDoor, publicPlayer, termScreen, type Avatar } from './visibility';
@@ -31,6 +32,8 @@ export interface OfficeGameOptions {
   seed?: number;
   /** Game seconds per real second (default 1). */
   speed?: number;
+  /** Bots play every employee no human has picked (default true). */
+  bots?: boolean;
   /** Enables the developer messages (dev.*). MUST be false in production. */
   dev?: boolean;
   /** Dev only: saves a world dump and returns where it went. The game itself never touches the disk. */
@@ -54,6 +57,8 @@ export class OfficeGame {
   /** The same map with closed doors added to `solid`: what bodies are moved against. */
   private readonly collision: OfficeMap;
   readonly doors: Doors;
+  /** Null when the match runs without bots. */
+  readonly bots: BotManager | null;
   readonly dev: boolean;
   speed: number;
 
@@ -62,7 +67,11 @@ export class OfficeGame {
   private readonly writeDump?: (json: string, name: string) => string;
   /** Everyone connected, including people still on the start screen. */
   private readonly clients = new Set<string>();
-  /** clientId -> the body of a player who has chosen an employee. */
+  /**
+   * Every body in the office: humans (key = their network id) and bots
+   * (key = "bot:<player id>"). Bots are not in `clients`, which is how the
+   * server tells them apart; browsers are never told.
+   */
   private readonly avatars = new Map<string, Avatar>();
   private outbox: Outgoing[] = [];
   /** Fractions of a game millisecond left over from the last tick. */
@@ -80,12 +89,21 @@ export class OfficeGame {
     this.speed = options.speed ?? 1;
     this.dev = options.dev ?? false;
     this.writeDump = options.writeDump;
+    this.bots = options.bots === false
+      ? null
+      : new BotManager({
+          world: this.world, map: this.map, collision: this.collision, doors: this.doors,
+          walker: (a) => this.walker(a),
+          addBody: (a) => void this.avatars.set(a.clientId, a),
+          removeBody: (key) => this.removeBody(key),
+        }, options.seed ?? 1);
   }
 
   // ───────────────────────────── Sending ─────────────────────────────
 
   /** The single exit for messages to browsers. The type parameter ties each message name to its payload shape. */
   private send<T extends ServerMessageType>(to: string, type: T, payload: ServerMessages[T]): void {
+    if (!this.clients.has(to)) return; // a bot has no browser to send to
     this.outbox.push({ to, type, payload });
   }
 
@@ -112,7 +130,8 @@ export class OfficeGame {
   }
 
   private sendLobby(to: string): void {
-    const taken = new Set([...this.avatars.values()].map((a) => a.playerId));
+    // "Taken" means: a HUMAN plays this employee. An employee played by a bot can still be picked.
+    const taken = new Set(this.humans().map((a) => a.playerId));
     this.send(to, 'lobby', {
       scenarioName: this.world.scenarioName,
       mapName: this.mapName,
@@ -128,12 +147,24 @@ export class OfficeGame {
     this.sendLobby(clientId);
   }
 
+  /** The bodies controlled by a browser. */
+  private humans(): Avatar[] {
+    return [...this.avatars.values()].filter((a) => this.clients.has(a.clientId));
+  }
+
+  /** Takes a body out of the office. Like standing up: its PC stays exactly as it was. */
+  private removeBody(key: string): void {
+    const avatar = this.avatars.get(key);
+    if (avatar?.seatedAt) leaveTerminal(this.world, avatar.terminalId);
+    this.avatars.delete(key);
+  }
+
   disconnect(clientId: string): void {
     const avatar = this.avatars.get(clientId);
-    // Leaving the game is like standing up: the PC stays exactly as it was.
-    if (avatar?.seatedAt) leaveTerminal(this.world, avatar.terminalId);
-    this.avatars.delete(clientId);
+    this.removeBody(clientId);
     this.clients.delete(clientId);
+    // The employee is not left empty: a bot comes to work in their place a little later.
+    if (avatar) this.bots?.schedule(avatar.playerId, 20);
     // People on the start screen see that employee become free again.
     for (const other of this.clients) if (!this.avatars.has(other)) this.sendLobby(other);
   }
@@ -192,10 +223,11 @@ export class OfficeGame {
     if (this.avatars.has(clientId)) return; // already playing
     const player = this.world.players.find((p) => p.id === data.playerId);
     if (!player) return this.send(clientId, 'notice', { text: 'That employee does not exist.' });
-    if ([...this.avatars.values()].some((a) => a.playerId === player.id)) {
+    if (this.humans().some((a) => a.playerId === player.id)) {
       this.send(clientId, 'notice', { text: `${player.name} is already being played.` });
       return this.sendLobby(clientId);
     }
+    this.bots?.remove(player.id); // the human takes over from this employee's bot
     const spawn = this.map.spawns[player.desk] ?? this.map.defaultSpawn;
     this.avatars.set(clientId, {
       clientId, playerId: player.id, account: player.account, name: player.name, x: spawn.x, y: spawn.y, facing: 'up', seatedAt: '', terminalId: '', dx: 0, dy: 0,
@@ -248,7 +280,7 @@ export class OfficeGame {
     if (whole > 0) advanceTime(this.world, whole);
 
     const step = (PLAYER_SPEED * realMs) / 1000;
-    for (const avatar of this.avatars.values()) {
+    for (const avatar of [...this.avatars.values()]) {
       if (avatar.seatedAt) {
         // The screen may have changed without this player typing (auto-lock, a remote lock...).
         const changed = refreshTerminal(this.world, avatar.terminalId);
@@ -263,6 +295,7 @@ export class OfficeGame {
       avatar.y = moved.y;
       avatar.facing = avatar.dx < 0 ? 'left' : avatar.dx > 0 ? 'right' : avatar.dy < 0 ? 'up' : 'down';
     }
+    this.bots?.tick(realMs);
     // Doors last: they look at where everybody ended up.
     this.doors.tick(realMs, [...this.avatars.values()].map((a) => this.walker(a)));
   }
