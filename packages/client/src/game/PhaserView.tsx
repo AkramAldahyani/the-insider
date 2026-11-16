@@ -24,23 +24,39 @@ export function PhaserView() {
 
   // The map.
   useEffect(() => {
+    const parent = holder.current!;
     const game = new Phaser.Game({
       type: Phaser.AUTO,
-      parent: holder.current!,
+      parent,
       backgroundColor: '#0d0f14',
-      scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
+      // ResizeObserver owns the canvas size. RESIZE mode would independently
+      // measure the border box and overwrite our content size on its next poll.
+      scale: { mode: Phaser.Scale.NONE, width: parent.clientWidth, height: parent.clientHeight },
       input: { keyboard: false },
       scene: createOfficeScene(store),
       banner: false,
     });
-    // The HUD rails reserve space for the canvas; collapsing tasks can resize
-    // its parent without a window resize. Camera/world coordinates stay intact.
-    const resize = new ResizeObserver(([entry]) => {
-      const { width, height } = entry.contentRect;
-      if (width > 0 && height > 0) game.scale.resize(width, height);
+    let resizeFrame = 0;
+    const fitCanvas = () => {
+      resizeFrame = 0;
+      const width = parent.clientWidth;
+      const height = parent.clientHeight;
+      if (width > 0 && height > 0 && (game.scale.width !== width || game.scale.height !== height)) {
+        // NONE + resize updates the renderer and camera together, at 1:1 scale.
+        game.scale.resize(width, height);
+      }
+    };
+    const resize = new ResizeObserver(() => {
+      if (!resizeFrame) resizeFrame = requestAnimationFrame(fitCanvas);
     });
-    resize.observe(holder.current!);
-    return () => { resize.disconnect(); game.destroy(true); };
+    const startSizing = () => { fitCanvas(); resize.observe(parent); };
+    game.events.once(Phaser.Core.Events.READY, startSizing);
+    return () => {
+      game.events.off(Phaser.Core.Events.READY, startSizing);
+      resize.disconnect();
+      cancelAnimationFrame(resizeFrame);
+      game.destroy(true);
+    };
   }, []);
 
   // The keyboard.

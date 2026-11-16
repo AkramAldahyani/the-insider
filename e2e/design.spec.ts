@@ -10,6 +10,46 @@ async function publicBody(page: Page, id: string) {
   }, id);
 }
 
+test('task toggles keep canvas and camera sizing stable', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/');
+  await page.getByTestId('employee-p1').click();
+  await expect(page.getByTestId('card')).toBeVisible();
+  await page.keyboard.press('c');
+  const canvas = page.locator('.map canvas');
+  const expectFitted = async () => {
+    await expect.poll(() => canvas.evaluate((element) => {
+      const c = element as HTMLCanvasElement;
+      const parent = c.parentElement!;
+      return [c.width - parent.clientWidth, c.height - parent.clientHeight,
+        c.getBoundingClientRect().width - parent.clientWidth, c.getBoundingClientRect().height - parent.clientHeight];
+    })).toEqual([0, 0, 0, 0]);
+  };
+  for (const viewport of [{ width: 1280, height: 800 }, { width: 1024, height: 768 }]) {
+    await page.setViewportSize(viewport);
+    await expectFitted();
+    await page.waitForTimeout(700); // Let the follow camera settle and cross Phaser's 500 ms parent check.
+    const baseline = await canvas.screenshot();
+    for (let cycle = 0; cycle < 3; cycle++) {
+      if (cycle % 2) await page.getByRole('button', { name: 'T Tasks', exact: true }).click();
+      else await page.keyboard.press('t');
+      await expect(page.getByTestId('tasks')).toBeHidden();
+      await expectFitted();
+      await page.waitForTimeout(700);
+      await expectFitted();
+      await page.keyboard.press('t');
+      await expect(page.getByTestId('tasks')).toBeVisible();
+      await expectFitted();
+      await page.waitForTimeout(700);
+      await expectFitted();
+      // Same stationary world and same viewport must render identically after a round trip.
+      expect((await canvas.screenshot()).equals(baseline)).toBe(true);
+    }
+  }
+  expect(errors).toEqual([]);
+});
+
 test('office presentation stays readable and follows two clients', async ({ page, context }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));

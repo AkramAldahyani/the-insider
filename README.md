@@ -121,7 +121,7 @@ pnpm typecheck
 pnpm e2e
 ```
 
-Four Playwright tests drive real Chromium clients through the game (on their own server, ports 2577 and 5183, without bots, so they never share an office with a game you have open). They cover the existing interactions plus two-client movement and responsive HUD layout. Screenshots go to `e2e/screenshots/` and `test-results/design/`. The first time, download the browser with:
+Five Playwright tests drive real Chromium clients through the game (on their own server, ports 2577 and 5183, without bots, so they never share an office with a game you have open). They cover the existing interactions plus two-client movement, responsive HUD layout, and stable canvas/camera sizing after repeated task-panel toggles. Screenshots go to `e2e/screenshots/` and `test-results/design/`. The first time, download the browser with:
 
 ```bash
 pnpm exec playwright install chromium
