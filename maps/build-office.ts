@@ -184,12 +184,15 @@ const spawnObjects = [
   point('outside', 6, BUILDING_ROWS + 0.5),
 ];
 
+// `covers` is the room a camera watches; `range` is how far it sees, in tiles.
+// The two corridor cameras overlap in the middle, so the whole corridor is covered.
 const cameraObjects = [
-  point('CAM-01 Reception', 1.5, 19.5, [prop('covers', 'Reception')]),
-  point('CAM-02 Corridor west', 2, 14.5, [prop('covers', 'Corridor')]),
-  point('CAM-03 Corridor east', 54, 14.5, [prop('covers', 'Corridor')]),
-  point('CAM-04 Server room door', 48.5, 2.5, [prop('covers', 'IT department')]),
-  point('CAM-05 Cafeteria', 33.5, 19.5, [prop('covers', 'Cafeteria / meeting room')]),
+  point('CAM-01 Reception', 1.5, 19.5, [prop('covers', 'Reception'), prop('range', 18)]),
+  point('CAM-02 Corridor west', 2, 14.5, [prop('covers', 'Corridor'), prop('range', 30)]),
+  point('CAM-03 Corridor east', 54, 14.5, [prop('covers', 'Corridor'), prop('range', 30)]),
+  // Watches the server room door from the IT side. It does not see into the server room, nor the far end of IT.
+  point('CAM-04 Server room door', 48.5, 2.5, [prop('covers', 'IT department'), prop('range', 9)]),
+  point('CAM-05 Cafeteria', 33.5, 19.5, [prop('covers', 'Cafeteria / meeting room'), prop('range', 20)]),
   // No cameras in the printer room, storage or bathrooms: blind spots (DESIGN.md section 2).
 ];
 

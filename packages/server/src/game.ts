@@ -23,6 +23,7 @@ import {
 import { BotManager, type BotOptions } from './bots/manager';
 import { Doors, type Walker } from './doors';
 import { Random } from './bots/random';
+import { Cctv } from './cctv';
 import { checkMapAgainstScenario } from './mapCheck';
 import { TaskBoard } from './tasks';
 import { employeeChoices, onboardingCard, publicDesk, publicDoor, publicPlayer, taskList, termScreen, type Avatar } from './visibility';
@@ -65,6 +66,8 @@ export class OfficeGame {
   readonly bots: BotManager | null;
   /** Everybody's job tasks. */
   readonly tasks: TaskBoard;
+  /** The cameras' recordings (server only). */
+  readonly cctv: Cctv;
   readonly dev: boolean;
   speed: number;
 
@@ -95,6 +98,7 @@ export class OfficeGame {
     this.speed = options.speed ?? 1;
     this.dev = options.dev ?? false;
     this.writeDump = options.writeDump;
+    this.cctv = new Cctv(this.world, this.map);
     this.tasks = new TaskBoard(this.world, this.scenario, this.map, new Random((options.seed ?? 1) ^ 0x7a5c));
     this.bots = options.bots === false
       ? null
@@ -336,6 +340,7 @@ export class OfficeGame {
       const human = this.humans().find((a) => a.playerId === playerId);
       if (human) this.send(human.clientId, 'tasks', taskList(this.tasks.view(playerId)));
     }
+    this.cctv.update([...this.avatars.values()]);
     // Doors last: they look at where everybody ended up.
     this.doors.tick(realMs, [...this.avatars.values()].map((a) => this.walker(a)));
   }

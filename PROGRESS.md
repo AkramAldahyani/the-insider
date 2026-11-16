@@ -20,8 +20,8 @@ Update it at the end of every part.
 | C | Bot behaviour (routines, desk use, observations) | **done** |
 | D | Job tasks (bots and humans) | **done** |
 | E | Internal email, network/DNS/proxy logs, background service noise | **done** |
-| F | CCTV recording | next |
-| G | Dev panel additions, soak test, docs | not started |
+| F | CCTV recording | **done** |
+| G | Dev panel additions, soak test, docs | next |
 
 The Phase 3 brief the owner pasted was cut off in the middle of Part B. The owner then said:
 "use your plan and DESIGN.md for Parts B to G, and ask me if something is unclear when you get there."
@@ -116,6 +116,16 @@ locally (never push), update this file.
   include `mail` and `curl`.
 - 204 Vitest tests (new: `packages/engine/test/office.test.ts`).
 
+## Part F: what exists now
+
+- `packages/server/src/cctv.ts`: `Cctv`. Cameras come from the map (`covers` room, `range` in tiles). Every 2 game
+  seconds each camera's scene is compared with its last stored snapshot; a new `Snapshot` (people with name, position,
+  facing, desk) is stored on change, plus a keyframe a minute. `cctv.at(cameraId, time)`, `recording(id)`, `find(snapshotId)`, `sees(camera, x, y)`.
+- Text evidence: `/var/log/cctv/motion.log` on SEC-SRV-01 (`CAM-01 MOTION persons=2 snapshot=CAM-01-000042`), written
+  when a camera's head count changes. No names on purpose; the picture needs the viewer (Phase 5).
+- Snapshots are never sent to browsers. `mapCheck` refuses a camera that covers an unknown room.
+- 215 Vitest tests (new: `cctv.test.ts`).
+
 ## Things the next part must know
 
 - Bots must use the same paths as humans: `Doors.tap(walker, code)` for badge doors, and the `Walker`
@@ -123,10 +133,10 @@ locally (never push), update this file.
 - Plan routes on `game.map.solid` (doors passable); move bodies against `game.collision`.
 - Humans start at their desks WITHOUT an arrival line in today's badge log; bots walk in and (mostly) have one.
   Left as is for now; tell the owner in the Phase 3 summary (a later lobby/"match start" in Phase 6 can fix it).
-- Part F plan: the server records, for every camera on the map, a snapshot every few game seconds: who is in the
-  camera's area (`covers` room, within range), where they stand and which desk they sit at. Stored server-side as
-  compact records plus a text log on SEC-SRV-01 (`/var/log/cctv/CAM-01.log`). No viewer UI (Phase 5); the dev panel
-  (Part G) can print the latest snapshot. Blind spots: printer room, storage, bathrooms have no camera.
+- Part G plan: dev panel buttons (dev server only): list bots with what they are doing, door states, last badge
+  lines, latest CCTV snapshot of a camera, a bot's observations, task counts; a soak test (several game hours of a
+  full office, fast) checking nobody is stuck, logs grow, memory stays bounded, no errors; then README, TESTING.md
+  "Phase 3" walkthrough, DESIGN.md section 10 and section 15, and the final summary for the owner.
 - The dev server (`pnpm dev`) restarts itself when server files change; Playwright reuses a running one.
 - Door timers and walking use real time; the game clock can run faster (dev panel). At speed 1 they agree.
 - Writing files from Bash heredocs breaks on apostrophes in this environment: use the Write tool or a script file.

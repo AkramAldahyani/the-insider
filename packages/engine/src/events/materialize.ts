@@ -50,6 +50,10 @@ export function materialize(world: World, e: GameEvent): void {
       badgeLog(host, world.time, 'doors.log', `DOOR=${str(d.door)} EVENT=CLOSE OPEN_FOR=${(Number(d.openMs) / 1000).toFixed(1)}s PASSAGES=${str(d.passages)}`);
       break;
 
+    case 'cctv.motion':
+      sysWrite(host, '/var/log/cctv/motion.log', `${isoSecond(world.time)} ${str(d.camera)} MOTION persons=${str(d.persons)} snapshot=${str(d.snapshot)}\n`, { owner: 'root', group: 'adm', mode: 0o640, time: world.time, append: true });
+      break;
+
     // ── mail (files on the mail server; see commands/mail.ts) ──
     case 'mail.send': {
       const message = world.mail.messages.find((m) => m.id === d.id);

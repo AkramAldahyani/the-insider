@@ -52,6 +52,16 @@ export function checkMapAgainstScenario(map: OfficeMap, scenario: Scenario, mapN
   }
   if (!reachable(map.outsideSpawn.x, map.outsideSpawn.y)) problems.push('the "outside" spawn point cannot be reached on foot from inside the building');
 
+  // Cameras: each must watch a room that exists, from inside it or from its wall.
+  const roomNames = new Set(map.rooms.map((r) => r.name));
+  const cameraIds = new Set<string>();
+  for (const camera of map.cameras) {
+    const id = camera.name.split(' ')[0];
+    if (cameraIds.has(id)) problems.push(`two cameras are called "${id}"`);
+    cameraIds.add(id);
+    if (!roomNames.has(String(camera.props.covers ?? ''))) problems.push(`camera "${camera.name}" covers "${String(camera.props.covers ?? '')}", which is not a room on the map`);
+  }
+
   // Doors and badges: every restricted door must be openable by somebody, and
   // every zone a badge lists must exist, or a typo would silently lock a room.
   const zones = new Set(map.doors.filter((d) => d.restricted).map((d) => d.zone));

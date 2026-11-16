@@ -79,6 +79,15 @@ export function doorClosed(world: World, door: string, openedAt: number, passage
 }
 
 /**
+ * A camera's recorder noticed that the number of people in view changed.
+ * The log line names the camera, the head count and the snapshot to look at;
+ * it does not name anybody (see server/src/cctv.ts for why).
+ */
+export function cctvMotion(world: World, camera: string, persons: number, snapshot: string): void {
+  emit(world, { host: world.badges.serverHost, user: '', type: 'cctv.motion', details: { camera, persons, snapshot } });
+}
+
+/**
  * Somebody walked through a door. The sensor only counts bodies, so this
  * writes NO log line: who it was exists only in the master event list.
  */

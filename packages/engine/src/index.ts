@@ -30,7 +30,7 @@ export { queryEvents } from './events/log';
 export type { EventFilter } from './events/log';
 export { dhcpRequest, dhcpRelease, leaseHistory, leaseHolderAt, activeLease } from './net/dhcp';
 export { resolveHost } from './net/dns';
-export { tapBadge, doorOpened, doorClosed, doorPassed } from './physical/badges';
+export { tapBadge, doorOpened, doorClosed, doorPassed, cctvMotion } from './physical/badges';
 export type { TapInput, TapResult, TapDirection } from './physical/badges';
 export { commandNames } from './commands/index';
 

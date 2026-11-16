@@ -1465,6 +1465,11 @@
        "name": "covers",
        "type": "string",
        "value": "Reception"
+      },
+      {
+       "name": "range",
+       "type": "float",
+       "value": 18
       }
      ]
     },
@@ -1484,6 +1489,11 @@
        "name": "covers",
        "type": "string",
        "value": "Corridor"
+      },
+      {
+       "name": "range",
+       "type": "float",
+       "value": 30
       }
      ]
     },
@@ -1503,6 +1513,11 @@
        "name": "covers",
        "type": "string",
        "value": "Corridor"
+      },
+      {
+       "name": "range",
+       "type": "float",
+       "value": 30
       }
      ]
     },
@@ -1522,6 +1537,11 @@
        "name": "covers",
        "type": "string",
        "value": "IT department"
+      },
+      {
+       "name": "range",
+       "type": "float",
+       "value": 9
       }
      ]
     },
@@ -1541,6 +1561,11 @@
        "name": "covers",
        "type": "string",
        "value": "Cafeteria / meeting room"
+      },
+      {
+       "name": "range",
+       "type": "float",
+       "value": 20
       }
      ]
     }

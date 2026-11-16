@@ -45,6 +45,14 @@ Physical security systems:
 - **CCTV cameras** cover some areas (not all) and record timestamped snapshots. Snapshots are rendered from the game's own view of that area at that moment.
 - Players can see who is physically standing at which desk.
 
+### CCTV recording (decided in Phase 3)
+
+- Each camera watches **one room up to a range**; both are properties of the camera on the map. In the small office: reception, the corridor (two cameras that overlap), the IT side of the server room door, and the cafeteria.
+- Every 2 game seconds a camera's scene is compared with its last stored **snapshot**; a new one is stored when something changed, and once a minute anyway. A snapshot is data (who, where, facing, sitting at which desk), from which the Phase 5 viewer will draw the picture.
+- The recorder writes a **motion log** on `SEC-SRV-01` (`/var/log/cctv/motion.log`): camera, head count, snapshot id. It names nobody: to know who it was, someone must look at the picture.
+- **Blind spots:** rooms without a camera are never recorded (printer room, storage, bathrooms; in the small office also the department rooms, the security office and the inside of the server room).
+- Snapshots stay on the server until the viewer exists.
+
 ### Doors and badges (decided in Phase 3)
 
 - **Players do not collide with each other.** Walls, furniture and closed doors block; bodies do not.
