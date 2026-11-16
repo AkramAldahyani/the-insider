@@ -161,19 +161,35 @@ pnpm --filter @insider/client preview
 
 Open http://localhost:5173, pick an employee and press the backtick key: nothing happens, and the top bar no longer mentions the dev panel. The server prints `dev=false`.
 
+## L. Phase 3, part A: doors and badges
+
+1. Start as **Sara**. Walk down to the Finance door: it is a solid bar and stops you. The hint says *Press E to tap your badge at the finance door*.
+2. Press `E`. You hear a beep, the bar becomes two stubs, and you can walk into the corridor. About 3 seconds later the door closes.
+3. Walk along the corridor to the **Security office** door (dark red, below the corridor) and press `E`. Expected: *Access denied*, a lower beep, the reader box turns red for a moment, and you cannot walk in.
+4. Walk right to the **Bathrooms** door (no box beside it). It opens by itself as you approach and closes behind you.
+5. Open a second browser tab and start as **Tariq** (security guard). He starts inside the security office. Sit at `SEC-WS-01`, unlock it, then:
+   ```
+   ssh SEC-SRV-01
+   tail /var/log/badge/access.log
+   tail /var/log/badge/doors.log
+   ```
+   Expected: Sara's lines, for example `DOOR=FIN BADGE=0412 USER=s.alharbi RESULT=GRANTED DIR=OUT` and `DOOR=SEC-OFFICE BADGE=0412 USER=s.alharbi RESULT=DENIED DIR=IN`. Lines dated 2026-02-27 are the previous working day.
+6. **Tailgating.** In a third tab start as **Khalid**. Bring Sara and Khalid to the server room door (top right of IT). Khalid presses `E`; both walk in. In Tariq's terminal, `tail -n 2 /var/log/badge/doors.log` shows `PASSAGES=2` after a single granted tap in `access.log`.
+7. Sara, inside the server room, presses `E` at the door: it opens (leaving is always allowed) and `access.log` gets a line with **her** badge and `DIR=OUT`.
+
 ## Automated tests
 
 ```bash
 pnpm test
 ```
 
-Expected: `Test Files 12 passed (12)` and `Tests 135 passed (135)`.
+Expected: `Test Files 13 passed (13)` and `Tests 153 passed (153)`.
 
 ```bash
 pnpm e2e
 ```
 
-Expected: `2 passed`. This drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes nine screenshots to `e2e/screenshots/`.
+Expected: `3 passed`. This drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes ten screenshots to `e2e/screenshots/`.
 
 ---
 

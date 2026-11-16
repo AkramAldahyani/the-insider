@@ -62,13 +62,18 @@ export function Hud({ ui }: { ui: UiState }) {
         <span className="hud-room" data-testid="room">{ui.roomName || '—'}</span>
         <span className="hud-spacer" />
         <span className="hud-keys">
-          WASD / arrows: walk · E: use PC · C: card{ui.dev ? ' · `: dev panel' : ''}
+          WASD / arrows: walk · E: use PC / tap badge · C: card{ui.dev ? ' · `: dev panel' : ''}
         </span>
       </div>
       {ui.notice && <div className="hud-notice" data-testid="notice">{ui.notice}</div>}
       {ui.nearDesk && !ui.seatedAt && (
         <div className="hud-hint" data-testid="hint">
           Press <kbd>E</kbd> to use {ui.nearDesk}
+        </div>
+      )}
+      {ui.nearDoor && !ui.nearDesk && !ui.seatedAt && (
+        <div className="hud-hint" data-testid="hint">
+          Press <kbd>E</kbd> to tap your badge at the {ui.nearDoorName.toLowerCase()}
         </div>
       )}
     </>
@@ -85,6 +90,8 @@ export function OnboardingCard({ card }: { card: Card }) {
     ['Location', card.location],
     ['IP address', card.ip],
     ['MAC address', card.mac],
+    ['Badge', card.badgeId ? `#${card.badgeId}` : 'none'],
+    ['Badge opens', ['all normal doors', ...card.badgeAccess.map((zone) => zone.replace(/-/g, ' '))].join(', ')],
   ];
   return (
     <div className="card" data-testid="card">
@@ -105,6 +112,7 @@ export function OnboardingCard({ card }: { card: Card }) {
         </tbody>
       </table>
       <p className="card-note">
+        Doors with a green box need your badge: stand at the door and press <kbd>E</kbd>. Every tap is logged.
         Your IP comes from DHCP and can change. Lock your screen when you leave your desk:
         <code> loginctl lock-session</code>. Press <kbd>C</kbd> to show or hide this card.
       </p>

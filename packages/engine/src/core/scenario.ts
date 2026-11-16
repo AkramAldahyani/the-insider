@@ -16,6 +16,12 @@ export interface ScenarioAccount {
   strength: number;
   /** Numeric user id; the same on every host. Defaults to 1001, 1002, ... */
   uid?: number;
+  /**
+   * The plastic badge this employee carries. `id` is the number printed in the
+   * badge log. `access` lists the RESTRICTED zones the badge opens (for example
+   * "server-room"). Doors that are not restricted open for every badge.
+   */
+  badge?: { id: string; access?: string[] };
 }
 
 export interface ScenarioFile {
@@ -37,6 +43,12 @@ export interface ScenarioHost {
   department: string;
   location: string;
   mac: string;
+  /**
+   * True for a machine with no screen and keyboard in the office (a box in a
+   * rack). Nobody can sit at it; it is reached over ssh only, and it needs no
+   * desk on the map.
+   */
+  headless?: boolean;
   /** Fixed IP (servers). Hosts without one get an address from DHCP. */
   staticIp?: string;
   /** The employee whose desk this is. */
@@ -113,6 +125,15 @@ export interface Scenario {
   autoLockSeconds?: number;
   /** Hostname of the DNS server. Defaults to the DHCP server. */
   dnsServer?: string;
+  /**
+   * The door-badge system. `server` is the host that stores its logs
+   * (/var/log/badge/). Without this block, doors still work but write no log files.
+   */
+  badgeSystem?: {
+    server: string;
+    /** Log name of the building's entrance door (as on the map), used for the previous day's arrivals. */
+    entranceDoor?: string;
+  };
   accounts: ScenarioAccount[];
   hosts: ScenarioHost[];
   players: ScenarioPlayer[];
@@ -154,9 +175,16 @@ export function validateScenario(s: Scenario): void {
 
   need(hosts.get(s.dhcp?.server)?.staticIp, 'dhcp.server must be a host with a staticIp');
   if (s.dnsServer) need(hosts.has(s.dnsServer), `dnsServer "${s.dnsServer}" is not a host`);
+  if (s.badgeSystem) need(hosts.has(s.badgeSystem.server), `badgeSystem.server "${s.badgeSystem.server}" is not a host`);
+  const badgeIds = (s.accounts ?? []).filter((a) => a.badge).map((a) => a.badge!.id);
+  need(new Set(badgeIds).size === badgeIds.length, 'two accounts have the same badge id');
+  for (const h of s.hosts ?? []) {
+    if (h.headless) need(!h.console && !h.owner, `host "${h.hostname}": a headless host cannot have a console session or an owner`);
+  }
   for (const p of s.players ?? []) {
     need(accounts.has(p.account), `player "${p.id}": unknown account "${p.account}"`);
     need(hosts.has(p.desk), `player "${p.id}": unknown desk "${p.desk}"`);
+    need(!hosts.get(p.desk)?.headless, `player "${p.id}": desk "${p.desk}" is a headless host`);
   }
   for (const item of s.history ?? []) {
     const h = hosts.get(item.host);

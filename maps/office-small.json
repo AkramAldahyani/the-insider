@@ -7,22 +7,22 @@
  "infinite": false,
  "compressionlevel": -1,
  "width": 56,
- "height": 32,
+ "height": 34,
  "tilewidth": 32,
  "tileheight": 32,
  "nextlayerid": 10,
- "nextobjectid": 72,
+ "nextobjectid": 79,
  "tilesets": [
   {
    "firstgid": 1,
    "name": "office-tiles",
    "image": "office-tiles.png",
-   "imagewidth": 416,
+   "imagewidth": 448,
    "imageheight": 32,
    "tilewidth": 32,
    "tileheight": 32,
-   "tilecount": 13,
-   "columns": 13,
+   "tilecount": 14,
+   "columns": 14,
    "margin": 0,
    "spacing": 0,
    "tiles": [
@@ -168,6 +168,17 @@
        "value": "#181a20"
       }
      ]
+    },
+    {
+     "id": 13,
+     "type": "floor-outside",
+     "properties": [
+      {
+       "name": "color",
+       "type": "string",
+       "value": "#2c3430"
+      }
+     ]
     }
    ]
   }
@@ -209,9 +220,11 @@
 6,7,7,7,7,7,7,7,7,7,7,7,6,8,8,8,8,8,8,8,6,9,9,9,9,9,9,9,9,9,9,9,9,9,6,10,10,10,10,10,6,11,11,11,11,11,6,12,12,12,12,12,12,12,12,6,
 6,7,7,7,7,7,7,7,7,7,7,7,6,8,8,8,8,8,8,8,6,9,9,9,9,9,9,9,9,9,9,9,9,9,6,10,10,10,10,10,6,11,11,11,11,11,6,12,12,12,12,12,12,12,12,6,
 6,7,7,7,7,7,7,7,7,7,7,7,6,8,8,8,8,8,8,8,6,9,9,9,9,9,9,9,9,9,9,9,9,9,6,10,10,10,10,10,6,11,11,11,11,11,6,12,12,12,12,12,12,12,12,6,
+6,6,6,6,6,7,7,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+6,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,6,
 6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6],
    "width": 56,
-   "height": 32,
+   "height": 34,
    "opacity": 1,
    "visible": true,
    "x": 0,
@@ -253,9 +266,11 @@
 13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,0,0,0,13,
 13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,0,0,0,13,
 13,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,13,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,13,0,0,0,0,0,0,0,0,13,
+13,13,13,13,13,0,0,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,
+13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,
 13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13],
    "width": 56,
-   "height": 32,
+   "height": 34,
    "opacity": 1,
    "visible": true,
    "x": 0,
@@ -286,6 +301,18 @@
     },
     {
      "id": 2,
+     "name": "Outside",
+     "type": "",
+     "x": 32,
+     "y": 1024,
+     "width": 1728,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": []
+    },
+    {
+     "id": 3,
      "name": "Finance",
      "type": "",
      "x": 32,
@@ -297,7 +324,7 @@
      "properties": []
     },
     {
-     "id": 3,
+     "id": 4,
      "name": "HR",
      "type": "",
      "x": 512,
@@ -309,7 +336,7 @@
      "properties": []
     },
     {
-     "id": 4,
+     "id": 5,
      "name": "Marketing",
      "type": "",
      "x": 896,
@@ -321,7 +348,7 @@
      "properties": []
     },
     {
-     "id": 5,
+     "id": 6,
      "name": "Server room",
      "type": "",
      "x": 1600,
@@ -333,7 +360,7 @@
      "properties": []
     },
     {
-     "id": 6,
+     "id": 7,
      "name": "Reception",
      "type": "",
      "x": 32,
@@ -345,7 +372,7 @@
      "properties": []
     },
     {
-     "id": 7,
+     "id": 8,
      "name": "Security office",
      "type": "",
      "x": 416,
@@ -357,7 +384,7 @@
      "properties": []
     },
     {
-     "id": 8,
+     "id": 9,
      "name": "Cafeteria / meeting room",
      "type": "",
      "x": 672,
@@ -369,7 +396,7 @@
      "properties": []
     },
     {
-     "id": 9,
+     "id": 10,
      "name": "Printer room",
      "type": "",
      "x": 1120,
@@ -381,7 +408,7 @@
      "properties": []
     },
     {
-     "id": 10,
+     "id": 11,
      "name": "Storage",
      "type": "",
      "x": 1312,
@@ -393,7 +420,7 @@
      "properties": []
     },
     {
-     "id": 11,
+     "id": 12,
      "name": "Bathrooms",
      "type": "",
      "x": 1504,
@@ -405,7 +432,7 @@
      "properties": []
     },
     {
-     "id": 12,
+     "id": 13,
      "name": "IT department",
      "type": "",
      "x": 1344,
@@ -417,7 +444,7 @@
      "properties": []
     },
     {
-     "id": 13,
+     "id": 14,
      "name": "IT department",
      "type": "",
      "x": 1568,
@@ -442,7 +469,7 @@
    "y": 0,
    "objects": [
     {
-     "id": 37,
+     "id": 38,
      "name": "Server racks",
      "type": "furniture",
      "x": 1600,
@@ -460,7 +487,7 @@
      ]
     },
     {
-     "id": 38,
+     "id": 39,
      "name": "IT shelves",
      "type": "furniture",
      "x": 1344,
@@ -478,7 +505,7 @@
      ]
     },
     {
-     "id": 39,
+     "id": 40,
      "name": "Filing cabinets",
      "type": "furniture",
      "x": 32,
@@ -496,7 +523,7 @@
      ]
     },
     {
-     "id": 40,
+     "id": 41,
      "name": "HR cabinets",
      "type": "furniture",
      "x": 512,
@@ -514,7 +541,7 @@
      ]
     },
     {
-     "id": 41,
+     "id": 42,
      "name": "Marketing whiteboard",
      "type": "furniture",
      "x": 896,
@@ -532,7 +559,7 @@
      ]
     },
     {
-     "id": 42,
+     "id": 43,
      "name": "Reception sofa",
      "type": "furniture",
      "x": 288,
@@ -550,11 +577,11 @@
      ]
     },
     {
-     "id": 43,
+     "id": 44,
      "name": "CCTV monitors",
      "type": "furniture",
      "x": 416,
-     "y": 608,
+     "y": 960,
      "width": 192,
      "height": 32,
      "rotation": 0,
@@ -568,7 +595,7 @@
      ]
     },
     {
-     "id": 44,
+     "id": 45,
      "name": "Meeting table",
      "type": "furniture",
      "x": 768,
@@ -586,7 +613,7 @@
      ]
     },
     {
-     "id": 45,
+     "id": 46,
      "name": "Cafeteria table",
      "type": "furniture",
      "x": 736,
@@ -604,7 +631,7 @@
      ]
     },
     {
-     "id": 46,
+     "id": 47,
      "name": "Cafeteria table",
      "type": "furniture",
      "x": 928,
@@ -622,7 +649,7 @@
      ]
     },
     {
-     "id": 47,
+     "id": 48,
      "name": "Printer",
      "type": "furniture",
      "x": 1120,
@@ -640,7 +667,7 @@
      ]
     },
     {
-     "id": 48,
+     "id": 49,
      "name": "Paper stock",
      "type": "furniture",
      "x": 1120,
@@ -658,7 +685,7 @@
      ]
     },
     {
-     "id": 49,
+     "id": 50,
      "name": "Storage shelves",
      "type": "furniture",
      "x": 1312,
@@ -676,7 +703,7 @@
      ]
     },
     {
-     "id": 50,
+     "id": 51,
      "name": "Storage shelves",
      "type": "furniture",
      "x": 1440,
@@ -694,7 +721,7 @@
      ]
     },
     {
-     "id": 51,
+     "id": 52,
      "name": "Stalls",
      "type": "furniture",
      "x": 1504,
@@ -712,7 +739,7 @@
      ]
     },
     {
-     "id": 52,
+     "id": 53,
      "name": "Sinks",
      "type": "furniture",
      "x": 1504,
@@ -743,7 +770,7 @@
    "y": 0,
    "objects": [
     {
-     "id": 26,
+     "id": 27,
      "name": "FIN-LT-04",
      "type": "desk",
      "x": 96,
@@ -761,7 +788,7 @@
      ]
     },
     {
-     "id": 27,
+     "id": 28,
      "name": "FIN-LT-07",
      "type": "desk",
      "x": 288,
@@ -779,7 +806,7 @@
      ]
     },
     {
-     "id": 28,
+     "id": 29,
      "name": "HR-LT-03",
      "type": "desk",
      "x": 544,
@@ -797,7 +824,7 @@
      ]
     },
     {
-     "id": 29,
+     "id": 30,
      "name": "HR-LT-05",
      "type": "desk",
      "x": 736,
@@ -815,7 +842,7 @@
      ]
     },
     {
-     "id": 30,
+     "id": 31,
      "name": "MKT-LT-09",
      "type": "desk",
      "x": 960,
@@ -833,7 +860,7 @@
      ]
     },
     {
-     "id": 31,
+     "id": 32,
      "name": "MKT-LT-11",
      "type": "desk",
      "x": 1152,
@@ -851,7 +878,7 @@
      ]
     },
     {
-     "id": 32,
+     "id": 33,
      "name": "IT-WS-01",
      "type": "desk",
      "x": 1376,
@@ -869,7 +896,7 @@
      ]
     },
     {
-     "id": 33,
+     "id": 34,
      "name": "IT-WS-02",
      "type": "desk",
      "x": 1472,
@@ -887,7 +914,7 @@
      ]
     },
     {
-     "id": 34,
+     "id": 35,
      "name": "ADMIN-SRV-01",
      "type": "desk",
      "x": 1632,
@@ -905,7 +932,7 @@
      ]
     },
     {
-     "id": 35,
+     "id": 36,
      "name": "REC-PC-01",
      "type": "desk",
      "x": 128,
@@ -923,7 +950,7 @@
      ]
     },
     {
-     "id": 36,
+     "id": 37,
      "name": "SEC-WS-01",
      "type": "desk",
      "x": 480,
@@ -954,7 +981,7 @@
    "y": 0,
    "objects": [
     {
-     "id": 14,
+     "id": 15,
      "name": "Finance door",
      "type": "",
      "x": 224,
@@ -965,24 +992,34 @@
      "visible": true,
      "properties": [
       {
+       "name": "code",
+       "type": "string",
+       "value": "FIN"
+      },
+      {
        "name": "room",
        "type": "string",
        "value": "Finance"
       },
       {
-       "name": "locked",
+       "name": "reader",
+       "type": "bool",
+       "value": true
+      },
+      {
+       "name": "restricted",
        "type": "bool",
        "value": false
       },
       {
-       "name": "badgeRequired",
-       "type": "bool",
-       "value": false
+       "name": "zone",
+       "type": "string",
+       "value": "finance"
       }
      ]
     },
     {
-     "id": 15,
+     "id": 16,
      "name": "HR door",
      "type": "",
      "x": 672,
@@ -993,24 +1030,34 @@
      "visible": true,
      "properties": [
       {
+       "name": "code",
+       "type": "string",
+       "value": "HR"
+      },
+      {
        "name": "room",
        "type": "string",
        "value": "HR"
       },
       {
-       "name": "locked",
+       "name": "reader",
+       "type": "bool",
+       "value": true
+      },
+      {
+       "name": "restricted",
        "type": "bool",
        "value": false
       },
       {
-       "name": "badgeRequired",
-       "type": "bool",
-       "value": false
+       "name": "zone",
+       "type": "string",
+       "value": "hr"
       }
      ]
     },
     {
-     "id": 16,
+     "id": 17,
      "name": "Marketing door",
      "type": "",
      "x": 1056,
@@ -1021,24 +1068,34 @@
      "visible": true,
      "properties": [
       {
+       "name": "code",
+       "type": "string",
+       "value": "MKT"
+      },
+      {
        "name": "room",
        "type": "string",
        "value": "Marketing"
       },
       {
-       "name": "locked",
+       "name": "reader",
+       "type": "bool",
+       "value": true
+      },
+      {
+       "name": "restricted",
        "type": "bool",
        "value": false
       },
       {
-       "name": "badgeRequired",
-       "type": "bool",
-       "value": false
+       "name": "zone",
+       "type": "string",
+       "value": "marketing"
       }
      ]
     },
     {
-     "id": 17,
+     "id": 18,
      "name": "IT department door",
      "type": "",
      "x": 1408,
@@ -1049,24 +1106,34 @@
      "visible": true,
      "properties": [
       {
+       "name": "code",
+       "type": "string",
+       "value": "IT"
+      },
+      {
        "name": "room",
        "type": "string",
        "value": "IT department"
       },
       {
-       "name": "locked",
+       "name": "reader",
+       "type": "bool",
+       "value": true
+      },
+      {
+       "name": "restricted",
        "type": "bool",
        "value": false
       },
       {
-       "name": "badgeRequired",
-       "type": "bool",
-       "value": false
+       "name": "zone",
+       "type": "string",
+       "value": "it"
       }
      ]
     },
     {
-     "id": 18,
+     "id": 19,
      "name": "Server room door",
      "type": "",
      "x": 1568,
@@ -1077,24 +1144,34 @@
      "visible": true,
      "properties": [
       {
+       "name": "code",
+       "type": "string",
+       "value": "SRV-ROOM"
+      },
+      {
        "name": "room",
        "type": "string",
        "value": "Server room"
       },
       {
-       "name": "locked",
-       "type": "bool",
-       "value": false
-      },
-      {
-       "name": "badgeRequired",
+       "name": "reader",
        "type": "bool",
        "value": true
+      },
+      {
+       "name": "restricted",
+       "type": "bool",
+       "value": true
+      },
+      {
+       "name": "zone",
+       "type": "string",
+       "value": "server-room"
       }
      ]
     },
     {
-     "id": 19,
+     "id": 20,
      "name": "Reception door",
      "type": "",
      "x": 160,
@@ -1105,24 +1182,34 @@
      "visible": true,
      "properties": [
       {
+       "name": "code",
+       "type": "string",
+       "value": "RECEPTION"
+      },
+      {
        "name": "room",
        "type": "string",
        "value": "Reception"
       },
       {
-       "name": "locked",
+       "name": "reader",
        "type": "bool",
        "value": false
       },
       {
-       "name": "badgeRequired",
+       "name": "restricted",
        "type": "bool",
        "value": false
+      },
+      {
+       "name": "zone",
+       "type": "string",
+       "value": "reception"
       }
      ]
     },
     {
-     "id": 20,
+     "id": 21,
      "name": "Security office door",
      "type": "",
      "x": 480,
@@ -1133,24 +1220,34 @@
      "visible": true,
      "properties": [
       {
+       "name": "code",
+       "type": "string",
+       "value": "SEC-OFFICE"
+      },
+      {
        "name": "room",
        "type": "string",
        "value": "Security office"
       },
       {
-       "name": "locked",
+       "name": "reader",
        "type": "bool",
-       "value": false
+       "value": true
       },
       {
-       "name": "badgeRequired",
+       "name": "restricted",
        "type": "bool",
-       "value": false
+       "value": true
+      },
+      {
+       "name": "zone",
+       "type": "string",
+       "value": "security-office"
       }
      ]
     },
     {
-     "id": 21,
+     "id": 22,
      "name": "Cafeteria / meeting room door",
      "type": "",
      "x": 832,
@@ -1161,24 +1258,34 @@
      "visible": true,
      "properties": [
       {
+       "name": "code",
+       "type": "string",
+       "value": "CAFETERIA"
+      },
+      {
        "name": "room",
        "type": "string",
        "value": "Cafeteria / meeting room"
       },
       {
-       "name": "locked",
+       "name": "reader",
        "type": "bool",
        "value": false
       },
       {
-       "name": "badgeRequired",
+       "name": "restricted",
        "type": "bool",
        "value": false
+      },
+      {
+       "name": "zone",
+       "type": "string",
+       "value": "cafeteria"
       }
      ]
     },
     {
-     "id": 22,
+     "id": 23,
      "name": "Printer room door",
      "type": "",
      "x": 1152,
@@ -1189,24 +1296,34 @@
      "visible": true,
      "properties": [
       {
+       "name": "code",
+       "type": "string",
+       "value": "PRINTER"
+      },
+      {
        "name": "room",
        "type": "string",
        "value": "Printer room"
       },
       {
-       "name": "locked",
+       "name": "reader",
        "type": "bool",
        "value": false
       },
       {
-       "name": "badgeRequired",
+       "name": "restricted",
        "type": "bool",
        "value": false
+      },
+      {
+       "name": "zone",
+       "type": "string",
+       "value": "printer"
       }
      ]
     },
     {
-     "id": 23,
+     "id": 24,
      "name": "Storage door",
      "type": "",
      "x": 1344,
@@ -1217,24 +1334,34 @@
      "visible": true,
      "properties": [
       {
+       "name": "code",
+       "type": "string",
+       "value": "STORAGE"
+      },
+      {
        "name": "room",
        "type": "string",
        "value": "Storage"
       },
       {
-       "name": "locked",
+       "name": "reader",
        "type": "bool",
        "value": false
       },
       {
-       "name": "badgeRequired",
+       "name": "restricted",
        "type": "bool",
        "value": false
+      },
+      {
+       "name": "zone",
+       "type": "string",
+       "value": "storage"
       }
      ]
     },
     {
-     "id": 24,
+     "id": 25,
      "name": "Bathrooms door",
      "type": "",
      "x": 1600,
@@ -1245,24 +1372,34 @@
      "visible": true,
      "properties": [
       {
+       "name": "code",
+       "type": "string",
+       "value": "BATHROOMS"
+      },
+      {
        "name": "room",
        "type": "string",
        "value": "Bathrooms"
       },
       {
-       "name": "locked",
+       "name": "reader",
        "type": "bool",
        "value": false
       },
       {
-       "name": "badgeRequired",
+       "name": "restricted",
        "type": "bool",
        "value": false
+      },
+      {
+       "name": "zone",
+       "type": "string",
+       "value": "bathrooms"
       }
      ]
     },
     {
-     "id": 25,
+     "id": 26,
      "name": "Main entrance",
      "type": "",
      "x": 160,
@@ -1273,19 +1410,29 @@
      "visible": true,
      "properties": [
       {
+       "name": "code",
+       "type": "string",
+       "value": "MAIN-ENT"
+      },
+      {
        "name": "room",
        "type": "string",
        "value": "Reception"
       },
       {
-       "name": "locked",
+       "name": "reader",
        "type": "bool",
        "value": true
       },
       {
-       "name": "badgeRequired",
+       "name": "restricted",
        "type": "bool",
-       "value": true
+       "value": false
+      },
+      {
+       "name": "zone",
+       "type": "string",
+       "value": "building"
       }
      ]
     }
@@ -1303,7 +1450,7 @@
    "y": 0,
    "objects": [
     {
-     "id": 65,
+     "id": 67,
      "name": "CAM-01 Reception",
      "type": "",
      "x": 48,
@@ -1322,7 +1469,7 @@
      ]
     },
     {
-     "id": 66,
+     "id": 68,
      "name": "CAM-02 Corridor west",
      "type": "",
      "x": 64,
@@ -1341,7 +1488,7 @@
      ]
     },
     {
-     "id": 67,
+     "id": 69,
      "name": "CAM-03 Corridor east",
      "type": "",
      "x": 1728,
@@ -1360,7 +1507,7 @@
      ]
     },
     {
-     "id": 68,
+     "id": 70,
      "name": "CAM-04 Server room door",
      "type": "",
      "x": 1552,
@@ -1379,7 +1526,7 @@
      ]
     },
     {
-     "id": 69,
+     "id": 71,
      "name": "CAM-05 Cafeteria",
      "type": "",
      "x": 1072,
@@ -1411,11 +1558,11 @@
    "y": 0,
    "objects": [
     {
-     "id": 70,
+     "id": 72,
      "name": "BR-01 Main entrance",
      "type": "",
      "x": 240,
-     "y": 976,
+     "y": 1008,
      "width": 0,
      "height": 0,
      "rotation": 0,
@@ -1425,15 +1572,15 @@
       {
        "name": "door",
        "type": "string",
-       "value": "Main entrance"
+       "value": "MAIN-ENT"
       }
      ]
     },
     {
-     "id": 71,
+     "id": 73,
      "name": "BR-02 Server room",
      "type": "",
-     "x": 1552,
+     "x": 1584,
      "y": 208,
      "width": 0,
      "height": 0,
@@ -1444,7 +1591,102 @@
       {
        "name": "door",
        "type": "string",
-       "value": "Server room door"
+       "value": "SRV-ROOM"
+      }
+     ]
+    },
+    {
+     "id": 74,
+     "name": "BR-03 Security office",
+     "type": "",
+     "x": 560,
+     "y": 592,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "door",
+       "type": "string",
+       "value": "SEC-OFFICE"
+      }
+     ]
+    },
+    {
+     "id": 75,
+     "name": "BR-04 Finance",
+     "type": "",
+     "x": 304,
+     "y": 432,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "door",
+       "type": "string",
+       "value": "FIN"
+      }
+     ]
+    },
+    {
+     "id": 76,
+     "name": "BR-05 HR",
+     "type": "",
+     "x": 752,
+     "y": 432,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "door",
+       "type": "string",
+       "value": "HR"
+      }
+     ]
+    },
+    {
+     "id": 77,
+     "name": "BR-06 Marketing",
+     "type": "",
+     "x": 1136,
+     "y": 432,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "door",
+       "type": "string",
+       "value": "MKT"
+      }
+     ]
+    },
+    {
+     "id": 78,
+     "name": "BR-07 IT",
+     "type": "",
+     "x": 1488,
+     "y": 432,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "door",
+       "type": "string",
+       "value": "IT"
       }
      ]
     }
@@ -1462,7 +1704,7 @@
    "y": 0,
    "objects": [
     {
-     "id": 53,
+     "id": 54,
      "name": "FIN-LT-04 spawn",
      "type": "",
      "x": 128,
@@ -1481,7 +1723,7 @@
      ]
     },
     {
-     "id": 54,
+     "id": 55,
      "name": "FIN-LT-07 spawn",
      "type": "",
      "x": 320,
@@ -1500,7 +1742,7 @@
      ]
     },
     {
-     "id": 55,
+     "id": 56,
      "name": "HR-LT-03 spawn",
      "type": "",
      "x": 576,
@@ -1519,7 +1761,7 @@
      ]
     },
     {
-     "id": 56,
+     "id": 57,
      "name": "HR-LT-05 spawn",
      "type": "",
      "x": 768,
@@ -1538,7 +1780,7 @@
      ]
     },
     {
-     "id": 57,
+     "id": 58,
      "name": "MKT-LT-09 spawn",
      "type": "",
      "x": 992,
@@ -1557,7 +1799,7 @@
      ]
     },
     {
-     "id": 58,
+     "id": 59,
      "name": "MKT-LT-11 spawn",
      "type": "",
      "x": 1184,
@@ -1576,7 +1818,7 @@
      ]
     },
     {
-     "id": 59,
+     "id": 60,
      "name": "IT-WS-01 spawn",
      "type": "",
      "x": 1408,
@@ -1595,7 +1837,7 @@
      ]
     },
     {
-     "id": 60,
+     "id": 61,
      "name": "IT-WS-02 spawn",
      "type": "",
      "x": 1504,
@@ -1614,7 +1856,7 @@
      ]
     },
     {
-     "id": 61,
+     "id": 62,
      "name": "ADMIN-SRV-01 spawn",
      "type": "",
      "x": 1664,
@@ -1633,7 +1875,7 @@
      ]
     },
     {
-     "id": 62,
+     "id": 63,
      "name": "REC-PC-01 spawn",
      "type": "",
      "x": 160,
@@ -1652,7 +1894,7 @@
      ]
     },
     {
-     "id": 63,
+     "id": 64,
      "name": "SEC-WS-01 spawn",
      "type": "",
      "x": 512,
@@ -1671,11 +1913,24 @@
      ]
     },
     {
-     "id": 64,
+     "id": 65,
      "name": "default",
      "type": "",
      "x": 208,
      "y": 896,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": []
+    },
+    {
+     "id": 66,
+     "name": "outside",
+     "type": "",
+     "x": 192,
+     "y": 1040,
      "width": 0,
      "height": 0,
      "rotation": 0,

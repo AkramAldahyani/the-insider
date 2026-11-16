@@ -1,10 +1,11 @@
 {
   "id": "nexora-small",
   "name": "Nexora Corp - Small Office",
-  "description": "Ten workstations and one admin server. The flag is /root/flag.txt on ADMIN-SRV-01.",
+  "description": "Ten workstations, one admin server and the badge-system server. The flag is /root/flag.txt on ADMIN-SRV-01.",
   "domain": "nexora.local",
   "startTime": "2026-03-02T09:00:00Z",
   "autoLockSeconds": 60,
+  "badgeSystem": { "server": "SEC-SRV-01", "entranceDoor": "MAIN-ENT" },
 
   "dhcp": {
     "server": "ADMIN-SRV-01",
@@ -20,16 +21,16 @@
   },
 
   "accounts": [
-    { "username": "s.alharbi", "fullName": "Sara Alharbi", "title": "Accountant", "department": "Finance", "password": "Riyadh2024!", "strength": 45 },
-    { "username": "r.mansour", "fullName": "Rami Mansour", "title": "Financial Analyst", "department": "Finance", "password": "football7", "strength": 15 },
-    { "username": "l.haddad", "fullName": "Lina Haddad", "title": "HR Specialist", "department": "HR", "password": "Lina@HR#2025", "strength": 60 },
-    { "username": "o.farouk", "fullName": "Omar Farouk", "title": "Marketing Coordinator", "department": "Marketing", "password": "summer2025", "strength": 20 },
-    { "username": "k.nasser", "fullName": "Khalid Nasser", "title": "System Administrator", "department": "IT", "password": "Tr0ub4dor&3xK9", "strength": 85 },
-    { "username": "n.saleh", "fullName": "Noor Saleh", "title": "HR Manager", "department": "HR", "password": "Noor!Saleh#88", "strength": 65 },
-    { "username": "y.khalil", "fullName": "Yousef Khalil", "title": "Graphic Designer", "department": "Marketing", "password": "pixel1234", "strength": 12 },
-    { "username": "d.aziz", "fullName": "Dana Aziz", "title": "IT Helpdesk", "department": "IT", "password": "H3lpdesk-Dana-42", "strength": 75 },
-    { "username": "m.yousef", "fullName": "Maha Yousef", "title": "Receptionist", "department": "Reception", "password": "welcome2026", "strength": 18 },
-    { "username": "t.omar", "fullName": "Tariq Omar", "title": "Security Guard", "department": "Security", "password": "Falcon-Gate-7", "strength": 55 }
+    { "username": "s.alharbi", "fullName": "Sara Alharbi", "title": "Accountant", "department": "Finance", "password": "Riyadh2024!", "strength": 45, "badge": { "id": "0412" } },
+    { "username": "r.mansour", "fullName": "Rami Mansour", "title": "Financial Analyst", "department": "Finance", "password": "football7", "strength": 15, "badge": { "id": "0388" } },
+    { "username": "l.haddad", "fullName": "Lina Haddad", "title": "HR Specialist", "department": "HR", "password": "Lina@HR#2025", "strength": 60, "badge": { "id": "0291" } },
+    { "username": "o.farouk", "fullName": "Omar Farouk", "title": "Marketing Coordinator", "department": "Marketing", "password": "summer2025", "strength": 20, "badge": { "id": "0455" } },
+    { "username": "k.nasser", "fullName": "Khalid Nasser", "title": "System Administrator", "department": "IT", "password": "Tr0ub4dor&3xK9", "strength": 85, "badge": { "id": "0107", "access": ["server-room", "security-office"] } },
+    { "username": "n.saleh", "fullName": "Noor Saleh", "title": "HR Manager", "department": "HR", "password": "Noor!Saleh#88", "strength": 65, "badge": { "id": "0164" } },
+    { "username": "y.khalil", "fullName": "Yousef Khalil", "title": "Graphic Designer", "department": "Marketing", "password": "pixel1234", "strength": 12, "badge": { "id": "0502" } },
+    { "username": "d.aziz", "fullName": "Dana Aziz", "title": "IT Helpdesk", "department": "IT", "password": "H3lpdesk-Dana-42", "strength": 75, "badge": { "id": "0417", "access": ["server-room"] } },
+    { "username": "m.yousef", "fullName": "Maha Yousef", "title": "Receptionist", "department": "Reception", "password": "welcome2026", "strength": 18, "badge": { "id": "0233" } },
+    { "username": "t.omar", "fullName": "Tariq Omar", "title": "Security Guard", "department": "Security", "password": "Falcon-Gate-7", "strength": 55, "badge": { "id": "0119", "access": ["security-office"] } }
   ],
 
   "players": [
@@ -487,6 +488,44 @@
           "09:10 all clear",
           "13:05 HR-LT-03 screen left unlocked - told Lina",
           "16:40 all clear"
+        ] }
+      ]
+    },
+
+    {
+      "hostname": "SEC-SRV-01",
+      "kind": "server",
+      "headless": true,
+      "department": "Security",
+      "location": "Server room, rack 2 (physical access control)",
+      "mac": "52:54:00:a1:00:02",
+      "staticIp": "10.0.1.20",
+      "users": ["t.omar", "k.nasser"],
+      "sudoers": ["k.nasser"],
+      "logReaders": ["t.omar", "k.nasser"],
+      "uptimeMinutes": 30200,
+      "files": [
+        { "path": "/etc/badge/doors.conf", "ageMinutes": 120000, "content": [
+          "# Nexora physical access control - door table",
+          "# DOOR        READER  ZONE             RESTRICTED",
+          "MAIN-ENT      BR-01   building         no",
+          "SRV-ROOM      BR-02   server-room      yes",
+          "SEC-OFFICE    BR-03   security-office  yes",
+          "FIN           BR-04   finance          no",
+          "HR            BR-05   hr               no",
+          "MKT           BR-06   marketing        no",
+          "IT            BR-07   it               no",
+          "",
+          "# Restricted doors open only for badges that list the zone.",
+          "# Leaving a room is always allowed (fire code); the exit tap is still logged.",
+          "# A granted tap holds the door open for 3 seconds."
+        ] },
+        { "path": "/etc/badge/README", "ageMinutes": 120000, "content": [
+          "Logs are in /var/log/badge/ (group adm):",
+          "  access.log  one line per badge tap, granted or denied",
+          "  doors.log   door open/close times; PASSAGES is the frame sensor count",
+          "A CLOSE line with PASSAGES greater than the number of granted taps",
+          "while the door was open means somebody walked in behind a colleague."
         ] }
       ]
     }

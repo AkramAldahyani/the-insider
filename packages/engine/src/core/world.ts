@@ -17,6 +17,7 @@ import { dhcpRequest } from '../net/dhcp';
 import { allocPid, bootProcesses } from '../proc/processes';
 import type { Host, Session, World } from '../types';
 import { advanceTo } from './clock';
+import { doorClosed, doorOpened, tapBadge } from '../physical/badges';
 import { randInt, randString } from './rng';
 import { validateScenario, type Scenario, type ScenarioAccount, type ScenarioHost } from './scenario';
 import { DAY, HOUR, MINUTE } from './time';
@@ -74,6 +75,7 @@ function buildHost(world: World, scenario: Scenario, sh: ScenarioHost, uids: Map
     ip: sh.staticIp ?? '',
     staticIp: !!sh.staticIp,
     kind: sh.kind,
+    headless: sh.headless ?? false,
     department: sh.department,
     location: sh.location,
     owner: sh.owner ?? null,
@@ -222,6 +224,10 @@ export function createWorld(scenario: Scenario, seed = 1): World {
       leases: [],
     },
     dnsServer: scenario.dnsServer ?? scenario.dhcp.server,
+    badges: {
+      serverHost: scenario.badgeSystem?.server ?? '',
+      holders: Object.fromEntries(scenario.accounts.filter((a) => a.badge).map((a) => [a.username, { id: a.badge!.id, access: a.badge!.access ?? [] }])),
+    },
     players: scenario.players.map((p) => ({ id: p.id, name: p.name, account: p.account, desk: p.desk, role: p.role ?? 'employee' })),
     credentials: {},
     events: [],
@@ -288,6 +294,33 @@ export function createWorld(scenario: Scenario, seed = 1): World {
           details: { tty: 'pts/0', cwd: `/home/${item.user}`, runAs: 'root', runAsUid: 0, uid: uids.get(item.user), command: [`/usr/bin/${name}`, ...rest].join(' ') },
         });
       });
+    }
+  }
+
+  // The last working day's arrivals and departures, so the badge log is not empty.
+  const entrance = scenario.badgeSystem?.entranceDoor;
+  if (entrance) {
+    // Go back one day, and further over a weekend (0 = Sunday, 6 = Saturday).
+    let day = start - (start % DAY) - DAY;
+    while ([0, 6].includes(new Date(day).getUTCDay())) day -= DAY;
+    for (const a of scenario.accounts) {
+      if (!a.badge) continue;
+      // Each employee gets their own habits, derived from the badge number
+      // (not from the random generator, so adding a badge changes nothing else).
+      const n = [...a.badge.id].reduce((sum, ch) => (sum * 31 + ch.charCodeAt(0)) % 100003, 7);
+      const through = (time: number, direction: 'IN' | 'OUT') => actions.push({
+        time,
+        run: () => {
+          tapBadge(world, { door: entrance, zone: 'building', restricted: false, account: a.username, direction, actor: null });
+          doorOpened(world, entrance);
+          const openedAt = world.time;
+          world.time += 3000; // the door closes 3 s later; write that line now and step back
+          doorClosed(world, entrance, openedAt, 1);
+          world.time = openedAt;
+        },
+      });
+      through(day + 8 * HOUR + (5 + (n % 50)) * MINUTE + (n % 53) * 1000, 'IN');
+      through(day + 17 * HOUR + ((n >> 3) % 45) * MINUTE + (n % 47) * 1000, 'OUT');
     }
   }
 

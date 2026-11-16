@@ -2,7 +2,9 @@
 
 A multiplayer social-deduction game that teaches real Linux forensics. The full design is in [DESIGN.md](DESIGN.md).
 
-**Current state: Phase 2 — the office in the browser.** You can walk around a top-down office, sit at any PC and use its simulated Linux shell in a real-looking terminal. There are no bots, tasks, hacker tools, roles or meetings yet, and the art is placeholder shapes.
+**Current state: Phase 3 (in progress) — a living office.** Doors and badges work; bots, tasks, email and CCTV are being added part by part (see `PROGRESS.md`). Phase 2 is complete:
+
+**Phase 2 — the office in the browser.** You can walk around a top-down office, sit at any PC and use its simulated Linux shell in a real-looking terminal. There are no bots, tasks, hacker tools, roles or meetings yet, and the art is placeholder shapes.
 
 What exists:
 
@@ -52,6 +54,7 @@ This starts the game server (port 2567) and the web page. Open http://localhost:
 |---|---|---|
 | `WASD` / arrows | office | walk |
 | `E` | at a desk | sit down and use the PC |
+| `E` | at a door with a reader | tap your badge |
 | `C` | office | show / hide your onboarding card |
 | `` ` `` (backtick) | office | developer panel (development only) |
 | `Esc` | terminal | stand up |
@@ -59,7 +62,9 @@ This starts the game server (port 2567) and the web page. Open http://localhost:
 | `F2` | lock screen | switch user |
 | `↑` `↓` `←` `→` `Home` `End` | terminal | history and line editing |
 
-On the map, a monitor is green when unlocked, amber when locked (with the user's name) and grey at the login prompt. Orange strips are doors, red triangles are cameras, green boxes are badge readers; in this phase they are only drawn.
+On the map, a monitor is green when unlocked, amber when locked (with the user's name) and grey at the login prompt. Red triangles are cameras (only drawn so far).
+
+**Doors.** A closed door is a solid bar across the doorway. Doors with a small box beside them have a badge reader: stand at the door and press `E`. If your badge is accepted the door opens for 3 seconds (anyone can walk through while it is open); if not, the box turns red. Dark red doors (server room, security office) open only for certain badges; your onboarding card says what yours opens. Doors without a box open by themselves. Every tap is written to `/var/log/badge/access.log` on `SEC-SRV-01`, which the security guard and the sysadmin can read over ssh.
 
 Other commands:
 
@@ -108,13 +113,13 @@ pnpm test
 pnpm typecheck
 ```
 
-135 Vitest tests cover the engine (permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, auto-lock, switch user, pipes, deterministic replay) and the server (movement, sitting, map checks, and the visibility rule).
+153 Vitest tests cover the engine (permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, auto-lock, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, map checks, and the visibility rule).
 
 ```bash
 pnpm e2e
 ```
 
-Two Playwright tests drive a real Chromium browser through the game and save screenshots to `e2e/screenshots/`. The first time, download the browser (about 150 MB) with:
+Three Playwright tests drive a real Chromium browser through the game and save screenshots to `e2e/screenshots/`. The first time, download the browser (about 150 MB) with:
 
 ```bash
 pnpm exec playwright install chromium

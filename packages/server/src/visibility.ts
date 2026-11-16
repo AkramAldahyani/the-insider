@@ -14,12 +14,14 @@
  * test/visibility.test.ts plays a match and checks every byte sent.
  */
 import { screenState, type Scenario, type TerminalResult, type World } from '@insider/engine';
-import type { EmployeeChoice, OnboardingCard, PublicDesk, PublicPlayer, TermScreen, Facing } from '@insider/shared';
+import type { DoorLook, EmployeeChoice, OnboardingCard, PublicDesk, PublicDoor, PublicPlayer, TermScreen, Facing } from '@insider/shared';
 
 /** A player's body in the office (server-side record). */
 export interface Avatar {
   clientId: string;
   playerId: string;
+  /** The employee's account: whose badge this body carries. Never sent to browsers. */
+  account: string;
   name: string;
   x: number;
   y: number;
@@ -58,6 +60,7 @@ export function onboardingCard(world: World, scenario: Scenario, playerId: strin
   if (!player) throw new Error(`Unknown player: ${playerId}`);
   const account = scenario.accounts.find((a) => a.username === player.account);
   const host = world.hosts[player.desk];
+  const badge = world.badges.holders[player.account];
   return {
     name: player.name,
     title: account?.title ?? '',
@@ -68,6 +71,8 @@ export function onboardingCard(world: World, scenario: Scenario, playerId: strin
     ip: host?.ip ?? '',
     mac: host?.mac ?? '',
     location: host?.location ?? '',
+    badgeId: badge?.id ?? '',
+    badgeAccess: [...(badge?.access ?? [])],
   };
 }
 
@@ -88,6 +93,15 @@ export function termScreen(result: TerminalResult): TermScreen {
 /** A player as seen by everyone in the office. */
 export function publicPlayer(a: Avatar): PublicPlayer {
   return { id: a.playerId, name: a.name, x: Math.round(a.x * 10) / 10, y: Math.round(a.y * 10) / 10, facing: a.facing, seatedAt: a.seatedAt };
+}
+
+/**
+ * A door as seen from across the room: open, closed, or closed with a red
+ * light. WHO tapped, and whether anyone was refused before, is not sent: that
+ * is in the badge log, which has to be read on the badge server.
+ */
+export function publicDoor(id: string, look: DoorLook): PublicDoor {
+  return { id, look };
 }
 
 /**

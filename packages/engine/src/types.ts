@@ -92,6 +92,8 @@ export interface Host {
   /** True when the IP is fixed (servers) rather than handed out by DHCP. */
   staticIp: boolean;
   kind: 'workstation' | 'server';
+  /** No screen or keyboard in the office: reachable over ssh only. */
+  headless: boolean;
   department: string;
   location: string;
   /** The employee whose desk this is (null for servers). */
@@ -256,6 +258,22 @@ export interface DhcpServer {
   leases: Lease[];
 }
 
+// ───────────────────────────── Physical security ─────────────────────────────
+
+export interface Badge {
+  /** The number printed in the badge log, e.g. "0417". */
+  id: string;
+  /** Restricted zones this badge opens, e.g. ["server-room"]. */
+  access: string[];
+}
+
+export interface BadgeSystem {
+  /** Hostname of the machine that stores the badge logs ("" = no log files). */
+  serverHost: string;
+  /** account username -> the badge that employee carries. */
+  holders: Record<string, Badge>;
+}
+
 // ───────────────────────────── World ─────────────────────────────
 
 export interface Player {
@@ -285,6 +303,8 @@ export interface World {
   hosts: Record<string, Host>;
   dhcp: DhcpServer;
   dnsServer: string;
+  /** The door-badge system (see physical/badges.ts). */
+  badges: BadgeSystem;
   players: Player[];
   /**
    * Engine-side secrets: plaintext passwords and strengths.

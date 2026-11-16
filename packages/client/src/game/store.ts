@@ -15,7 +15,7 @@
 import { Client, type Room } from 'colyseus.js';
 import {
   ROOM_NAME, SERVER_PORT, parseOfficeMap,
-  type ClientMessages, type EmployeeChoice, type OfficeMap, type OnboardingCard, type PublicDesk, type PublicPlayer,
+  type ClientMessages, type EmployeeChoice, type OfficeMap, type OnboardingCard, type PublicDesk, type PublicDoor, type PublicPlayer,
   type ServerMessages, type TermScreen, type TiledMap,
 } from '@insider/shared';
 
@@ -28,6 +28,7 @@ export interface RoomState {
   speed: number;
   players: { get(id: string): PublicPlayer | undefined; forEach(cb: (player: PublicPlayer, id: string) => void): void };
   desks: { get(hostname: string): PublicDesk | undefined; forEach(cb: (desk: PublicDesk, hostname: string) => void): void };
+  doors: { get(id: string): PublicDoor | undefined; forEach(cb: (door: PublicDoor, id: string) => void): void };
 }
 
 /** What React draws. Replaced by a new object on every change. */
@@ -48,6 +49,9 @@ export interface UiState {
   roomName: string;
   /** Desk within reach ("" = none), for the "Press E" hint. */
   nearDesk: string;
+  /** Door with a badge reader within reach: its code ("" = none) and its name for the hint. */
+  nearDoor: string;
+  nearDoorName: string;
   /** Desk the player is sitting at ("" = walking). */
   seatedAt: string;
   notice: string;
@@ -69,7 +73,7 @@ export class Store {
 
   private ui: UiState = {
     phase: 'connecting', error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false,
-    clock: 0, speed: 1, roomName: '', nearDesk: '', seatedAt: '', notice: '', devOpen: false, devLog: [],
+    clock: 0, speed: 1, roomName: '', nearDesk: '', nearDoor: '', nearDoorName: '', seatedAt: '', notice: '', devOpen: false, devLog: [],
   };
   private listeners = new Set<Listener>();
   private termListener: ((event: TermEvent) => void) | null = null;

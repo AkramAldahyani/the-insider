@@ -5,16 +5,24 @@
  * (DESIGN.md section 13: real art comes in Phase 7). The scene does two jobs:
  *
  *  - once, at start: draw the things that never move (floor, walls, furniture,
- *    doors, cameras, badge readers, room names, desks);
- *  - every frame: read the public state the server sent and move the players
- *    and recolour the monitors to match.
+ *    cameras, room names, desks);
+ *  - every frame: read the public state the server sent and move the players,
+ *    recolour the monitors, and open or close the doors to match.
+ *
+ * A closed door is a solid slab across the doorway. An open door is drawn as
+ * two thin stubs at the frame. The small box beside a door is its badge
+ * reader: green normally, red for a moment after a badge was refused.
  *
  * The scene never decides anything. Positions come from the server; the scene
  * only glides each character towards its latest known position
  * ("interpolation"), so 20 updates per second look smooth at 60 frames.
  */
 import Phaser from 'phaser';
-import { INTERACT_DISTANCE, nearestDesk, roomAt, type MapDesk, type OfficeMap, type PublicDesk, type PublicPlayer } from '@insider/shared';
+import {
+  INTERACT_DISTANCE, TAP_DISTANCE, nearestDesk, nearestReaderDoor, roomAt,
+  type MapDesk, type MapDoor, type OfficeMap, type PublicDesk, type PublicDoor, type PublicPlayer,
+} from '@insider/shared';
+import { playSound } from './sound';
 import type { Store } from './store';
 
 const COLORS = {
@@ -24,7 +32,8 @@ const COLORS = {
   deskEdge: 0x4a3622,
   chair: 0x30343c,
   furniture: 0x4b5160,
-  door: 0xf2b134,
+  door: 0xb98a3c,
+  doorRestricted: 0x9a4b4b,
   camera: 0xe5484d,
   badge: 0x3ecf8e,
   screenLogin: 0x5d6b7c,
@@ -41,6 +50,15 @@ interface PlayerView {
   /** Latest position reported by the server. */
   targetX: number;
   targetY: number;
+}
+
+interface DoorView {
+  def: MapDoor;
+  /** The slab, redrawn when the door's look changes. */
+  slab: Phaser.GameObjects.Graphics;
+  /** The badge reader's light (doors without a reader have none). */
+  light: Phaser.GameObjects.Rectangle | null;
+  last: string;
 }
 
 interface DeskView {
@@ -65,6 +83,7 @@ function tileColors(store: Store): Map<number, number> {
 export function createOfficeScene(store: Store): Phaser.Scene {
   const players = new Map<string, PlayerView>();
   const desks = new Map<string, DeskView>();
+  const doors = new Map<string, DoorView>();
   let map: OfficeMap;
   let hudTimer = 0;
 
@@ -79,9 +98,10 @@ export function createOfficeScene(store: Store): Phaser.Scene {
       this.cameras.main.setBounds(0, 0, map.width, map.height);
       this.drawStatic();
       for (const desk of map.desks) this.drawDesk(desk);
+      for (const door of map.doors) this.addDoor(door);
     }
 
-    /** Floor, walls, furniture, doors, cameras, badge readers and room names. Drawn once. */
+    /** Floor, walls, furniture, cameras and room names. Drawn once. */
     private drawStatic(): void {
       const g = this.add.graphics();
       const colors = tileColors(store);
@@ -106,21 +126,10 @@ export function createOfficeScene(store: Store): Phaser.Scene {
           this.add.text(f.x + f.width / 2, f.y + f.height / 2, f.name, { ...LABEL, fontSize: '9px', color: '#aab0bd' }).setOrigin(0.5).setDepth(2);
         }
       }
-      // Doors: a coloured strip in the doorway. Open in Phase 2 (no logic yet).
-      for (const d of map.doors) {
-        const horizontal = d.width >= d.height;
-        g.fillStyle(d.locked ? COLORS.camera : COLORS.door, d.locked ? 0.9 : 0.55);
-        if (horizontal) g.fillRect(d.x, d.y + d.height / 2 - 3, d.width, 6);
-        else g.fillRect(d.x + d.width / 2 - 3, d.y, 6, d.height);
-      }
       for (const cam of map.cameras) {
         g.fillStyle(COLORS.camera, 1).fillTriangle(cam.x - 7, cam.y - 6, cam.x + 7, cam.y - 6, cam.x, cam.y + 7);
         g.lineStyle(1, 0x000000, 0.6).strokeTriangle(cam.x - 7, cam.y - 6, cam.x + 7, cam.y - 6, cam.x, cam.y + 7);
         this.add.text(cam.x + 10, cam.y - 6, cam.name.split(' ')[0], { ...LABEL, fontSize: '8px', color: '#ff9da0' }).setDepth(2);
-      }
-      for (const reader of map.badgeReaders) {
-        g.fillStyle(COLORS.badge, 1).fillRect(reader.x - 5, reader.y - 7, 10, 14);
-        g.lineStyle(1, 0x000000, 0.6).strokeRect(reader.x - 5, reader.y - 7, 10, 14);
       }
       // Room names. A room made of two rectangles (IT) is labelled once.
       const named = new Set<string>();
@@ -130,6 +139,47 @@ export function createOfficeScene(store: Store): Phaser.Scene {
         this.add.text(room.x + room.width / 2, room.y + room.height - 14, room.name.toUpperCase(), { ...LABEL, fontSize: '12px', color: '#ffffff' })
           .setOrigin(0.5).setAlpha(0.45).setDepth(2);
       }
+    }
+
+    /** A door (redrawn when it opens or closes) and, if it has one, its badge reader. */
+    private addDoor(def: MapDoor): void {
+      const slab = this.add.graphics().setDepth(3);
+      const reader = map.badgeReaders.find((r) => r.props.door === def.code);
+      let light: Phaser.GameObjects.Rectangle | null = null;
+      if (reader) {
+        this.add.rectangle(reader.x, reader.y, 12, 16, 0x15171c).setStrokeStyle(1, 0x000000).setDepth(3);
+        light = this.add.rectangle(reader.x, reader.y - 2, 6, 6, COLORS.badge).setDepth(4);
+      }
+      const view: DoorView = { def, slab, light, last: '' };
+      doors.set(def.code, view);
+      this.updateDoor({ id: def.code, look: 'closed' });
+    }
+
+    private updateDoor(door: PublicDoor): void {
+      const view = doors.get(door.id);
+      if (!view || view.last === door.look) return;
+      // A sound for doors close enough to hear (not on the very first draw).
+      const me = store.room?.state.players?.get(store.getUi().playerId);
+      const audible = view.last !== '' && me && Math.hypot(me.x - (view.def.x + view.def.width / 2), me.y - (view.def.y + view.def.height / 2)) < 260;
+      if (audible && door.look === 'denied') playSound('badge-denied');
+      if (audible && door.look === 'open' && view.def.reader) playSound('badge-granted');
+      view.last = door.look;
+
+      const d = view.def;
+      const g = view.slab.clear();
+      const color = d.restricted ? COLORS.doorRestricted : COLORS.door;
+      const across = d.axis === 'y'; // the slab lies left-to-right in a horizontal wall
+      if (door.look === 'open') {
+        // Two short stubs at the frame: the doorway is clear.
+        g.fillStyle(color, 0.9);
+        if (across) g.fillRect(d.x, d.y + d.height / 2 - 4, 7, 8).fillRect(d.x + d.width - 7, d.y + d.height / 2 - 4, 7, 8);
+        else g.fillRect(d.x + d.width / 2 - 4, d.y, 8, 7).fillRect(d.x + d.width / 2 - 4, d.y + d.height - 7, 8, 7);
+      } else {
+        g.fillStyle(color, 1).lineStyle(1, 0x000000, 0.7);
+        if (across) g.fillRect(d.x, d.y + d.height / 2 - 6, d.width, 12).strokeRect(d.x, d.y + d.height / 2 - 6, d.width, 12);
+        else g.fillRect(d.x + d.width / 2 - 6, d.y, 12, d.height).strokeRect(d.x + d.width / 2 - 6, d.y, 12, d.height);
+      }
+      view.light?.setFillStyle(door.look === 'denied' ? COLORS.camera : door.look === 'open' ? 0xffffff : COLORS.badge);
     }
 
     /** A desk: table, chair, monitor (recoloured live) and two text lines. */
@@ -197,6 +247,7 @@ export function createOfficeScene(store: Store): Phaser.Scene {
         }
       }
       state.desks.forEach((desk) => this.updateDesk(desk));
+      state.doors?.forEach((door) => this.updateDoor(door));
 
       // HUD facts, a few times per second (not every frame: React does not need 60 updates a second).
       hudTimer += deltaMs;
@@ -205,7 +256,11 @@ export function createOfficeScene(store: Store): Phaser.Scene {
       const me = state.players.get(selfId);
       if (!me) return;
       const near = nearestDesk(map, me.x, me.y);
+      const door = nearestReaderDoor(map, me.x, me.y);
+      const atDoor = !me.seatedAt && door && door.distance <= TAP_DISTANCE - 4 ? door.door : null;
       store.set({
+        nearDoor: atDoor?.code ?? '',
+        nearDoorName: atDoor?.name ?? '',
         clock: Math.floor(state.clock / 1000) * 1000,
         speed: state.speed,
         roomName: roomAt(map, me.x, me.y),

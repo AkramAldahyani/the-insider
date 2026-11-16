@@ -12,7 +12,7 @@
  * text on screens they are not sitting at.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { ROOM_NAME, type PublicState } from '@insider/shared';
+import { ROOM_NAME, TAP_DISTANCE, nearestReaderDoor, type PublicState } from '@insider/shared';
 import { createGameServer } from '../src/app';
 import { PW, ROOT_PW, Recorder, corners, findRoute, scenario } from './helpers';
 
@@ -113,7 +113,8 @@ describe('visibility: what the game sends', () => {
 
   it('the public state has exactly the documented shape', () => {
     for (const state of r.states as PublicState[]) {
-      expect(Object.keys(state).sort()).toEqual(['clock', 'desks', 'players', 'speed']);
+      expect(Object.keys(state).sort()).toEqual(['clock', 'desks', 'doors', 'players', 'speed']);
+      for (const door of Object.values(state.doors)) expect(Object.keys(door).sort()).toEqual(['id', 'look']);
       for (const player of Object.values(state.players)) {
         expect(Object.keys(player).sort()).toEqual(['facing', 'id', 'name', 'seatedAt', 'x', 'y']);
       }
@@ -216,6 +217,7 @@ describe('visibility: what goes over the wire', () => {
       room.send('choose', { playerId });
       await wait(100);
       const me = () => (room.state as unknown as { players: Map<string, { x: number; y: number; seatedAt: string }> }).players.get(playerId)!;
+      const doorLook = (code: string) => (room.state as unknown as { doors: Map<string, { look: string }> }).doors.get(code)?.look;
       const line = async (text: string) => {
         room.send('term.line', { text });
         await wait(80);
@@ -232,6 +234,12 @@ describe('visibility: what goes over the wire', () => {
             const dx = Math.abs(far('x')) > 6 ? Math.sign(far('x')) : 0;
             const dy = Math.abs(far('y')) > 6 ? Math.sign(far('y')) : 0;
             if (dx === 0 && dy === 0) break;
+            // At a closed door with a badge reader: tap (what pressing E does in the browser).
+            const near = nearestReaderDoor(map, me().x, me().y);
+            if (near && near.distance <= TAP_DISTANCE && doorLook(near.door.code) === 'closed') {
+              room.send('tap', { door: near.door.code });
+              await wait(80);
+            }
             room.send('move', { dx, dy });
             await wait(60); // at least one server tick (50 ms), or the step might not happen at all
             // Close to the target: take one short step, stop, and look again.

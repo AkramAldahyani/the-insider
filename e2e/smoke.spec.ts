@@ -17,18 +17,26 @@ async function terminalText(page: Page): Promise<string> {
   return page.locator('.xterm-rows').innerText();
 }
 
-/** Walks to a desk's chair with the arrow keys, following a route around the walls. */
+/** Walks to a desk's chair. */
 async function walkToDesk(page: Page, hostname: string): Promise<void> {
+  const desk = (await page.evaluate(() => window.__insider!.desks())).find((d) => d.hostname === hostname)!;
+  await walkTo(page, desk.seatX, desk.seatY);
+}
+
+/**
+ * Walks to a point with the arrow keys, following a route around the walls.
+ * When a closed badge door blocks the way, presses E to tap the badge.
+ */
+async function walkTo(page: Page, x: number, y: number): Promise<void> {
   // The route is computed inside the page: a breadth-first search over free tiles.
-  const route = await page.evaluate((host) => {
+  const route = await page.evaluate((target) => {
     const api = window.__insider!;
     const map = api.map()!;
     const me = api.me()!;
-    const desk = api.desks().find((d) => d.hostname === host)!;
     const tile = (v: number) => Math.floor(v / map.tile);
     const key = (c: number, r: number) => r * map.cols + c;
     const start = key(tile(me.x), tile(me.y));
-    const goal = key(tile(desk.seatX), tile(desk.seatY));
+    const goal = key(tile(target.x), tile(target.y));
     const previous = new Map<number, number>([[start, -1]]);
     const queue = [start];
     while (queue.length > 0) {
@@ -53,17 +61,28 @@ async function walkToDesk(page: Page, hostname: string): Promise<void> {
       const b = points[i + 1];
       return !a || !b || (a.x === p.x) !== (p.x === b.x);
     });
-    return [...corners, { x: desk.seatX, y: desk.seatY }];
-  }, hostname);
+    return [...corners, target];
+  }, { x, y });
 
   const held = new Set<string>();
   const hold = async (wanted: string[]) => {
     for (const k of [...held]) if (!wanted.includes(k)) { await page.keyboard.up(k); held.delete(k); }
     for (const k of wanted) if (!held.has(k)) { await page.keyboard.down(k); held.add(k); }
   };
+  let before = { x: NaN, y: NaN };
   for (const point of route) {
     for (let guard = 0; guard < 600; guard++) {
       const me = await page.evaluate(() => window.__insider!.me()!);
+      // Did not move since the last look, next to a closed badge door: tap.
+      if (me.x === before.x && me.y === before.y && me.nearDoor) {
+        const closed = await page.evaluate((id) => window.__insider!.doors().find((d) => d.id === id)!.look !== 'open', me.nearDoor);
+        if (closed) {
+          await hold([]); // let go of the arrows, as a person would, then walk on
+          await page.keyboard.press('e');
+          await page.waitForTimeout(150);
+        }
+      }
+      before = me;
       const dx = point.x - me.x;
       const dy = point.y - me.y;
       const keys: string[] = [];
@@ -100,6 +119,7 @@ test('walk to a desk, log in, then use someone else\'s unlocked PC', async ({ pa
   await expect(page.getByTestId('card')).toBeVisible();
   await expect(page.getByTestId('card-username')).toHaveText('s.alharbi');
   await expect(page.getByTestId('card-your-pc')).toHaveText('FIN-LT-07');
+  await expect(page.getByTestId('card-badge')).toHaveText('#0412');
   const password = await page.getByTestId('card-password').innerText();
   await expect(page.getByTestId('room')).toHaveText('Finance');
   await page.screenshot({ path: `${SHOTS}/2-office-and-card.png` });
@@ -149,7 +169,7 @@ test('walk to a desk, log in, then use someone else\'s unlocked PC', async ({ pa
   await expect(page.getByTestId('terminal')).toBeHidden();
   expect((await page.evaluate(() => window.__insider!.desks())).find((d) => d.hostname === 'FIN-LT-07')!.screen).toBe('unlocked');
 
-  // 7. Walk to Lina's desk in HR, which she left unlocked.
+  // 7. Walk to Lina's desk in HR, which she left unlocked. Two badge doors are on the way.
   await walkToDesk(page, 'HR-LT-03');
   await expect(page.getByTestId('room')).toHaveText('HR');
   await page.screenshot({ path: `${SHOTS}/6-at-unlocked-desk.png` });
@@ -205,4 +225,29 @@ test('switch user on a locked PC, and the developer panel', async ({ page }) => 
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('terminal')).toHaveAttribute('data-screen', 'locked');
   await expect.poll(() => terminalText(page)).toContain('screen locked by m.yousef');
+});
+
+test('badge doors: a refused badge keeps the security office shut', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('employee-p1').click(); // Sara: her badge opens only the normal doors
+  await expect(page.getByTestId('card')).toBeVisible();
+  await page.keyboard.press('c');
+  await page.waitForFunction(() => window.__insider?.me() != null);
+  const look = (id: string) => page.evaluate((door) => window.__insider!.doors().find((d) => d.id === door)!.look, id);
+
+  // Out of Finance (her badge opens that door) and along the corridor to the security office door.
+  await walkTo(page, 15.5 * 32, 17.5 * 32);
+  await expect(page.getByTestId('room')).toHaveText('Corridor');
+  await expect(page.getByTestId('hint')).toContainText('tap your badge at the security office door');
+  await page.keyboard.press('e');
+  await expect(page.getByTestId('notice')).toContainText('Access denied');
+  expect(await look('SEC-OFFICE')).toBe('denied');
+  await page.screenshot({ path: `${SHOTS}/10-badge-denied.png` });
+
+  // She cannot walk in.
+  await page.keyboard.down('ArrowDown');
+  await page.waitForTimeout(700);
+  await page.keyboard.up('ArrowDown');
+  await expect(page.getByTestId('room')).toHaveText('Corridor');
+  await expect.poll(() => look('SEC-OFFICE')).toBe('closed');
 });

@@ -1,6 +1,6 @@
 /** Test helpers for the server: build a game, and walk a player around like a browser would. */
 import type { Scenario } from '@insider/engine';
-import { TICK_RATE, type OfficeMap, type PublicState, type TiledMap } from '@insider/shared';
+import { TAP_DISTANCE, TICK_RATE, nearestReaderDoor, type OfficeMap, type PublicState, type TiledMap } from '@insider/shared';
 import { loadGameOptions } from '../src/app';
 import { OfficeGame, type OfficeGameOptions, type Outgoing } from '../src/game';
 
@@ -89,18 +89,28 @@ export class Recorder {
 
   /**
    * Walks a player to a point using only `move` messages, the way a browser
-   * does: finds a route around the walls, then holds direction keys.
+   * does: finds a route around the walls, then holds direction keys. At a
+   * closed door with a badge reader the player taps their badge (like pressing
+   * E). Returns false if they never arrived, e.g. because a door refused them.
    */
-  walkTo(clientId: string, playerId: string, x: number, y: number): void {
+  walkTo(clientId: string, playerId: string, x: number, y: number): boolean {
     const map = this.map;
     const start = this.position(playerId);
     const route = findRoute(map, start.x, start.y, x, y);
+    let before = { x: NaN, y: NaN };
     for (const point of [...route, { x, y }]) {
       for (let guard = 0; guard < 2000; guard++) {
         const p = this.position(playerId);
         const dx = Math.abs(point.x - p.x) > 3 ? Math.sign(point.x - p.x) : 0;
         const dy = Math.abs(point.y - p.y) > 3 ? Math.sign(point.y - p.y) : 0;
         if (dx === 0 && dy === 0) break;
+        if (guard === 1999) return false;
+        // Blocked (the last step moved nothing) next to a closed badge door: tap, like pressing E.
+        const near = nearestReaderDoor(map, p.x, p.y);
+        if (p.x === before.x && p.y === before.y && near && near.distance <= TAP_DISTANCE && this.game.publicState().doors[near.door.code].look === 'closed') {
+          this.game.handle(clientId, 'tap', { door: near.door.code });
+        }
+        before = p;
         this.game.handle(clientId, 'move', { dx, dy });
         // Short steps near the target, so the player does not overshoot it.
         this.game.tick(Math.min(TICK_MS, 12));
@@ -108,13 +118,32 @@ export class Recorder {
       }
     }
     this.send(clientId, 'move', { dx: 0, dy: 0 });
+    return true;
   }
 
-  /** Walks to a desk's chair and presses E. */
-  sitAt(clientId: string, playerId: string, hostname: string): void {
+  /** Walks to a desk's chair and presses E. Returns false if the player could not get there. */
+  sitAt(clientId: string, playerId: string, hostname: string): boolean {
     const desk = this.map.desks.find((d) => d.hostname === hostname)!;
-    this.walkTo(clientId, playerId, desk.seatX, desk.seatY);
-    this.send(clientId, 'sit', { hostname });
+    const arrived = this.walkTo(clientId, playerId, desk.seatX, desk.seatY);
+    if (arrived) this.send(clientId, 'sit', { hostname });
+    return arrived;
+  }
+
+  /** Walks to the middle of a tile given as column and row. */
+  walkToTile(clientId: string, playerId: string, col: number, row: number): boolean {
+    return this.walkTo(clientId, playerId, (col + 0.5) * this.map.tile, (row + 0.5) * this.map.tile);
+  }
+
+  /** Text of a file on a simulated machine (the server may read anything; this is a test). */
+  file(hostname: string, path: string): string {
+    let node = this.game.world.hosts[hostname].fs;
+    for (const part of path.split('/').filter(Boolean)) node = node.children![part];
+    return node.content ?? '';
+  }
+
+  /** The text of the latest HUD notice sent to a client. */
+  notice(clientId: string): string {
+    return (this.last(clientId, 'notice')?.payload as { text: string } | undefined)?.text ?? '';
   }
 }
 

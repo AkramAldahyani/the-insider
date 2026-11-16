@@ -44,6 +44,12 @@ export function isoMinute(t: number): string {
   return `${x.year}-${x.monNum}-${p2(x.day)} ${x.hm}`;
 }
 
+/** "2026-03-02 09:12:01" - the badge system's log files. */
+export function isoSecond(t: number): string {
+  const x = parts(t);
+  return `${x.year}-${x.monNum}-${p2(x.day)} ${x.hms}`;
+}
+
 /** "2026-03-02 09:12:01.000000000 +0000" - `stat`. */
 export function statStamp(t: number): string {
   const x = parts(t);

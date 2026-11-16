@@ -45,6 +45,23 @@ Physical security systems:
 - **CCTV cameras** cover some areas (not all) and record timestamped snapshots. Snapshots are rendered from the game's own view of that area at that moment.
 - Players can see who is physically standing at which desk.
 
+### Doors and badges (decided in Phase 3)
+
+- **Players do not collide with each other.** Walls, furniture and closed doors block; bodies do not.
+- **Closed doors block movement.** Standing at a door with a reader and pressing `E` taps your badge. A granted tap opens the door for **3 seconds**; a refused one leaves it shut with a red light. A door never closes on someone standing in it.
+- **Tailgating is possible.** While a door is open anyone can walk through. A sensor in the frame counts bodies, so the door log shows one granted tap and `PASSAGES=2`. Who the second person was is not in any log (it is in the master event list, for the debrief, and later on CCTV).
+- **Badge access is per user, in the scenario file** (`accounts[].badge`); roles arrive in Phase 5.
+  - Server room: system administrator and IT helpdesk only.
+  - Security office: security guard and system administrator only.
+  - Main entrance and the Finance, HR, Marketing and IT doors: every badge opens them, and every tap is logged. The main entrance log is the record of arrivals and departures.
+  - Reception, cafeteria, printer room, storage and bathrooms have no reader: the door opens when walked into and nothing is logged.
+- **Leaving is always allowed**, even from a restricted room (a building must let people out). The exit tap is still logged with the badge used, so someone who tailgated in leaves their own badge number on the way out.
+- **The badge belongs to the employee, not to an account.** A badge line names the owner of the plastic card, whichever account that person is logged in as on some PC.
+- **The logs live on `SEC-SRV-01`**, the physical access control server: a headless machine (no screen, no desk) in the server room, reachable over ssh by the security guard and the system administrator.
+  - `/var/log/badge/access.log`: `2026-03-02 09:02:11 DOOR=SRV-ROOM BADGE=0417 USER=d.aziz RESULT=GRANTED DIR=IN`
+  - `/var/log/badge/doors.log`: `... DOOR=SRV-ROOM EVENT=OPEN` and `... DOOR=SRV-ROOM EVENT=CLOSE OPEN_FOR=3.0s PASSAGES=2`
+- Door timers run in real time, like walking; the log timestamps use the game clock.
+
 Map size scales with lobby size:
 
 | Players | Map |
@@ -68,6 +85,8 @@ Map size scales with lobby size:
 - **Remote lock/unlock:** `loginctl lock-session` / `unlock-session` also work over ssh for the session's own user and for root (this is what the helpdesk's force-lock will use). Because a remote *unlock* opens a PC for whoever stands at it, each one writes a line to that machine's `auth.log` naming who asked and from which IP.
 - **Time:** the server owns the clock and advances it in real time: 1 game second per real second, with a configurable multiplier. The engine itself never reads a real clock.
 - Every event in the master log records the **account** used, the **player** physically at the keyboard, and whether the input was **physical** (typed at that machine) or **remote** (arrived over ssh).
+- **One occupant per PC.** While someone sits at a PC nobody else can sit there.
+- **Deferred to Phase 6:** getting your character back after a page reload, and client-side movement prediction.
 - **Defenders may also use unlocked PCs.** Every action is logged under the PC owner's account, and other players can see who is physically standing at which desk. (This is realistic and also gives the hacker cover: "I was just checking his logs!")
 
 ---

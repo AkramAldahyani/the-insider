@@ -157,6 +157,7 @@ function atKeyboard(world: World, terminal: Terminal, fn: (run: Run) => void): T
 export function openTerminal(world: World, hostname: string, physicalPlayerId: string): OpenResult {
   const host = world.hosts[hostname];
   if (!host) throw new Error(`Unknown host: ${hostname}`);
+  if (host.headless) throw new Error(`${hostname} has no screen or keyboard (reach it over ssh)`);
   const id = terminalId(hostname);
   const terminal = (world.terminals[id] ??= newTerminal(world, hostname));
   terminal.playerId = physicalPlayerId;

@@ -21,8 +21,7 @@ describe('map and scenario consistency', () => {
     expect(map.doors.length).toBeGreaterThan(10);
     expect(map.cameras.length).toBeGreaterThan(0);
     expect(map.badgeReaders.length).toBeGreaterThan(0);
-    // Phase 2: the server room door is drawn but open.
-    expect(map.doors.find((d) => d.name === 'Server room door')).toMatchObject({ locked: false, badgeRequired: true });
+    expect(map.doors.find((d) => d.name === 'Server room door')).toMatchObject({ code: 'SRV-ROOM', reader: true, restricted: true, zone: 'server-room' });
   });
 
   it('refuses to start, listing every problem, when a desk and a host do not match', () => {
@@ -76,6 +75,7 @@ describe('start screen', () => {
     expect(card).toEqual({
       name: 'Sara Alharbi', title: 'Accountant', department: 'Finance', username: 's.alharbi', password: PW['s.alharbi'],
       hostname: 'FIN-LT-07', ip: r.game.world.hosts['FIN-LT-07'].ip, mac: '52:54:00:f1:07:07', location: 'Finance, desk 7',
+      badgeId: '0412', badgeAccess: [],
     });
     const desk = r.map.desks.find((d) => d.hostname === 'FIN-LT-07')!;
     const me = r.position('p1');
@@ -123,10 +123,10 @@ describe('movement', () => {
     expect(corner.y).toBeGreaterThan(12 * r.map.tile);
   });
 
-  it('a player can walk from Finance to the server room (its door is open in Phase 2)', () => {
+  it('the sysadmin can walk from IT into the server room and sit at the server', () => {
     const r = new Recorder();
-    r.connect('a', 'p1');
-    r.sitAt('a', 'p1', 'ADMIN-SRV-01');
+    r.connect('a', 'p5');
+    expect(r.sitAt('a', 'p5', 'ADMIN-SRV-01')).toBe(true);
     expect(r.last('a', 'term.open')!.payload).toMatchObject({ hostname: 'ADMIN-SRV-01', screen: 'login', prompt: 'ADMIN-SRV-01 login: ' });
   });
 });

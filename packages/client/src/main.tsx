@@ -14,7 +14,8 @@ createRoot(document.getElementById('root')!).render(<App />);
 declare global {
   interface Window {
     __insider?: {
-      me(): { x: number; y: number; seatedAt: string; room: string; nearDesk: string } | null;
+      me(): { x: number; y: number; seatedAt: string; room: string; nearDesk: string; nearDoor: string } | null;
+      doors(): { id: string; look: string; reader: boolean }[];
       desks(): { hostname: string; seatX: number; seatY: number; screen: string }[];
       map(): { tile: number; cols: number; rows: number; solid: boolean[][] } | null;
     };
@@ -24,12 +25,15 @@ window.__insider = {
   me() {
     const ui = store.getUi();
     const p = store.room?.state.players?.get(ui.playerId);
-    return p ? { x: p.x, y: p.y, seatedAt: p.seatedAt, room: ui.roomName, nearDesk: ui.nearDesk } : null;
+    return p ? { x: p.x, y: p.y, seatedAt: p.seatedAt, room: ui.roomName, nearDesk: ui.nearDesk, nearDoor: ui.nearDoor } : null;
   },
   desks() {
     return (store.map?.desks ?? []).map((d) => ({
       hostname: d.hostname, seatX: d.seatX, seatY: d.seatY, screen: store.room?.state.desks?.get(d.hostname)?.screen ?? '',
     }));
+  },
+  doors() {
+    return (store.map?.doors ?? []).map((d) => ({ id: d.code, look: store.room?.state.doors?.get(d.code)?.look ?? '', reader: d.reader }));
   },
   map() {
     const m = store.map;

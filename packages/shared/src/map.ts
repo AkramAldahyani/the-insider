@@ -13,10 +13,14 @@
  *  - object layer "desks":  rectangles with a `hostname` property. A desk
  *    blocks movement; its chair is the tile just below its middle;
  *  - object layer "furniture": rectangles that block movement (no logic);
- *  - object layers "doors", "cameras", "badge_readers": drawn only. They carry
- *    properties (locked, covers, door...) that later phases will use;
+ *  - object layer "doors": rectangles covering a doorway. Properties: `code`
+ *    (short name for logs), `room` (the room behind it), `reader` (needs a
+ *    badge tap), `restricted` + `zone` (only badges listing that zone enter).
+ *    A CLOSED door blocks movement; the server opens and closes them;
+ *  - object layers "cameras", "badge_readers": drawn only for now;
  *  - object layer "spawns": points with a `desk` property (where the owner of
- *    that desk appears), plus one named "default".
+ *    that desk appears), one named "default", and one named "outside" (the
+ *    pavement in front of the main entrance, where arriving employees appear).
  */
 
 // ───────────────────────────── Tiled JSON (the parts we use) ─────────────────────────────
@@ -80,8 +84,19 @@ export interface MapDesk extends Rect {
 
 export interface MapDoor extends Rect {
   name: string;
-  locked: boolean;
-  badgeRequired: boolean;
+  /** Short name used in the badge logs and as the door's id, e.g. "SRV-ROOM". */
+  code: string;
+  /** The room behind the door. */
+  room: string;
+  /** True: the door opens only after a badge tap. False: it opens by itself when someone walks up. */
+  reader: boolean;
+  /** True: only badges that list `zone` may enter. */
+  restricted: boolean;
+  zone: string;
+  /** The direction people walk through the door: "y" for a door in a horizontal wall. */
+  axis: 'x' | 'y';
+  /** Which way along `axis` leads INTO `room`: 1 = right/down, -1 = left/up. */
+  inside: 1 | -1;
 }
 
 export interface MapMarker {
@@ -120,6 +135,8 @@ export interface OfficeMap {
   /** desk hostname -> where its owner appears. */
   spawns: Record<string, { x: number; y: number }>;
   defaultSpawn: { x: number; y: number };
+  /** Outside the main entrance (falls back to the default spawn on maps without one). */
+  outsideSpawn: { x: number; y: number };
 }
 
 function props(o: TiledObject): Record<string, string | number | boolean> {
@@ -169,12 +186,39 @@ export function parseOfficeMap(json: TiledMap): OfficeMap {
 
   const spawns: Record<string, { x: number; y: number }> = {};
   let defaultSpawn: { x: number; y: number } | null = null;
+  let outsideSpawn: { x: number; y: number } | null = null;
   for (const o of objects('spawns')) {
     const desk = props(o).desk;
     if (typeof desk === 'string' && desk) spawns[desk] = { x: o.x, y: o.y };
+    else if (o.name === 'outside') outsideSpawn = { x: o.x, y: o.y };
     else defaultSpawn = { x: o.x, y: o.y };
   }
   if (!defaultSpawn) throw new Error('Map layer "spawns" needs one point without a "desk" property (the default spawn)');
+
+  const rooms: MapRoom[] = objects('rooms').map((o) => ({ name: o.name, x: o.x, y: o.y, width: o.width, height: o.height }));
+  const inRoom = (name: string, x: number, y: number) => rooms.some((r) => r.name === name && x >= r.x && x < r.x + r.width && y >= r.y && y < r.y + r.height);
+  const codes = new Set<string>();
+  const doors: MapDoor[] = objects('doors').map((o) => {
+    const p = props(o);
+    const code = String(p.code ?? '');
+    if (!code) throw new Error(`Door "${o.name}" (object #${o.id}) has no "code" property`);
+    if (codes.has(code)) throw new Error(`Two doors have the code "${code}"`);
+    codes.add(code);
+    const room = String(p.room ?? '');
+    // A door wider than tall sits in a horizontal wall, so people cross it vertically.
+    const axis = o.width >= o.height ? 'y' : 'x';
+    const cx = o.x + o.width / 2;
+    const cy = o.y + o.height / 2;
+    // Look one step beyond the door on each side: the side that is in `room` is "inside".
+    const reach = (axis === 'y' ? o.height : o.width) / 2 + tile / 2;
+    const isInside = (sign: number) => (axis === 'y' ? inRoom(room, cx, cy + sign * reach) : inRoom(room, cx + sign * reach, cy));
+    if (!isInside(1) && !isInside(-1)) throw new Error(`Door "${o.name}": neither side of it is in the room "${room}" (check its "room" property)`);
+    return {
+      name: o.name, code, room, x: o.x, y: o.y, width: o.width, height: o.height,
+      reader: p.reader === true, restricted: p.restricted === true, zone: String(p.zone ?? ''),
+      axis, inside: isInside(1) ? 1 : -1,
+    };
+  });
 
   return {
     cols, rows, tile,
@@ -183,18 +227,61 @@ export function parseOfficeMap(json: TiledMap): OfficeMap {
     floor: grid(layer('floor'), cols, rows),
     walls,
     solid,
-    rooms: objects('rooms').map((o) => ({ name: o.name, x: o.x, y: o.y, width: o.width, height: o.height })),
+    rooms,
     desks,
-    doors: objects('doors').map((o) => ({
-      name: o.name, x: o.x, y: o.y, width: o.width, height: o.height,
-      locked: props(o).locked === true, badgeRequired: props(o).badgeRequired === true,
-    })),
+    doors,
     cameras: objects('cameras').map(marker),
     badgeReaders: objects('badge_readers').map(marker),
     furniture,
     spawns,
     defaultSpawn,
+    outsideSpawn: outsideSpawn ?? defaultSpawn,
   };
+}
+
+// ───────────────────────────── Doors ─────────────────────────────
+
+/** Distance from a point to the nearest edge of a rectangle (0 inside it). */
+export function distanceToRect(r: Rect, x: number, y: number): number {
+  const dx = Math.max(r.x - x, 0, x - (r.x + r.width));
+  const dy = Math.max(r.y - y, 0, y - (r.y + r.height));
+  return Math.hypot(dx, dy);
+}
+
+/** Which side of a door a point is on: 1 = right/below its middle, -1 = left/above. */
+export function doorSide(door: MapDoor, x: number, y: number): 1 | -1 {
+  const offset = door.axis === 'y' ? y - (door.y + door.height / 2) : x - (door.x + door.width / 2);
+  return offset >= 0 ? 1 : -1;
+}
+
+/**
+ * The doorway plus `reach` pixels in front of and behind it. Being in this
+ * strip means "at this door" (walls on both sides keep everyone else out).
+ */
+export function doorApproach(door: MapDoor, reach: number): Rect {
+  return door.axis === 'y'
+    ? { x: door.x, y: door.y - reach, width: door.width, height: door.height + 2 * reach }
+    : { x: door.x - reach, y: door.y, width: door.width + 2 * reach, height: door.height };
+}
+
+/** The tiles a door covers, as [column, row] pairs. */
+export function doorTiles(map: OfficeMap, door: MapDoor): [number, number][] {
+  const tiles: [number, number][] = [];
+  for (let row = Math.floor(door.y / map.tile); row < Math.ceil((door.y + door.height) / map.tile); row++) {
+    for (let col = Math.floor(door.x / map.tile); col < Math.ceil((door.x + door.width) / map.tile); col++) tiles.push([col, row]);
+  }
+  return tiles;
+}
+
+/** The door with a badge reader closest to a point, with the distance to its doorway. */
+export function nearestReaderDoor(map: OfficeMap, x: number, y: number): { door: MapDoor; distance: number } | null {
+  let best: { door: MapDoor; distance: number } | null = null;
+  for (const door of map.doors) {
+    if (!door.reader) continue;
+    const distance = distanceToRect(door, x, y);
+    if (!best || distance < best.distance) best = { door, distance };
+  }
+  return best;
 }
 
 /** Name of the room containing a point ("Corridor" style names come from the map), or "" outside all rooms. */

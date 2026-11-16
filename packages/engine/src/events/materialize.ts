@@ -9,9 +9,16 @@
  * line: they exist only in the master event list.
  */
 import { syslog, pidOf } from './journal';
+import { isoSecond } from '../core/time';
+import { sysWrite } from '../fs/vfs';
 import type { GameEvent, Host, World } from '../types';
 
 const str = (v: unknown) => String(v ?? '');
+
+/** Appends one line to a badge-system log. Like /var/log, readable by root and group "adm". */
+function badgeLog(host: Host, time: number, file: string, text: string): void {
+  sysWrite(host, `/var/log/badge/${file}`, `${isoSecond(time)} ${text}\n`, { owner: 'root', group: 'adm', mode: 0o640, time, append: true });
+}
 
 export function materialize(world: World, e: GameEvent): void {
   const host: Host | undefined = world.hosts[e.host];
@@ -26,6 +33,17 @@ export function materialize(world: World, e: GameEvent): void {
   const sudoCtx = `TTY=${str(d.tty)} ; PWD=${str(d.cwd)} ; USER=${str(d.runAs)} ; COMMAND=${str(d.command)}`;
 
   switch (e.type) {
+    // ── badge system (files on the badge server; see physical/badges.ts) ──
+    case 'badge.tap':
+      badgeLog(host, world.time, 'access.log', `DOOR=${str(d.door)} BADGE=${str(d.badge)} USER=${e.user} RESULT=${d.granted ? 'GRANTED' : 'DENIED'} DIR=${str(d.direction)}`);
+      break;
+    case 'door.open':
+      badgeLog(host, world.time, 'doors.log', `DOOR=${str(d.door)} EVENT=OPEN`);
+      break;
+    case 'door.close':
+      badgeLog(host, world.time, 'doors.log', `DOOR=${str(d.door)} EVENT=CLOSE OPEN_FOR=${(Number(d.openMs) / 1000).toFixed(1)}s PASSAGES=${str(d.passages)}`);
+      break;
+
     // ── boot ──
     case 'host.boot': {
       // Kernel lines get slightly increasing timestamps, like a real boot.

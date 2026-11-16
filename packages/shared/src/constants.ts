@@ -15,3 +15,11 @@ export const PLAYER_SPEED = 170;
 export const PLAYER_RADIUS = 10;
 /** How close (pixels) a player must be to a desk's chair to sit down. */
 export const INTERACT_DISTANCE = 44;
+/** How close (pixels) a player must be to a doorway to tap a badge on its reader. */
+export const TAP_DISTANCE = 40;
+/** A granted badge tap holds the door open this long (real milliseconds). */
+export const DOOR_OPEN_MS = 3000;
+/** A refused badge makes the reader flash red this long (real milliseconds). */
+export const DOOR_DENIED_MS = 1500;
+/** A door without a reader stays open this long after the last person left its doorway. */
+export const AUTO_DOOR_HOLD_MS = 800;

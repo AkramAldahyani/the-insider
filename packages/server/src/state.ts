@@ -30,11 +30,18 @@ export const DeskSchema = schema({
 }, 'DeskSchema');
 export type DeskSchema = SchemaType<typeof DeskSchema>;
 
+export const DoorSchema = schema({
+  id: 'string',
+  look: 'string',
+}, 'DoorSchema');
+export type DoorSchema = SchemaType<typeof DoorSchema>;
+
 export const OfficeState = schema({
   clock: 'number',
   speed: 'number',
   players: { map: PlayerSchema },
   desks: { map: DeskSchema },
+  doors: { map: DoorSchema },
 }, 'OfficeState');
 export type OfficeState = SchemaType<typeof OfficeState>;
 
@@ -44,6 +51,7 @@ export function newOfficeState(): OfficeState {
   state.speed = 1;
   state.players = new MapSchema<PlayerSchema>();
   state.desks = new MapSchema<DeskSchema>();
+  state.doors = new MapSchema<DoorSchema>();
   return state;
 }
 
@@ -69,5 +77,10 @@ export function syncState(state: OfficeState, snapshot: PublicState): void {
     let row = state.desks.get(hostname);
     if (!row) state.desks.set(hostname, (row = new DeskSchema()));
     copy(row, { ...desk });
+  }
+  for (const [id, door] of Object.entries(snapshot.doors)) {
+    let row = state.doors.get(id);
+    if (!row) state.doors.set(id, (row = new DoorSchema()));
+    copy(row, { ...door });
   }
 }

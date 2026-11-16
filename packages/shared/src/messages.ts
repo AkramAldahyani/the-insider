@@ -37,6 +37,20 @@ export interface PublicDesk {
   occupantId: string;
 }
 
+/**
+ * What a door looks like from across the room:
+ *  - "closed": shut;
+ *  - "open":   anyone can walk through;
+ *  - "denied": shut, and its reader is flashing red (a badge was just refused).
+ */
+export type DoorLook = 'closed' | 'open' | 'denied';
+
+export interface PublicDoor {
+  /** The door's code on the map, e.g. "SRV-ROOM". */
+  id: string;
+  look: DoorLook;
+}
+
 export interface PublicState {
   /** Game time, milliseconds since 1970 (UTC). */
   clock: number;
@@ -44,6 +58,7 @@ export interface PublicState {
   speed: number;
   players: Record<string, PublicPlayer>;
   desks: Record<string, PublicDesk>;
+  doors: Record<string, PublicDoor>;
 }
 
 // ───────────────────────────── Server -> client messages ─────────────────────────────
@@ -70,6 +85,10 @@ export interface OnboardingCard {
   ip: string;
   mac: string;
   location: string;
+  /** The number on the player's own badge ("" = no badge). */
+  badgeId: string;
+  /** Restricted zones the player's own badge opens. */
+  badgeAccess: string[];
 }
 
 /** What a PC's screen shows after something happened. */
@@ -113,6 +132,8 @@ export interface ClientMessages {
   /** Sit at a desk (the server checks the distance). */
   sit: { hostname: string };
   stand: Record<string, never>;
+  /** Hold the badge against a door's reader (the server checks the distance and decides). */
+  tap: { door: string };
   /** One finished line typed at the PC. */
   'term.line': { text: string };
   /** Ctrl+C. */

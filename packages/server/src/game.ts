@@ -20,8 +20,9 @@ import {
   INTERACT_DISTANCE, PLAYER_RADIUS, PLAYER_SPEED, moveWithCollision, parseOfficeMap,
   type ClientMessages, type Facing, type OfficeMap, type PublicState, type ServerMessages, type ServerMessageType, type TiledMap,
 } from '@insider/shared';
+import { Doors, type Walker } from './doors';
 import { checkMapAgainstScenario } from './mapCheck';
-import { employeeChoices, onboardingCard, publicDesk, publicPlayer, termScreen, type Avatar } from './visibility';
+import { employeeChoices, onboardingCard, publicDesk, publicDoor, publicPlayer, termScreen, type Avatar } from './visibility';
 
 export interface OfficeGameOptions {
   scenario: Scenario;
@@ -48,7 +49,11 @@ const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 
 export class OfficeGame {
   readonly world: World;
+  /** The map as drawn. Doors are NOT part of its `solid` grid (use it to plan routes). */
   readonly map: OfficeMap;
+  /** The same map with closed doors added to `solid`: what bodies are moved against. */
+  private readonly collision: OfficeMap;
+  readonly doors: Doors;
   readonly dev: boolean;
   speed: number;
 
@@ -70,6 +75,8 @@ export class OfficeGame {
     // Fail loudly, before anyone joins, if the map and the scenario disagree.
     checkMapAgainstScenario(this.map, options.scenario, options.mapName);
     this.world = createWorld(options.scenario, options.seed ?? 1);
+    this.collision = { ...this.map, solid: this.map.solid.map((row) => [...row]) };
+    this.doors = new Doors(this.world, this.map, this.collision.solid);
     this.speed = options.speed ?? 1;
     this.dev = options.dev ?? false;
     this.writeDump = options.writeDump;
@@ -99,7 +106,9 @@ export class OfficeGame {
     }
     const desks: PublicState['desks'] = {};
     for (const desk of this.map.desks) desks[desk.hostname] = publicDesk(this.world, desk.hostname, occupants[desk.hostname] ?? '');
-    return { clock: this.world.time, speed: this.speed, players, desks };
+    const doors: PublicState['doors'] = {};
+    for (const door of this.doors.looks()) doors[door.id] = publicDoor(door.id, door.look);
+    return { clock: this.world.time, speed: this.speed, players, desks, doors };
   }
 
   private sendLobby(to: string): void {
@@ -154,6 +163,12 @@ export class OfficeGame {
         return this.sit(avatar, data);
       case 'stand':
         return this.stand(avatar, 'You stand up. The PC stays as you left it.');
+      case 'tap': {
+        if (typeof data.door !== 'string') return;
+        const result = this.doors.tap(this.walker(avatar), data.door);
+        if (result) this.send(avatar.clientId, 'notice', { text: result.text });
+        return;
+      }
       case 'term.line': {
         if (!avatar.seatedAt || typeof data.text !== 'string') return;
         this.screen(avatar, sendInput(this.world, avatar.terminalId, data.text.slice(0, MAX_LINE)));
@@ -183,7 +198,7 @@ export class OfficeGame {
     }
     const spawn = this.map.spawns[player.desk] ?? this.map.defaultSpawn;
     this.avatars.set(clientId, {
-      clientId, playerId: player.id, name: player.name, x: spawn.x, y: spawn.y, facing: 'up', seatedAt: '', terminalId: '', dx: 0, dy: 0,
+      clientId, playerId: player.id, account: player.account, name: player.name, x: spawn.x, y: spawn.y, facing: 'up', seatedAt: '', terminalId: '', dx: 0, dy: 0,
     });
     this.send(clientId, 'welcome', { playerId: player.id, card: onboardingCard(this.world, this.scenario, player.id) });
     for (const other of this.clients) if (!this.avatars.has(other)) this.sendLobby(other);
@@ -214,6 +229,11 @@ export class OfficeGame {
     this.send(avatar.clientId, 'term.close', { reason });
   }
 
+  /** An avatar as the doors see it. */
+  private walker(a: Avatar): Walker {
+    return { key: a.clientId, playerId: a.playerId, account: a.account, x: a.x, y: a.y, seated: a.seatedAt !== '' };
+  }
+
   private screen(avatar: Avatar, result: TerminalResult): void {
     this.send(avatar.clientId, 'term.output', termScreen(result));
   }
@@ -238,11 +258,13 @@ export class OfficeGame {
       if (avatar.dx === 0 && avatar.dy === 0) continue;
       // Diagonal walking must not be faster than straight walking.
       const scale = avatar.dx !== 0 && avatar.dy !== 0 ? Math.SQRT1_2 : 1;
-      const moved = moveWithCollision(this.map, avatar.x, avatar.y, avatar.dx * step * scale, avatar.dy * step * scale, PLAYER_RADIUS);
+      const moved = moveWithCollision(this.collision, avatar.x, avatar.y, avatar.dx * step * scale, avatar.dy * step * scale, PLAYER_RADIUS);
       avatar.x = moved.x;
       avatar.y = moved.y;
       avatar.facing = avatar.dx < 0 ? 'left' : avatar.dx > 0 ? 'right' : avatar.dy < 0 ? 'up' : 'down';
     }
+    // Doors last: they look at where everybody ended up.
+    this.doors.tick(realMs, [...this.avatars.values()].map((a) => this.walker(a)));
   }
 
   // ───────────────────────────── Developer panel ─────────────────────────────

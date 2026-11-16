@@ -10,7 +10,7 @@ describe('DHCP', () => {
     const ips = new Set<string>();
     for (const host of Object.values(world.hosts)) {
       if (host.staticIp) {
-        expect(host.ip).toBe('10.0.1.10');
+        expect(host.ip).toMatch(/^10.0.1.(10|20)$/); // the two servers
         expect(activeLease(world, host.mac)).toBeUndefined();
         continue;
       }

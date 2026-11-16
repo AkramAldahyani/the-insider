@@ -130,6 +130,7 @@ export class Game {
         const wanted = (args[0] ?? '').toLowerCase();
         const host = Object.keys(this.world.hosts).find((h) => h.toLowerCase() === wanted);
         if (!host) return this.screen(`Usage: :sit <hostname>   Known: ${Object.keys(this.world.hosts).join(', ')}\n`);
+        if (this.world.hosts[host].headless) return this.screen(`${host} is a box in a rack with no screen or keyboard. Reach it with ssh from another PC.\n`);
         if (this.terminalId) leaveTerminal(this.world, this.terminalId);
         const opened = openTerminal(this.world, host, this.playerId);
         this.terminalId = opened.terminalId;
