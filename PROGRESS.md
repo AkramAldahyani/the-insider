@@ -11,7 +11,36 @@ Update it at the end of every part.
 | 2 Office in the browser | done |
 | 3 Living office | done, pushed by the owner |
 | 3+ Owner's changes after Phase 3 | done (section below) |
-| 4 Hacker gameplay | **planned, waiting for the owner's OK** (plan below) |
+| 4 Hacker gameplay | done except parts D and E (deferred by the owner) |
+| 5 Investigation & social deduction | **planned, waiting for the owner's OK** (plan below) |
+
+## Phase 5 plan (investigation & social deduction) - NOT APPROVED YET
+
+Goal (DESIGN.md section 15): "A full match as defender vs a bot hacker, with debrief." This is also the core of
+the Investigation solo mode (section 1a), which ships right after Phase 5.
+After each part: all tests, commit locally (never push), update this file.
+
+| Part | What |
+|---|---|
+| A | Roles and their powers: sysadmin, SOC analyst, guard, helpdesk, employees, hacker; who gets which |
+| B | Log viewers: SIEM with a small query language (SOC); CCTV and badge viewers in the security office (guard) |
+| C | Evidence board: pin a log line, command output, snapshot or badge entry with one click |
+| D | Meetings: emergency button, meeting-only chat, accusation with 3+ pieces of evidence, majority vote, fired players as ghosts |
+| E | Guard's detain, helpdesk's password reset and remote force-lock |
+| F | Bot hacker: picks a route from today's weaknesses, using only the tools that exist (USB stick, shoulder surfing, su/sudo) |
+| G | Bot defenders: check their own machines, report findings in meetings, vote on the evidence they have |
+| H | Win conditions (vote out / detain the hacker, flag handed in, parity), anti-stall escalation in the SIEM |
+| I | Debrief: timeline of every hacker action, the evidence it left, what was found or missed, MITRE ATT&CK ids |
+| J | Soak test of whole matches, browser test, docs |
+
+Defaults proposed to the owner (waiting for answers):
+1. SOC analyst: add an 11th employee with a desk in the security office (the scenario has none today).
+2. Chat: meeting-only text chat in Phase 5; open chat and the hackers' private chat stay in Phase 6.
+3. Roles follow the scenario's jobs for now; the hacker is a bot by default, a human can still join as the
+   hacker. Random secret roles for humans come with multiplayer lobbies (Phase 6).
+4. The bot hacker uses only existing tools; remote tools and phishing stay deferred.
+5. Detain: the guard may detain someone within 2 tiles; right = defenders win, wrong = the guard loses the power.
+6. No time limit; anti-stall as in DESIGN.md section 1 (every 10 game minutes the SIEM flags one real hacker event HIGH).
 
 ## Phase 4 status: Parts A, B, C, F and G DONE; Parts D and E DEFERRED by the owner; H partly done
 
