@@ -241,6 +241,12 @@ Default for 15 players:
 | Regular employees | ~9 | Job tasks; can investigate their own machine and report findings |
 | Hacker | 1 | Disguised as a regular employee with a normal-looking job title |
 
+Decided in Phase 5 (part A):
+
+- **Roles follow the scenario's jobs** for now (`players[].role`: employee, sysadmin, soc, guard, helpdesk). Each player's onboarding card shows their own role and what it allows; nobody is told anyone else's role (job titles on the start screen are public, as before). Random secret roles for humans come with multiplayer lobbies (Phase 6).
+- **The hacker keeps the role of the employee they pose as.** The hacker's private briefing is separate from the card.
+- The small office has one **SOC analyst**: Huda Rahman, at `SOC-WS-01` in the security office. She can read the network and security logs on both servers but has no `sudo`.
+
 ### Lobby scaling
 | Players | Hackers |
 |---|---|

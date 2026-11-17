@@ -233,3 +233,7 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .match-over-box { width: min(520px, calc(100% - 32px)); padding: 22px 24px; border-radius: 12px; background: #141a24; border: 1px solid #e5484d; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7); }
 .match-over-box h2 { margin: 8px 0 10px; font-size: 22px; }
 .match-over-box button { margin-top: 12px; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: inherit; }
+
+/* ── The role's abilities on the onboarding card ── */
+.card-abilities { margin: 8px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.45; }
+.card-abilities li { margin: 2px 0; }

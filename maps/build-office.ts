@@ -84,7 +84,7 @@ const DESKS: [string, number, number][] = [
   ['MKT-LT-09', 30, 3], ['MKT-LT-11', 36, 3],
   ['IT-WS-01', 43, 3], ['IT-WS-02', 46, 3],
   ['ADMIN-SRV-01', 51, 3],
-  ['REC-PC-01', 4, 23], ['SEC-WS-01', 15, 23],
+  ['REC-PC-01', 4, 23], ['SEC-WS-01', 15, 23], ['SOC-WS-01', 17, 26],
 ];
 
 // ── Things you cannot walk through, without any logic: [name, kind, col, row, width, height]. ──

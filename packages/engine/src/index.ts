@@ -20,6 +20,8 @@ export type {
 } from './core/scenario';
 export { validateScenario } from './core/scenario';
 export { createWorld } from './core/world';
+export { ROLES, ROLE_IDS, roleOf } from './core/roles';
+export type { RoleId, RoleInfo } from './core/roles';
 export type { WorldOptions } from './core/world';
 export { ALL_WEAKNESSES, briefing, chooseWeaknesses, setHacker, submitFlag } from './mission/mission';
 export { watchedFile } from './security/alerts';

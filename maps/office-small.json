@@ -11,7 +11,7 @@
  "tilewidth": 32,
  "tileheight": 32,
  "nextlayerid": 10,
- "nextobjectid": 80,
+ "nextobjectid": 82,
  "tilesets": [
   {
    "firstgid": 1,
@@ -469,7 +469,7 @@
    "y": 0,
    "objects": [
     {
-     "id": 38,
+     "id": 39,
      "name": "Server racks",
      "type": "furniture",
      "x": 1600,
@@ -487,7 +487,7 @@
      ]
     },
     {
-     "id": 39,
+     "id": 40,
      "name": "IT shelves",
      "type": "furniture",
      "x": 1344,
@@ -505,7 +505,7 @@
      ]
     },
     {
-     "id": 40,
+     "id": 41,
      "name": "Filing cabinets",
      "type": "furniture",
      "x": 32,
@@ -523,7 +523,7 @@
      ]
     },
     {
-     "id": 41,
+     "id": 42,
      "name": "HR cabinets",
      "type": "furniture",
      "x": 512,
@@ -541,7 +541,7 @@
      ]
     },
     {
-     "id": 42,
+     "id": 43,
      "name": "Marketing whiteboard",
      "type": "furniture",
      "x": 896,
@@ -559,7 +559,7 @@
      ]
     },
     {
-     "id": 43,
+     "id": 44,
      "name": "Reception sofa",
      "type": "furniture",
      "x": 288,
@@ -577,7 +577,7 @@
      ]
     },
     {
-     "id": 44,
+     "id": 45,
      "name": "CCTV monitors",
      "type": "furniture",
      "x": 416,
@@ -595,7 +595,7 @@
      ]
     },
     {
-     "id": 45,
+     "id": 46,
      "name": "Meeting table",
      "type": "furniture",
      "x": 768,
@@ -613,7 +613,7 @@
      ]
     },
     {
-     "id": 46,
+     "id": 47,
      "name": "Cafeteria table",
      "type": "furniture",
      "x": 736,
@@ -631,7 +631,7 @@
      ]
     },
     {
-     "id": 47,
+     "id": 48,
      "name": "Cafeteria table",
      "type": "furniture",
      "x": 928,
@@ -649,7 +649,7 @@
      ]
     },
     {
-     "id": 48,
+     "id": 49,
      "name": "Printer",
      "type": "furniture",
      "x": 1120,
@@ -667,7 +667,7 @@
      ]
     },
     {
-     "id": 49,
+     "id": 50,
      "name": "Paper stock",
      "type": "furniture",
      "x": 1120,
@@ -685,7 +685,7 @@
      ]
     },
     {
-     "id": 50,
+     "id": 51,
      "name": "Storage shelves",
      "type": "furniture",
      "x": 1312,
@@ -703,7 +703,7 @@
      ]
     },
     {
-     "id": 51,
+     "id": 52,
      "name": "Storage shelves",
      "type": "furniture",
      "x": 1440,
@@ -721,7 +721,7 @@
      ]
     },
     {
-     "id": 52,
+     "id": 53,
      "name": "Stalls",
      "type": "furniture",
      "x": 1504,
@@ -739,7 +739,7 @@
      ]
     },
     {
-     "id": 53,
+     "id": 54,
      "name": "Sinks",
      "type": "furniture",
      "x": 1504,
@@ -964,6 +964,24 @@
        "name": "hostname",
        "type": "string",
        "value": "SEC-WS-01"
+      }
+     ]
+    },
+    {
+     "id": 38,
+     "name": "SOC-WS-01",
+     "type": "desk",
+     "x": 544,
+     "y": 832,
+     "width": 64,
+     "height": 32,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "hostname",
+       "type": "string",
+       "value": "SOC-WS-01"
       }
      ]
     }
@@ -1450,7 +1468,7 @@
    "y": 0,
    "objects": [
     {
-     "id": 67,
+     "id": 69,
      "name": "CAM-01 Reception",
      "type": "",
      "x": 48,
@@ -1474,7 +1492,7 @@
      ]
     },
     {
-     "id": 68,
+     "id": 70,
      "name": "CAM-02 Corridor west",
      "type": "",
      "x": 64,
@@ -1498,7 +1516,7 @@
      ]
     },
     {
-     "id": 69,
+     "id": 71,
      "name": "CAM-03 Corridor east",
      "type": "",
      "x": 1728,
@@ -1522,7 +1540,7 @@
      ]
     },
     {
-     "id": 70,
+     "id": 72,
      "name": "CAM-04 Server room door",
      "type": "",
      "x": 1552,
@@ -1546,7 +1564,7 @@
      ]
     },
     {
-     "id": 71,
+     "id": 73,
      "name": "CAM-05 Cafeteria",
      "type": "",
      "x": 1072,
@@ -1570,7 +1588,7 @@
      ]
     },
     {
-     "id": 72,
+     "id": 74,
      "name": "CAM-06 Server room",
      "type": "",
      "x": 1744,
@@ -1607,7 +1625,7 @@
    "y": 0,
    "objects": [
     {
-     "id": 73,
+     "id": 75,
      "name": "BR-01 Main entrance",
      "type": "",
      "x": 240,
@@ -1626,7 +1644,7 @@
      ]
     },
     {
-     "id": 74,
+     "id": 76,
      "name": "BR-02 Server room",
      "type": "",
      "x": 1584,
@@ -1645,7 +1663,7 @@
      ]
     },
     {
-     "id": 75,
+     "id": 77,
      "name": "BR-03 Security office",
      "type": "",
      "x": 560,
@@ -1664,7 +1682,7 @@
      ]
     },
     {
-     "id": 76,
+     "id": 78,
      "name": "BR-04 Finance",
      "type": "",
      "x": 304,
@@ -1683,7 +1701,7 @@
      ]
     },
     {
-     "id": 77,
+     "id": 79,
      "name": "BR-05 HR",
      "type": "",
      "x": 752,
@@ -1702,7 +1720,7 @@
      ]
     },
     {
-     "id": 78,
+     "id": 80,
      "name": "BR-06 Marketing",
      "type": "",
      "x": 1136,
@@ -1721,7 +1739,7 @@
      ]
     },
     {
-     "id": 79,
+     "id": 81,
      "name": "BR-07 IT",
      "type": "",
      "x": 1488,
@@ -1753,7 +1771,7 @@
    "y": 0,
    "objects": [
     {
-     "id": 54,
+     "id": 55,
      "name": "FIN-LT-04 spawn",
      "type": "",
      "x": 128,
@@ -1772,7 +1790,7 @@
      ]
     },
     {
-     "id": 55,
+     "id": 56,
      "name": "FIN-LT-07 spawn",
      "type": "",
      "x": 320,
@@ -1791,7 +1809,7 @@
      ]
     },
     {
-     "id": 56,
+     "id": 57,
      "name": "HR-LT-03 spawn",
      "type": "",
      "x": 576,
@@ -1810,7 +1828,7 @@
      ]
     },
     {
-     "id": 57,
+     "id": 58,
      "name": "HR-LT-05 spawn",
      "type": "",
      "x": 768,
@@ -1829,7 +1847,7 @@
      ]
     },
     {
-     "id": 58,
+     "id": 59,
      "name": "MKT-LT-09 spawn",
      "type": "",
      "x": 992,
@@ -1848,7 +1866,7 @@
      ]
     },
     {
-     "id": 59,
+     "id": 60,
      "name": "MKT-LT-11 spawn",
      "type": "",
      "x": 1184,
@@ -1867,7 +1885,7 @@
      ]
     },
     {
-     "id": 60,
+     "id": 61,
      "name": "IT-WS-01 spawn",
      "type": "",
      "x": 1408,
@@ -1886,7 +1904,7 @@
      ]
     },
     {
-     "id": 61,
+     "id": 62,
      "name": "IT-WS-02 spawn",
      "type": "",
      "x": 1504,
@@ -1905,7 +1923,7 @@
      ]
     },
     {
-     "id": 62,
+     "id": 63,
      "name": "ADMIN-SRV-01 spawn",
      "type": "",
      "x": 1664,
@@ -1924,7 +1942,7 @@
      ]
     },
     {
-     "id": 63,
+     "id": 64,
      "name": "REC-PC-01 spawn",
      "type": "",
      "x": 160,
@@ -1943,7 +1961,7 @@
      ]
     },
     {
-     "id": 64,
+     "id": 65,
      "name": "SEC-WS-01 spawn",
      "type": "",
      "x": 512,
@@ -1962,7 +1980,26 @@
      ]
     },
     {
-     "id": 65,
+     "id": 66,
+     "name": "SOC-WS-01 spawn",
+     "type": "",
+     "x": 576,
+     "y": 944,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "desk",
+       "type": "string",
+       "value": "SOC-WS-01"
+      }
+     ]
+    },
+    {
+     "id": 67,
      "name": "default",
      "type": "",
      "x": 208,
@@ -1975,7 +2012,7 @@
      "properties": []
     },
     {
-     "id": 66,
+     "id": 68,
      "name": "outside",
      "type": "",
      "x": 192,

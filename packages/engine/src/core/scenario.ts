@@ -5,6 +5,7 @@
  * passwords, their files, and some past activity so logs are not empty.
  * New offices can be added without touching engine code.
  */
+import { ROLE_IDS } from './roles';
 
 export interface ScenarioAccount {
   username: string;
@@ -250,6 +251,7 @@ export function validateScenario(s: Scenario): void {
   for (const p of s.players ?? []) {
     need(accounts.has(p.account), `player "${p.id}": unknown account "${p.account}"`);
     need(hosts.has(p.desk), `player "${p.id}": unknown desk "${p.desk}"`);
+    need(!p.role || (ROLE_IDS as string[]).includes(p.role), `player "${p.id}": unknown role "${p.role}" (known: ${ROLE_IDS.join(', ')})`);
     need(!hosts.get(p.desk)?.headless, `player "${p.id}": desk "${p.desk}" is a headless host`);
   }
   for (const item of s.history ?? []) {

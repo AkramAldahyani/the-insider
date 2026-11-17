@@ -167,7 +167,7 @@ describe('background noise', () => {
     const updates = access.filter((l) => l.includes('archive.ubuntu.example'));
     expect(updates.length).toBeGreaterThanOrEqual(20); // 10 workstations, every 23 minutes
     expect(updates.every((l) => / - GET http:\/\/archive\.ubuntu\.example\//.test(l))).toBe(true); // "-" = no account
-    expect(new Set(updates.map((l) => l.split(' ')[2])).size).toBe(10); // every workstation's IP appears
+    expect(new Set(updates.map((l) => l.split(' ')[2])).size).toBe(11); // every workstation's IP appears
     expect(lines(fileOn(world, SERVER, '/var/log/named/queries.log')).filter((l) => l.includes('archive.ubuntu.example')).length).toBe(updates.length);
     // In the master log these are marked as done by the system, not by a person.
     for (const e of queryEvents(world, { type: 'web.request', since: START })) expect(e).toMatchObject({ origin: 'system', actor: null, user: '' });
@@ -185,7 +185,7 @@ describe('background noise', () => {
     expect(lines(fileOn(world, 'FIN-LT-07', '/var/log/syslog')).some((l) => l.includes('systemd-timesyncd'))).toBe(false);
     // Seed 1 still gives the addresses documented in TESTING.md.
     expect(world.hosts['FIN-LT-07'].ip).toBe('10.0.2.58');
-    expect(world.hosts['IT-WS-02'].ip).toBe('10.0.2.50');
+    expect(world.hosts['IT-WS-02'].ip).toBe('10.0.2.119');
   });
 
   it('is deterministic, and does not depend on how time is sliced', () => {

@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { ALL_WEAKNESSES, queryEvents } from '@insider/engine';
 import { TICK_RATE, type MissionBriefing } from '@insider/shared';
 import { loadGameOptions } from '../src/app';
-import { PW, Recorder, scenario } from './helpers';
+import { PW, Recorder, clone, scenario } from './helpers';
 
 const TILE = 32;
 const START = Date.parse(scenario.startTime);
@@ -213,5 +213,54 @@ describe('server settings', () => {
     expect(() => loadGameOptions({ weaknesses: 'open-bar' })).toThrow('Unknown weakness "open-bar"');
     const r = new Recorder({ weaknesses: 'random' });
     expect(r.game.world.mission.weaknesses.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('roles (Phase 5, part A)', () => {
+  it('every player gets their own role and abilities on the card, and only their own', () => {
+    const r = new Recorder();
+    const expected: Record<string, string> = { p1: 'Employee', p5: 'System administrator', p8: 'IT helpdesk', p10: 'Security guard', p11: 'SOC analyst' };
+    for (const [id, role] of Object.entries(expected)) {
+      r.connect(id, id);
+      const card = (r.last(id, 'welcome')!.payload as { card: { role: string; abilities: string[] } }).card;
+      expect(card.role, id).toBe(role);
+      expect(card.abilities.length, id).toBeGreaterThan(0);
+    }
+    // Nobody learns anyone else's role through messages (the start screen shows job titles only, as before).
+    const sara = JSON.stringify(r.sent.get('p1'));
+    for (const other of ['System administrator', 'IT helpdesk', 'Security guard', 'SOC analyst']) expect(sara.includes(other), other).toBe(false);
+  });
+
+  it('the hacker keeps the role of the employee they pose as', () => {
+    const r = new Recorder();
+    r.connect('h');
+    r.send('h', 'choose', { playerId: 'p4', hacker: true });
+    const welcome = r.last('h', 'welcome')!.payload as { card: { role: string }; mission: object | null };
+    expect(welcome.card.role).toBe('Employee');
+    expect(welcome.mission).not.toBeNull();
+  });
+
+  it('the SOC analyst has her own PC in the security office and can read the network and alert logs', () => {
+    const r = new Recorder();
+    r.connect('a', 'p11');
+    expect(r.sitAt('a', 'p11', 'SOC-WS-01')).toBe(true);
+    expect(r.screen('a').output).toContain('screen locked by h.rahman');
+    r.type('a', PW['h.rahman']);
+    r.type('a', 'ssh ADMIN-SRV-01');
+    r.type('a', PW['h.rahman']);
+    expect(r.type('a', 'tail -n 1 /var/log/squid/access.log')).not.toContain('Permission denied');
+    expect(r.type('a', 'tail -n 1 /var/log/auth.log')).not.toContain('Permission denied');
+    r.type('a', 'exit');
+    r.type('a', 'ssh SEC-SRV-01');
+    r.type('a', PW['h.rahman']);
+    expect(r.type('a', 'ls /var/log/security')).not.toContain('Permission denied');
+    // She has no sudo anywhere: she reads logs, she does not administer machines.
+    expect(r.type('a', 'id')).not.toContain('(sudo)');
+  });
+
+  it('a scenario with an unknown role is refused', () => {
+    const bad = clone(scenario);
+    bad.players[0].role = 'wizard';
+    expect(() => new Recorder({ scenario: bad })).toThrow('player "p1": unknown role "wizard"');
   });
 });

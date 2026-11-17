@@ -12,9 +12,26 @@ Update it at the end of every part.
 | 3 Living office | done, pushed by the owner |
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | done except parts D and E (deferred by the owner) |
-| 5 Investigation & social deduction | **planned, waiting for the owner's OK** (plan below) |
+| 5 Investigation & social deduction | **in progress**: Part A done (see Phase 5 status) |
 
-## Phase 5 plan (investigation & social deduction) - NOT APPROVED YET
+## Phase 5 status: plan APPROVED by the owner (defaults 1-6 accepted); Part A DONE, Part B next
+
+### Part A: what exists now
+
+- `engine/src/core/roles.ts`: `ROLES` (employee, sysadmin, soc, guard, helpdesk) with a title and the abilities
+  text for the card; `roleOf`; `validateScenario` refuses unknown roles. The hacker keeps the role of the employee
+  they pose as (the card says "Employee"); the briefing is separate.
+- Card (`OnboardingCard`): new `role` and `abilities` (own only). Client shows a Role row and the abilities list.
+- New 11th employee: **Huda Rahman** (`h.rahman`, SOC analyst, player p11, badge 0141 opening the security office),
+  PC `SOC-WS-01` in the security office (desk at tiles 17,26), log reader on ADMIN-SRV-01 and SEC-SRV-01, no sudo.
+  Two SOC tasks: alert-review and proxy-review.
+- Adding an account shifted the seed-1 DHCP addresses (the admin server creates every account before any PC
+  boots). TESTING.md's table and the tests that pin addresses are updated: e.g. IT-WS-02 is now 10.0.2.119,
+  REC-PC-01 10.0.2.180; FIN-LT-07 (.58) and MKT-LT-11 (.71) did not change.
+- Powers themselves are later parts: SIEM and viewers (B), detain, password reset, force-lock (E).
+- 308 Vitest tests, 7 Playwright.
+
+## Phase 5 plan (investigation & social deduction)
 
 Goal (DESIGN.md section 15): "A full match as defender vs a bot hacker, with debrief." This is also the core of
 the Investigation solo mode (section 1a), which ships right after Phase 5.
@@ -33,7 +50,7 @@ After each part: all tests, commit locally (never push), update this file.
 | I | Debrief: timeline of every hacker action, the evidence it left, what was found or missed, MITRE ATT&CK ids |
 | J | Soak test of whole matches, browser test, docs |
 
-Defaults proposed to the owner (waiting for answers):
+Defaults (approved by the owner):
 1. SOC analyst: add an 11th employee with a desk in the security office (the scenario has none today).
 2. Chat: meeting-only text chat in Phase 5; open chat and the hackers' private chat stay in Phase 6.
 3. Roles follow the scenario's jobs for now; the hacker is a bot by default, a human can still join as the

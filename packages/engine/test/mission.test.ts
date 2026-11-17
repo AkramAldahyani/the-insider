@@ -44,8 +44,8 @@ describe('choosing weaknesses', () => {
   it('weaknesses never change the simulated network: seed 1 keeps its addresses', () => {
     const w = world([...ALL_WEAKNESSES]);
     expect(w.hosts['FIN-LT-07'].ip).toBe('10.0.2.58');
-    expect(w.hosts['IT-WS-02'].ip).toBe('10.0.2.50');
-    expect(w.hosts['REC-PC-01'].ip).toBe('10.0.2.42');
+    expect(w.hosts['IT-WS-02'].ip).toBe('10.0.2.119');
+    expect(w.hosts['REC-PC-01'].ip).toBe('10.0.2.180');
   });
 
   it('a mission that names unknown things is refused', () => {

@@ -220,7 +220,7 @@ describe('developer views of the living office (development servers only)', () =
     r.connect('a', 'p9');
     r.tick(minutes(6));
     const bots = show(r, 'bots');
-    expect(bots).toContain('Bots (9) and humans (1)');
+    expect(bots).toContain('Bots (10) and humans (1)');
     expect(bots).toMatch(/p1 +Sara Alharbi +FIN-LT-07 +tasks done +\d+ +(working|task: )/);
     expect(bots).toMatch(/p9 +Maha Yousef +HUMAN/);
     expect(show(r, 'tasks')).toMatch(/p5 +Khalid Nasser +done +\d+ +next: /);

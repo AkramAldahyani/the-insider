@@ -76,7 +76,8 @@
     { "username": "y.khalil", "fullName": "Yousef Khalil", "title": "Graphic Designer", "department": "Marketing", "password": "pixel1234", "strength": 12, "badge": { "id": "0502" } },
     { "username": "d.aziz", "fullName": "Dana Aziz", "title": "IT Helpdesk", "department": "IT", "password": "H3lpdesk-Dana-42", "strength": 75, "badge": { "id": "0417", "access": ["server-room"] } },
     { "username": "m.yousef", "fullName": "Maha Yousef", "title": "Receptionist", "department": "Reception", "password": "welcome2026", "strength": 18, "badge": { "id": "0233" } },
-    { "username": "t.omar", "fullName": "Tariq Omar", "title": "Security Guard", "department": "Security", "password": "Falcon-Gate-7", "strength": 55, "badge": { "id": "0119", "access": ["security-office"] } }
+    { "username": "t.omar", "fullName": "Tariq Omar", "title": "Security Guard", "department": "Security", "password": "Falcon-Gate-7", "strength": 55, "badge": { "id": "0119", "access": ["security-office"] } },
+    { "username": "h.rahman", "fullName": "Huda Rahman", "title": "SOC Analyst", "department": "Security", "password": "Sh1eld&Coffee-19", "strength": 70, "badge": { "id": "0141", "access": ["security-office"] } }
   ],
 
   "players": [
@@ -89,7 +90,8 @@
     { "id": "p7", "name": "Yousef Khalil", "account": "y.khalil", "desk": "MKT-LT-09", "role": "employee" },
     { "id": "p8", "name": "Dana Aziz", "account": "d.aziz", "desk": "IT-WS-01", "role": "helpdesk" },
     { "id": "p9", "name": "Maha Yousef", "account": "m.yousef", "desk": "REC-PC-01", "role": "employee" },
-    { "id": "p10", "name": "Tariq Omar", "account": "t.omar", "desk": "SEC-WS-01", "role": "guard" }
+    { "id": "p10", "name": "Tariq Omar", "account": "t.omar", "desk": "SEC-WS-01", "role": "guard" },
+    { "id": "p11", "name": "Huda Rahman", "account": "h.rahman", "desk": "SOC-WS-01", "role": "soc" }
   ],
 
   "hosts": [
@@ -102,7 +104,7 @@
       "staticIp": "10.0.1.10",
       "users": "*",
       "sudoers": ["k.nasser"],
-      "logReaders": ["k.nasser"],
+      "logReaders": ["k.nasser", "h.rahman"],
       "rootPassword": { "password": "N3x0ra-R00t-Vault!92", "strength": 95 },
       "uptimeMinutes": 17400,
       "crontabs": {
@@ -544,9 +546,9 @@
       "location": "Server room, rack 2 (physical access control)",
       "mac": "52:54:00:a1:00:02",
       "staticIp": "10.0.1.20",
-      "users": ["t.omar", "k.nasser"],
+      "users": ["t.omar", "k.nasser", "h.rahman"],
       "sudoers": ["k.nasser"],
-      "logReaders": ["t.omar", "k.nasser"],
+      "logReaders": ["t.omar", "k.nasser", "h.rahman"],
       "uptimeMinutes": 30200,
       "files": [
         { "path": "/etc/badge/doors.conf", "ageMinutes": 120000, "content": [
@@ -570,6 +572,29 @@
           "  doors.log   door open/close times; PASSAGES is the frame sensor count",
           "A CLOSE line with PASSAGES greater than the number of granted taps",
           "while the door was open means somebody walked in behind a colleague."
+        ] }
+      ]
+    },
+
+    {
+      "hostname": "SOC-WS-01",
+      "kind": "workstation",
+      "department": "Security",
+      "location": "Security office, analyst desk",
+      "mac": "52:54:00:e5:02:02",
+      "owner": "h.rahman",
+      "users": ["h.rahman", "k.nasser"],
+      "sudoers": ["k.nasser"],
+      "uptimeMinutes": 25,
+      "console": { "user": "h.rahman", "state": "locked", "loginMinutesAgo": 20 },
+      "bashHistory": { "h.rahman": ["ssh SEC-SRV-01", "tail -n 20 /var/log/security/alerts.log"] },
+      "files": [
+        { "path": "/home/h.rahman/notes/where-the-logs-are.txt", "ageMinutes": 9000, "content": [
+          "SOC cheat sheet",
+          "ADMIN-SRV-01 (10.0.1.10): /var/log/auth.log  /var/log/squid/access.log  /var/log/named/queries.log  /var/log/mail.log",
+          "SEC-SRV-01   (10.0.1.20): /var/log/security/alerts.log  /var/log/badge/  /var/log/cctv/motion.log",
+          "IP -> machine: dhcpd lines in ADMIN-SRV-01 /var/log/syslog (grep DHCPACK)",
+          "Machine -> person: who sits there? badge log, cameras, ask around."
         ] }
       ]
     }
@@ -672,6 +697,16 @@
     { "id": "rotate-log", "title": "Rotate the backup log", "roles": ["sysadmin"], "steps": [
       { "text": "Connect to the admin server", "run": "ssh ADMIN-SRV-01", "match": "^ssh .*ADMIN-SRV-01" },
       { "text": "Keep a copy of the current log", "run": "sudo cp /var/log/backup.log /var/log/backup.log.1", "match": "^sudo cp /var/log/backup\\.log", "host": "ADMIN-SRV-01" },
+      { "text": "Disconnect", "run": "exit", "match": "^(exit|logout)$", "host": "ADMIN-SRV-01" }
+    ] },
+    { "id": "alert-review", "title": "Review the security alerts", "roles": ["soc"], "steps": [
+      { "text": "Connect to the security server", "run": "ssh SEC-SRV-01", "match": "^ssh .*SEC-SRV-01" },
+      { "text": "Read the latest alerts", "run": "tail -n 20 /var/log/security/alerts.log", "match": "security/alerts\\.log", "host": "SEC-SRV-01" },
+      { "text": "Disconnect", "run": "exit", "match": "^(exit|logout)$", "host": "SEC-SRV-01" }
+    ] },
+    { "id": "proxy-review", "title": "Check the web proxy log", "roles": ["soc"], "steps": [
+      { "text": "Connect to the admin server", "run": "ssh ADMIN-SRV-01", "match": "^ssh .*ADMIN-SRV-01" },
+      { "text": "Look at the latest web requests", "run": "tail -n 15 /var/log/squid/access.log", "match": "squid/access\\.log", "host": "ADMIN-SRV-01" },
       { "text": "Disconnect", "run": "exit", "match": "^(exit|logout)$", "host": "ADMIN-SRV-01" }
     ] },
     { "id": "badge-review", "title": "Review the badge log", "roles": ["guard"], "steps": [

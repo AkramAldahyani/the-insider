@@ -255,6 +255,7 @@ export function OnboardingCard({ card }: { card: Card }) {
     ['Location', card.location],
     ['IP address', card.ip],
     ['MAC address', card.mac],
+    ['Role', card.role],
     ['Badge', card.badgeId ? `#${card.badgeId}` : 'none'],
     ['Badge opens', ['all normal doors', ...card.badgeAccess.map((zone) => zone.replace(/-/g, ' '))].join(', ')],
   ];
@@ -276,6 +277,9 @@ export function OnboardingCard({ card }: { card: Card }) {
           ))}
         </tbody>
       </table>
+      <ul className="card-abilities" data-testid="card-abilities">
+        {card.abilities.map((a) => <li key={a}>{a}</li>)}
+      </ul>
       <p className="card-note">
         Doors with a reader need your badge: stand at the door and press <kbd>E</kbd>. White means ready, green means accepted, and red means declined. Every tap is logged.
         Your IP comes from DHCP and can change. Lock your screen when you leave your desk:

@@ -54,7 +54,7 @@ describe('start screen', () => {
     r.connect('a');
     const lobby = r.last('a', 'lobby')!.payload as { employees: { id: string; name: string; desk: string; taken: boolean }[]; dev: boolean };
     expect(lobby.dev).toBe(false);
-    expect(lobby.employees).toHaveLength(10);
+    expect(lobby.employees).toHaveLength(scenario.players.length);
     expect(lobby.employees[0]).toEqual({ id: 'p1', name: 'Sara Alharbi', title: 'Accountant', department: 'Finance', desk: 'FIN-LT-07', taken: false });
 
     r.connect('b');
@@ -75,7 +75,7 @@ describe('start screen', () => {
     expect(card).toEqual({
       name: 'Sara Alharbi', title: 'Accountant', department: 'Finance', username: 's.alharbi', password: PW['s.alharbi'],
       hostname: 'FIN-LT-07', ip: r.game.world.hosts['FIN-LT-07'].ip, mac: '52:54:00:f1:07:07', location: 'Finance, desk 7',
-      badgeId: '0412', badgeAccess: [],
+      role: 'Employee', abilities: expect.any(Array), badgeId: '0412', badgeAccess: [],
     });
     const desk = r.map.desks.find((d) => d.hostname === 'FIN-LT-07')!;
     const me = r.position('p1');

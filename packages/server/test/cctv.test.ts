@@ -147,7 +147,7 @@ describe('the motion log on the security server', () => {
   });
 
   it('only the guard and the sysadmin can read it', () => {
-    expect(scenario.hosts.find((h) => h.hostname === 'SEC-SRV-01')!.logReaders).toEqual(['t.omar', 'k.nasser']);
+    expect(scenario.hosts.find((h) => h.hostname === 'SEC-SRV-01')!.logReaders).toEqual(['t.omar', 'k.nasser', 'h.rahman']); // guard, sysadmin, SOC analyst
   });
 });
 

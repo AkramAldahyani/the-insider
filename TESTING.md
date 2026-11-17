@@ -10,15 +10,16 @@ Both use the same scenario. With the default seed the machines are:
 | Host | Room | IP | Owner | Password | Screen at start |
 |---|---|---|---|---|---|
 | FIN-LT-07 | Finance | 10.0.2.58 | s.alharbi | `Riyadh2024!` | locked |
-| FIN-LT-04 | Finance | 10.0.2.142 | r.mansour | `football7` | login prompt |
-| HR-LT-03 | HR | 10.0.2.115 | l.haddad | `Lina@HR#2025` | **unlocked** |
-| HR-LT-05 | HR | 10.0.2.134 | n.saleh | `Noor!Saleh#88` | locked |
-| MKT-LT-09 | Marketing | 10.0.2.168 | y.khalil | `pixel1234` | **unlocked** |
+| FIN-LT-04 | Finance | 10.0.2.74 | r.mansour | `football7` | login prompt |
+| HR-LT-03 | HR | 10.0.2.185 | l.haddad | `Lina@HR#2025` | **unlocked** |
+| HR-LT-05 | HR | 10.0.2.136 | n.saleh | `Noor!Saleh#88` | locked |
+| MKT-LT-09 | Marketing | 10.0.2.161 | y.khalil | `pixel1234` | **unlocked** |
 | MKT-LT-11 | Marketing | 10.0.2.71 | o.farouk | `summer2025` | locked |
-| IT-WS-01 | IT | 10.0.2.128 | d.aziz (helpdesk) | `H3lpdesk-Dana-42` | login prompt |
-| IT-WS-02 | IT | 10.0.2.50 | k.nasser (sysadmin) | `Tr0ub4dor&3xK9` | locked |
-| REC-PC-01 | Reception | 10.0.2.42 | m.yousef | `welcome2026` | locked |
-| SEC-WS-01 | Security office | 10.0.2.166 | t.omar | `Falcon-Gate-7` | locked |
+| IT-WS-01 | IT | 10.0.2.110 | d.aziz (helpdesk) | `H3lpdesk-Dana-42` | login prompt |
+| IT-WS-02 | IT | 10.0.2.119 | k.nasser (sysadmin) | `Tr0ub4dor&3xK9` | locked |
+| REC-PC-01 | Reception | 10.0.2.180 | m.yousef | `welcome2026` | locked |
+| SEC-WS-01 | Security office | 10.0.2.140 | t.omar | `Falcon-Gate-7` | locked |
+| SOC-WS-01 | Security office | 10.0.2.59 | h.rahman (SOC analyst) | `Sh1eld&Coffee-19` | locked |
 | ADMIN-SRV-01 | Server room | 10.0.1.10 | — | root: `N3x0ra-R00t-Vault!92` | login prompt |
 
 k.nasser has an account (with sudo) on every machine. Everyone has an account on ADMIN-SRV-01.
@@ -126,7 +127,7 @@ Open http://localhost:5173. To start from a clean office at any time, stop `pnpm
 | Sit at IT-WS-02 and unlock it | `k.nasser@IT-WS-02:~$` |
 | `ssh k.nasser@HR-LT-05` and the password | `k.nasser@HR-LT-05:~$` |
 | `sudo loginctl unlock-session` and the password | No output. |
-| `sudo grep REMOTE /var/log/auth.log` | `REMOTE unlock-session: session … of user n.saleh unlocked by k.nasser from 10.0.2.50 (pts/0)` |
+| `sudo grep REMOTE /var/log/auth.log` | `REMOTE unlock-session: session … of user n.saleh unlocked by k.nasser from 10.0.2.119 (pts/0)` |
 | `exit`, `Esc`, look at HR-LT-05 | Green, and it stays green: there is no auto-lock. |
 
 ## J. Developer panel (development only)
@@ -322,6 +323,13 @@ Start with `VULNS=plaintext-password` (PowerShell: `$env:VULNS='plaintext-passwo
    - from `SEC-WS-01` as Tariq: `ssh SEC-SRV-01`, `cat /var/log/security/alerts.log`: `[HIGH] flag-read /root/flag.txt on ADMIN-SRV-01 was read as root (login o.farouk) from 10.0.2.71`.
 6. Three wrong passwords in a row for any account (`ssh k.nasser@ADMIN-SRV-01`) give `[MEDIUM] auth-failures` and the banner (at most once a minute). A USB stick on a locked PC gives only `[LOW] usb-keyboard`, no banner.
 
+## Y. Phase 5, part A: roles
+
+1. Start as Sara: the card has **Role: Employee** and three lines about what employees can do.
+2. Start as Khalid, Dana, Tariq and Huda in other tabs: *System administrator*, *IT helpdesk*, *Security guard*, *SOC analyst*, each with its own lines. No card shows anyone else's role.
+3. Join as the hacker (Omar): the card says *Employee* (his disguise); the briefing is separate.
+4. As Huda (new, `h.rahman` / `Sh1eld&Coffee-19`): sit at `SOC-WS-01` in the security office, unlock, `ssh ADMIN-SRV-01`, `tail /var/log/squid/access.log` works; `ssh SEC-SRV-01`, `tail /var/log/security/alerts.log` works; `id` shows no `sudo`.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -334,7 +342,7 @@ Start with `VULNS=plaintext-password` (PowerShell: `$env:VULNS='plaintext-passwo
 pnpm test
 ```
 
-Expected: `Test Files 26 passed (26)` and `Tests 304 passed (304)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
+Expected: `Test Files 26 passed (26)` and `Tests 308 passed (308)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
 
 ```bash
 pnpm e2e
@@ -433,7 +441,7 @@ The CLI prints the scenario name, the game time, and a table of ten players with
 | `:sit IT-WS-02` | Lock screen for k.nasser. |
 | `Tr0ub4dor&3xK9` | `k.nasser@IT-WS-02:~$ ` |
 | `ssh k.nasser@ADMIN-SRV-01` then the password | `k.nasser@ADMIN-SRV-01:~$ ` |
-| `last -n 4` | First line: you, from `10.0.2.50`, `still logged in`. Second line: `s.alharbi  pts/0  10.0.2.58  Mon Mar  2 09:0x - 09:0x`. |
+| `last -n 4` | First line: you, from `10.0.2.119`, `still logged in`. Second line: `s.alharbi  pts/0  10.0.2.58  Mon Mar  2 09:0x - 09:0x`. |
 | `grep s.alharbi /var/log/auth.log \| tail -n 11` | In order: `Failed password for s.alharbi from 10.0.2.58`, `Accepted password for s.alharbi from 10.0.2.58` (same `sshd[pid]` and port as the failure), `session opened`, `sudo: s.alharbi : user NOT in sudoers ; TTY=pts/0 ; PWD=/home/s.alharbi ; USER=root ; COMMAND=/usr/bin/cat /root/flag.txt`, `session closed`. |
 | `sudo cat /home/s.alharbi/.bash_history` then your password | Sara's commands from step 4, including `cat /root/flag.txt` and `sudo cat /root/flag.txt`, ending with `exit`. Her passwords are not in it. |
 | `grep -B 4 f1:07:07 /var/lib/dhcp/dhcpd.leases` | Two leases for `10.0.2.58` with that MAC: an old one (`binding state free`) and the current one (`binding state active`). This is how an IP is tied to a device. |
@@ -450,7 +458,7 @@ The CLI prints the scenario name, the game time, and a table of ten players with
 | `whoami` | `root` |
 | `exit` | `logout`, back to `k.nasser@ADMIN-SRV-01:~$ ` |
 | `sudo tail -n 4 /var/log/auth.log` | Your own sudo lines: `sudo: k.nasser : TTY=pts/0 ; PWD=/home/k.nasser ; USER=root ; COMMAND=…` |
-| `sudo ss -tnp` | One `ESTAB` line: `10.0.1.10:22` ↔ `10.0.2.50:<port>` with `users:(("sshd",pid=…` |
+| `sudo ss -tnp` | One `ESTAB` line: `10.0.1.10:22` ↔ `10.0.2.119:<port>` with `users:(("sshd",pid=…` |
 | `ps aux \| grep sshd` | The listener plus `sshd: k.nasser [priv]` and `sshd: k.nasser@pts/0`. |
 | `su - s.alharbi` then `wrong` | `su: Authentication failure` |
 | `exit` | Back to `k.nasser@IT-WS-02:~$ ` |
@@ -504,7 +512,7 @@ The CLI prints the scenario name, the game time, and a table of ten players with
 - `stat todo.txt`, `file /usr/bin/ls`
 - `chmod 600 todo.txt && ls -l todo.txt`
 - `journalctl -u ssh -n 10`, `dmesg`, `crontab -l` (on IT-WS-02 as k.nasser)
-- Pivot: as p1 on FIN-LT-07, `ssh k.nasser@IT-WS-02`, then from there `ssh k.nasser@ADMIN-SRV-01`. On the server, `last -n 1` shows `10.0.2.50` (IT-WS-02), not Sara's `10.0.2.58`.
+- Pivot: as p1 on FIN-LT-07, `ssh k.nasser@IT-WS-02`, then from there `ssh k.nasser@ADMIN-SRV-01`. On the server, `last -n 1` shows `10.0.2.119` (IT-WS-02), not Sara's `10.0.2.58`.
 - Kick an intruder: find their shell with `ps aux` on the server and `sudo kill -9 <pid>`. Their next keypress shows `Connection to ADMIN-SRV-01 closed by remote host.` and their history on the server is not saved.
 
 ## Automated tests (Phase 1)

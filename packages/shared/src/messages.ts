@@ -93,6 +93,9 @@ export interface OnboardingCard {
   ip: string;
   mac: string;
   location: string;
+  /** The player's role ("SOC analyst") and what it lets them do. For the hacker: the role of the employee they pose as. */
+  role: string;
+  abilities: string[];
   /** The number on the player's own badge ("" = no badge). */
   badgeId: string;
   /** Restricted zones the player's own badge opens. */

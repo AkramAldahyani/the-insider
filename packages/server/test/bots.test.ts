@@ -142,7 +142,7 @@ describe('bot employees in a match', () => {
     const passages = r.file('SEC-SRV-01', '/var/log/badge/doors.log').split('\n')
       .filter((l) => l.startsWith('2026-03-02') && l.includes('DOOR=MAIN-ENT EVENT=CLOSE'))
       .reduce((sum, l) => sum + Number(/PASSAGES=(\d+)/.exec(l)![1]), 0);
-    expect(passages).toBe(10);
+    expect(passages).toBe(scenario.players.length);
   });
 
   it('a browser cannot tell a bot from a human', () => {
@@ -173,7 +173,7 @@ describe('bot employees in a match', () => {
     expect(r.game.bots!.has('p3')).toBe(false);
     const spawn = r.map.spawns['HR-LT-03'];
     expect(r.game.publicState().players.p3).toMatchObject({ x: spawn.x, y: spawn.y, seatedAt: '' }); // one Lina, next to her desk
-    expect(Object.keys(r.game.publicState().players)).toHaveLength(10);
+    expect(Object.keys(r.game.publicState().players)).toHaveLength(scenario.players.length);
 
     // When the human leaves, a bot comes to work as Lina again.
     r.game.disconnect('a');

@@ -13,7 +13,7 @@
  *
  * test/visibility.test.ts plays a match and checks every byte sent.
  */
-import { briefing, screenState, type Scenario, type TerminalResult, type World } from '@insider/engine';
+import { briefing, roleOf, screenState, type Scenario, type TerminalResult, type World } from '@insider/engine';
 import type { Activity, DoorLook, EmployeeChoice, MissionBriefing, OnboardingCard, PublicDesk, PublicDoor, PublicPlayer, ServerMessages, TaskView, TermScreen, Facing } from '@insider/shared';
 
 /** A player's body in the office (server-side record). */
@@ -75,6 +75,8 @@ export function onboardingCard(world: World, scenario: Scenario, playerId: strin
     ip: host?.ip ?? '',
     mac: host?.mac ?? '',
     location: host?.location ?? '',
+    role: roleOf(player.role).title,
+    abilities: [...roleOf(player.role).abilities],
     badgeId: badge?.id ?? '',
     badgeAccess: [...(badge?.access ?? [])],
   };
