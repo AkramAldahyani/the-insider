@@ -328,3 +328,54 @@ test('joining as the hacker: a private briefing and a hidden tools folder; the r
   await expect(page.getByTestId('notice')).toContainText('Backdoor installed on MKT-LT-09 for y.khalil', { timeout: 10_000 });
   await page.keyboard.up('u');
 });
+
+test('the hacker reads a forgotten root password, gets the flag, hands it in, and everybody sees the end', async ({ page, browser }) => {
+  await page.goto('/');
+  await page.getByTestId('join-as-hacker').check();
+  await page.getByTestId('employee-p4').click(); // Omar
+  const password = await page.getByTestId('card-password').innerText();
+  await page.keyboard.press('c');
+
+  // Somebody else is in the office too.
+  const other = await (await browser.newContext()).newPage();
+  await other.goto('/');
+  await other.getByTestId('employee-p1').click();
+  await expect(other.getByTestId('card')).toBeVisible();
+
+  const run = async (line: string) => {
+    await page.keyboard.type(line);
+    await page.keyboard.press('Enter');
+  };
+  await walkToDesk(page, 'MKT-LT-11');
+  await page.keyboard.press('e');
+  await expect(page.getByTestId('terminal')).toHaveAttribute('data-screen', 'locked');
+  await run(password);
+  await expect(page.getByTestId('terminal')).toHaveAttribute('data-screen', 'shell');
+  await run('ssh ADMIN-SRV-01');
+  await expect.poll(() => terminalText(page)).toContain("o.farouk@ADMIN-SRV-01's password:");
+  await run(password);
+  await expect.poll(() => terminalText(page)).toContain('o.farouk@ADMIN-SRV-01:~$');
+  await run('cat /srv/shared/old/backup-2025.sh');
+  await expect.poll(() => terminalText(page)).toContain('ROOT_PW=');
+  const rootPassword = /ROOT_PW='([^']+)'/.exec(await terminalText(page))![1];
+  await run('clear');
+  await run('su');
+  await run(rootPassword);
+  await expect.poll(() => terminalText(page)).toContain('root@ADMIN-SRV-01');
+  await run('cat /root/flag.txt');
+  await expect.poll(() => terminalText(page)).toMatch(/NEXORA\{[^}]+\}/);
+  const flag = /NEXORA\{[^}]+\}/.exec(await terminalText(page))![0];
+
+  // Stand up, open the briefing, hand it in.
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('terminal')).toBeHidden();
+  await expect(page.getByTestId('mission')).toBeVisible();
+  await page.getByTestId('flag-input').fill(flag);
+  await page.getByTestId('flag-submit').click();
+  await expect(page.getByTestId('match-over')).toContainText('You got the flag out. You win.');
+  await page.screenshot({ path: `${SHOTS}/13-hacker-wins.png` });
+  // The other player is told who it was.
+  await expect(other.getByTestId('match-over')).toContainText('The hacker got the flag out.');
+  await expect(other.getByTestId('match-over-hacker')).toHaveText('Omar Farouk');
+  await other.close();
+});

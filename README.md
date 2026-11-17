@@ -2,7 +2,7 @@
 
 A multiplayer social-deduction game that teaches real Linux forensics. The full design is in [DESIGN.md](DESIGN.md).
 
-**Current state: Phase 3 — a living office.** You walk around a top-down office full of bot employees, sit at any PC and use its simulated Linux shell. The bots come to work, badge through doors, log in, do job tasks, write each other email, browse, take breaks and sometimes forget to lock their screen, so badge, door, camera, mail, DNS, proxy and system logs fill up even while you stand still. Phase 4 (hacker gameplay) has started: you can join as the hacker, each match has random weaknesses, the toolkit mechanism works (`~/.tools/selftest`), and the physical tools work: the USB stick (hold `U` at an unlocked PC) and shoulder surfing. The remote tools, phishing and the flag come next. There are no roles, meetings or log viewers yet. The client now has detailed procedural office art, original temporary directional pixel characters, and a dark HUD with a public employee directory. See [visual upgrade notes](docs/design/visual-upgrade.md) for assets, scope and reference differences. `PROGRESS.md` says what was built in which step.
+**Current state: Phase 3 — a living office.** You walk around a top-down office full of bot employees, sit at any PC and use its simulated Linux shell. The bots come to work, badge through doors, log in, do job tasks, write each other email, browse, take breaks and sometimes forget to lock their screen, so badge, door, camera, mail, DNS, proxy and system logs fill up even while you stand still. Phase 4 (hacker gameplay) has started: you can join as the hacker, each match has random weaknesses, the toolkit mechanism works (`~/.tools/selftest`), and the physical tools work: the USB stick (hold `U` at an unlocked PC) and shoulder surfing. The hacker can win: read the flag on the server and hand it in from the briefing panel, which ends the match for everyone. Reading sensitive files is audited and security alerts are raised. The remote tools and phishing are deferred. There are no roles, meetings or log viewers yet. The client now has detailed procedural office art, original temporary directional pixel characters, and a dark HUD with a public employee directory. See [visual upgrade notes](docs/design/visual-upgrade.md) for assets, scope and reference differences. `PROGRESS.md` says what was built in which step.
 
 What exists:
 
@@ -117,7 +117,7 @@ pnpm test
 pnpm typecheck
 ```
 
-287 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, bots, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule).
+304 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, bots, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule).
 
 ```bash
 pnpm e2e

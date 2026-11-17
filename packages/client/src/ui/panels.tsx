@@ -166,7 +166,42 @@ export function MissionPanel({ ui }: { ui: UiState }) {
       <ul>
         {ui.briefing.rumours.map((r) => <li key={r}>{r}</li>)}
       </ul>
+      <FlagForm />
       <p className="mission-sub">Press <kbd>M</kbd> to show or hide this.</p>
+    </div>
+  );
+}
+
+/** Where the hacker hands in the flag. The server checks it (and that it was really read in this match). */
+function FlagForm() {
+  const [text, setText] = useState('');
+  return (
+    <form className="flag-form" onSubmit={(e) => { e.preventDefault(); if (text.trim()) store.send('flag.submit', { text }); }}>
+      <input data-testid="flag-input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Paste the flag here" spellCheck={false} />
+      <button type="submit" data-testid="flag-submit">Hand in</button>
+    </form>
+  );
+}
+
+/** The security-alert banner (everyone sees the same vague text). */
+export function AlertBanner({ ui }: { ui: UiState }) {
+  if (!ui.alert) return null;
+  return <div className="alert-banner" role="alert" data-testid="alert">{ui.alert}</div>;
+}
+
+/** The end of the match. */
+export function MatchOver({ ui }: { ui: UiState }) {
+  if (!ui.matchOver) return null;
+  const me = ui.card?.name === ui.matchOver.hacker && ui.briefing !== null;
+  return (
+    <div className="match-over" data-testid="match-over">
+      <div className="match-over-box">
+        <div className="eyebrow">MATCH OVER · {clockText(ui.matchOver.at)}</div>
+        <h2>{me ? 'You got the flag out. You win.' : 'The hacker got the flag out.'}</h2>
+        <p>The hacker was <strong data-testid="match-over-hacker">{ui.matchOver.hacker}</strong>.</p>
+        <p className="start-note">Everything they did is still in the logs. The full debrief (timeline, evidence, what was missed) comes in a later version. Reload the page once everybody has left to start a new match.</p>
+        <button type="button" onClick={() => store.set({ matchOver: null })}>Look around the office</button>
+      </div>
     </div>
   );
 }

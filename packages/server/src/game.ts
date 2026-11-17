@@ -14,10 +14,10 @@
  */
 import {
   advanceTime, cancelInput, createWorld, dateStamp, leaveTerminal, openTerminal, parseDuration, refreshTerminal,
-  awaitingSecret, currentPrompt, glimpse, plugUsb, sendInput, serializeWorld, setHacker, shoulderSurf, switchUser, usbCooldown, type FsNode, type OpenResult, type Scenario, type TerminalResult, type WeaknessChoice, type World,
+  awaitingSecret, currentPrompt, glimpse, plugUsb, submitFlag, sendInput, serializeWorld, setHacker, shoulderSurf, switchUser, usbCooldown, type FsNode, type OpenResult, type Scenario, type TerminalResult, type WeaknessChoice, type World,
 } from '@insider/engine';
 import {
-  INTERACT_DISTANCE, PLAYER_RADIUS, PLAYER_SPEED, SURF_BEHIND, SURF_SIDE, USB_HOLD_MS, moveWithCollision, parseOfficeMap, roomAt,
+  ALERT_BANNER_GAP_MS, INTERACT_DISTANCE, PLAYER_RADIUS, PLAYER_SPEED, SURF_BEHIND, SURF_SIDE, USB_HOLD_MS, moveWithCollision, parseOfficeMap, roomAt,
   type ClientMessages, type Facing, type OfficeMap, type PublicState, type ServerMessages, type ServerMessageType, type TiledMap,
 } from '@insider/shared';
 import { BotManager, type BotOptions } from './bots/manager';
@@ -91,6 +91,9 @@ export class OfficeGame {
    */
   private readonly avatars = new Map<string, Avatar>();
   private outbox: Outgoing[] = [];
+  /** Index of the next master event to look at for security alerts, and when the last banner went out. */
+  private alertCursor = 0;
+  private lastBanner = -Infinity;
   /** Fractions of a game millisecond left over from the last tick. */
   private carryMs = 0;
 
@@ -108,6 +111,7 @@ export class OfficeGame {
     this.writeDump = options.writeDump;
     this.cctv = new Cctv(this.world, this.map);
     this.eyes = new Random((options.seed ?? 1) ^ 0x5ee5);
+    this.alertCursor = this.world.events.length;
     this.tasks = new TaskBoard(this.world, this.scenario, this.map, new Random((options.seed ?? 1) ^ 0x7a5c));
     this.bots = options.bots === false
       ? null
@@ -241,6 +245,9 @@ export class OfficeGame {
         return this.startItem(avatar, data);
       case 'item.stop':
         if (avatar.hold) this.endItem(avatar, 'You let go before it was done. Nothing happened.');
+        return;
+      case 'flag.submit':
+        if (typeof data.text === 'string') this.submitFlag(avatar, data.text.slice(0, 500));
         return;
       case 'term.cancel':
         if (avatar.seatedAt) this.screen(avatar, cancelInput(this.world, avatar.terminalId));
@@ -406,6 +413,31 @@ export class OfficeGame {
     this.send(avatar.clientId, 'notice', { text });
   }
 
+  // ───────────────────────────── Winning and alerts (Phase 4, part F) ─────────────────────────────
+
+  /** The hacker hands in the flag. On success the match ends for everybody and the hacker is named. */
+  private submitFlag(avatar: Avatar, text: string): void {
+    const result = submitFlag(this.world, avatar.playerId, text);
+    if (!result.won) return this.send(avatar.clientId, 'notice', { text: result.text });
+    this.stand(avatar, 'The match is over.');
+    for (const client of this.clients) this.send(client, 'match.over', { winner: 'hacker', hacker: avatar.name, at: this.world.time });
+  }
+
+  /**
+   * New security alerts (written by the engine's rules) become one vague
+   * banner for everybody who is playing, at most one a minute of game time.
+   */
+  private announceAlerts(): void {
+    let fresh = false;
+    for (; this.alertCursor < this.world.events.length; this.alertCursor++) {
+      const e = this.world.events[this.alertCursor];
+      if (e.type === 'security.alert' && e.details.severity !== 'low') fresh = true;
+    }
+    if (!fresh || this.world.time - this.lastBanner < ALERT_BANNER_GAP_MS) return;
+    this.lastBanner = this.world.time;
+    for (const a of this.humans()) this.send(a.clientId, 'alert', { text: 'SECURITY ALERT: unusual activity was detected on the company network.' });
+  }
+
   /** An avatar as the doors see it. */
   private walker(a: Avatar): Walker {
     return { key: a.clientId, playerId: a.playerId, account: a.account, x: a.x, y: a.y, seated: a.seatedAt !== '' };
@@ -444,6 +476,7 @@ export class OfficeGame {
     }
     this.bots?.tick(realMs);
     // Job tasks: tick off what was just typed or reached, and tell the humans whose list changed.
+    this.announceAlerts();
     this.tasks.update([...this.avatars.values()]);
     for (const playerId of this.tasks.takeChanged()) {
       const human = this.humans().find((a) => a.playerId === playerId);
@@ -522,6 +555,8 @@ export class OfficeGame {
           `careless:    ${m.carelessPlayer ? `${m.carelessPlayer} ${name(m.carelessPlayer)}` : '-'}`,
           `one-person doors: ${m.onePersonDoors.join(', ') || 'none (the server room can be tailgated)'}`,
           `won:         ${m.won ? clock(m.won) : 'no'}`,
+          `backdoors:   ${this.world.toolkit.backdoors.map((b) => `${b.host}:${b.port} (${b.account})${this.world.hosts[b.host]?.processes.some((p) => p.pid === b.pid) ? '' : ' [dead]'}`).join(', ') || 'none'}`,
+          `alerts:      ${this.world.events.filter((e) => e.type === 'security.alert').length}`,
         ].join('\n');
       }
       case 'saw': {

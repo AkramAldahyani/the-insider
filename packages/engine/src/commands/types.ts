@@ -24,6 +24,8 @@ export interface CmdCtx {
   piped: boolean;
   /** True when the command is being run through sudo. */
   sudo: boolean;
+  /** Name of the command being run (set by the dispatcher; the audit log prints it). */
+  command?: string;
 }
 
 export interface CmdResult {

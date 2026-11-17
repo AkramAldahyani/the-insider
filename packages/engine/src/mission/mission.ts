@@ -20,6 +20,8 @@ import { hashString } from '../core/rng';
 import type { Scenario } from '../core/scenario';
 import type { Mission, WeaknessId, World } from '../types';
 import { installTools } from '../tools/toolkit';
+import { emit, withActor } from '../events/log';
+import { getNode } from '../fs/vfs';
 
 export const ALL_WEAKNESSES: WeaknessId[] = ['weak-admin-password', 'extra-sudo', 'plaintext-password', 'careless-admin', 'tailgate'];
 
@@ -123,11 +125,30 @@ export function setHacker(world: World, playerId: string): boolean {
   return true;
 }
 
+/**
+ * The hacker hands in the flag. It counts only if the text is exactly what is
+ * in the flag file AND this player really read that file during this match
+ * (the master log says so): knowing the text from elsewhere is not enough.
+ * Winning is recorded; the server then ends the match for everybody.
+ */
+export function submitFlag(world: World, playerId: string, text: string): { won: boolean; text: string } {
+  const m = world.mission;
+  if (!m.flag || m.hacker !== playerId) return { won: false, text: 'Only the hacker can hand in the flag.' };
+  if (m.won !== null) return { won: false, text: 'The match is already over.' };
+  const flag = (getNode(world.hosts[m.flag.host], m.flag.path)?.content ?? '').trim();
+  if (!flag || text.trim() !== flag) return { won: false, text: 'That is not the flag.' };
+  const readIt = world.events.some((e) => e.type === 'file.read' && e.actor === playerId && !e.details.denied && e.host === m.flag!.host && e.details.path === m.flag!.path);
+  if (!readIt) return { won: false, text: 'You have to get the flag yourself in this match: read it on the server first.' };
+  m.won = world.time;
+  withActor(playerId, () => emit(world, { host: m.flag!.host, user: '', type: 'mission.won', details: { hacker: playerId } }));
+  return { won: true, text: 'The flag is out. You win.' };
+}
+
 /** The hacker's private briefing. It hints at what MIGHT be wrong with this office, never at what is. */
 export function briefing(world: World): { goal: string; toolsPath: string; rumours: string[] } {
   const player = world.players.find((p) => p.id === world.mission.hacker);
   return {
-    goal: `Get the file ${world.mission.flag?.path ?? '?'} on ${world.mission.flag?.host ?? '?'} out of the building without being identified.`,
+    goal: `Read the file ${world.mission.flag?.path ?? '?'} on ${world.mission.flag?.host ?? '?'} and hand in what it says, without being identified.`,
     toolsPath: `/home/${player?.account ?? '?'}/.tools`,
     rumours: [
       'Some offices have a system administrator with an easy password.',

@@ -148,6 +148,14 @@ export interface ServerMessages {
   'term.close': { reason: string };
   /** The player's own task list (sent whenever it changes). */
   tasks: { tasks: TaskView[]; completed: number };
+  /**
+   * A security alert, shown to EVERY player as a banner. Deliberately vague:
+   * it says that something happened, never where or by whom (that is in the
+   * alert log, for those who can read it).
+   */
+  alert: { text: string };
+  /** The match is over. Sent to everybody, including people on the start screen. */
+  'match.over': { winner: 'hacker'; hacker: string; at: number };
   /** A short note for the HUD ("Too far from the desk"). */
   notice: { text: string };
   /** Developer panel replies. Never sent by a production server. */
@@ -173,6 +181,8 @@ export interface ClientMessages {
    */
   'item.start': { item: 'usb'; hostname: string };
   'item.stop': Record<string, never>;
+  /** The hacker hands in the flag (the text of the flag file). */
+  'flag.submit': { text: string };
   /** One finished line typed at the PC. */
   'term.line': { text: string };
   /** Ctrl+C. */

@@ -10,6 +10,8 @@
  */
 import { syslog, pidOf } from './journal';
 import { renderMail } from '../commands/mail';
+import { uidOf } from '../auth/accounts';
+import { watchedFile } from '../security/alerts';
 import { fullStamp, isoSecond, syslogStamp } from '../core/time';
 import { sysWrite } from '../fs/vfs';
 import type { GameEvent, Host, World } from '../types';
@@ -64,6 +66,27 @@ export function materialize(world: World, e: GameEvent): void {
     }
     case 'usb.remove':
       syslog(world, host, 'kernel', null, `usb 1-1: USB disconnect, device number ${str(d.device)}`, 'kernel');
+      break;
+
+    // ── the audit log: reads of watched files (see security/alerts.ts), successful or refused ──
+    case 'file.read': {
+      const key = watchedFile(world, host.hostname, str(d.path));
+      if (!key) break;
+      const stamp = `${Math.floor(world.time / 1000)}.${String(world.time % 1000).padStart(3, '0')}:${e.id}`;
+      const auid = uidOf(host, str(d.loginUser)) ?? 4294967295;
+      const uid = uidOf(host, e.user) ?? 0;
+      const ok = !d.denied;
+      const comm = str(d.comm) || 'cat';
+      const lines = [
+        `type=SYSCALL msg=audit(${stamp}): arch=c000003e syscall=257 success=${ok ? 'yes' : 'no'} exit=${ok ? 3 : -13} auid=${auid} uid=${uid} euid=${uid} tty=${str(d.tty).replace('/', '')} ses=${str(d.ses)} comm="${comm}" exe="/usr/bin/${comm}" key="${key}"`,
+        `type=PATH msg=audit(${stamp}): item=0 name="${str(d.path)}" nametype=NORMAL`,
+      ];
+      // Only root may read the audit log.
+      sysWrite(host, '/var/log/audit/audit.log', lines.join('\n') + '\n', { owner: 'root', group: 'root', mode: 0o600, time: world.time, append: true });
+      break;
+    }
+    case 'security.alert':
+      sysWrite(host, '/var/log/security/alerts.log', `${isoSecond(world.time)} [${str(d.severity).toUpperCase()}] ${str(d.rule)} ${str(d.summary)}\n`, { owner: 'root', group: 'adm', mode: 0o640, time: world.time, append: true });
       break;
 
     case 'cctv.motion':

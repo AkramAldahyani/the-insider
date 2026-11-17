@@ -308,6 +308,20 @@ On `HR-LT-05` the `dmesg` lines are there too, even though nothing was installed
 
 6. **Shoulder surfing.** Third tab as Sara: sit at `FIN-LT-07` (locked). As Omar, stand one tile right behind her chair. When Sara types her password, Omar gets *You saw Sara Alharbi type a password at FIN-LT-07 ("Password:"): R?y??h2??4!* (some characters shown). `cat ~/.tools/loot/shoulder.txt` on Omar's PC has the line. Standing two tiles away, or beside her, shows nothing.
 
+## X. Phase 4, part F: winning, the audit log and alerts
+
+Start with `VULNS=plaintext-password` (PowerShell: `$env:VULNS='plaintext-password'; pnpm dev`). Open two tabs: Omar as the hacker, Sara as an employee.
+
+1. As Omar, sit at `MKT-LT-11`, unlock, then `ssh ADMIN-SRV-01` (his own password).
+2. `cat /srv/shared/old/backup-2025.sh`: the root password is in it. `su`, type it, `cat /root/flag.txt`.
+   Both tabs get a red banner: *SECURITY ALERT: unusual activity was detected on the company network.* It names nothing.
+3. Press `Esc`, open the briefing (`M`), paste the flag into the box, **Hand in**. Omar sees *You got the flag out. You win.*; Sara sees *The hacker got the flag out. The hacker was Omar Farouk.*
+4. Handing in a made-up text says *That is not the flag*; handing in the real text without having read it in this match says *read it on the server first*.
+5. As Khalid (new match): `ssh ADMIN-SRV-01`, then
+   - `sudo tail -n 4 /var/log/audit/audit.log`: `key="flag-read"`, `name="/root/flag.txt"`, `auid=` Omar's uid although he was root;
+   - from `SEC-WS-01` as Tariq: `ssh SEC-SRV-01`, `cat /var/log/security/alerts.log`: `[HIGH] flag-read /root/flag.txt on ADMIN-SRV-01 was read as root (login o.farouk) from 10.0.2.71`.
+6. Three wrong passwords in a row for any account (`ssh k.nasser@ADMIN-SRV-01`) give `[MEDIUM] auth-failures` and the banner (at most once a minute). A USB stick on a locked PC gives only `[LOW] usb-keyboard`, no banner.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -320,13 +334,13 @@ On `HR-LT-05` the `dmesg` lines are there too, even though nothing was installed
 pnpm test
 ```
 
-Expected: `Test Files 24 passed (24)` and `Tests 287 passed (287)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
+Expected: `Test Files 26 passed (26)` and `Tests 304 passed (304)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
 
 ```bash
 pnpm e2e
 ```
 
-Expected: `6 passed`. Playwright starts its own game (ports 2577 and 5183, no bots, no random weaknesses), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes ten screenshots to `e2e/screenshots/`.
+Expected: `7 passed`. Playwright starts its own game (ports 2577 and 5183, no bots, only the plaintext-password weakness), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes ten screenshots to `e2e/screenshots/`.
 
 ---
 

@@ -32,6 +32,8 @@ const ALLOWED_FIELDS: Record<string, string[]> = {
   'term.close': ['reason'],
   notice: ['text'],
   tasks: ['tasks', 'completed'],
+  alert: ['text'],
+  'match.over': ['winner', 'hacker', 'at'],
 };
 
 /** Plays the match: Sara (client "sara") at her own PC, Omar (client "omar") at Lina's unlocked one. */

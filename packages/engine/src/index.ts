@@ -21,7 +21,9 @@ export type {
 export { validateScenario } from './core/scenario';
 export { createWorld } from './core/world';
 export type { WorldOptions } from './core/world';
-export { ALL_WEAKNESSES, briefing, chooseWeaknesses, setHacker } from './mission/mission';
+export { ALL_WEAKNESSES, briefing, chooseWeaknesses, setHacker, submitFlag } from './mission/mission';
+export { watchedFile } from './security/alerts';
+export type { Severity } from './security/alerts';
 export { TOOLS, toolByName, toolAt } from './tools/toolkit';
 export { USB_COOLDOWN_MS, glimpse, plugUsb, shoulderSurf, usbCooldown } from './tools/physical';
 export type { ToolDefinition, Noise } from './tools/toolkit';

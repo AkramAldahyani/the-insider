@@ -17,6 +17,8 @@ export const PLAYER_RADIUS = 10;
 export const INTERACT_DISTANCE = 44;
 /** How close (pixels) a player must be to a doorway to tap a badge on its reader. */
 export const TAP_DISTANCE = 40;
+/** At most one security-alert banner per this much game time, however many alerts fire. */
+export const ALERT_BANNER_GAP_MS = 60_000;
 /** How long the hacker must hold still at a PC to use the USB stick (real milliseconds). */
 export const USB_HOLD_MS = 5000;
 /** Shoulder surfing: how far behind a seated person's chair the watcher may stand (pixels, below the chair). */

@@ -13,7 +13,7 @@ Update it at the end of every part.
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | **planned, waiting for the owner's OK** (plan below) |
 
-## Phase 4 status: Parts A, B and C DONE; Parts D and E DEFERRED by the owner; next part not chosen yet
+## Phase 4 status: Parts A, B, C, F and G DONE; Parts D and E DEFERRED by the owner; H partly done
 
 | Part | State |
 |---|---|
@@ -22,7 +22,9 @@ Update it at the end of every part.
 | C Physical tools: USB stick, shoulder surfing | **done** |
 | D Remote tools: implant, keylogger, hash cracker, network scanner | **deferred** (see below) |
 | E Phishing kit and log cleaner | **deferred** (see below) |
-| F to H | not started |
+| F Flag, winning, audit log, security alerts | **done** |
+| G Route tests (2+ complete routes) | **done** (2 routes, see below) |
+| H Dev panel, browser test, CLI, docs | partly: dev panel and browser test done; CLI cannot join as the hacker yet |
 
 **Parts D and E are deferred (owner, 2026-11-17): "skip this part for now but we will do it later".** Under
 Opus 5.5 the first attempt at Part D was stopped by a safety classifier before any file changed. Do not start
@@ -91,6 +93,37 @@ weaknesses are on; winning = exfiltrating the flag; bots fall for phishing about
   the hacker gets a notice and loot; a bot victim remembers it 7 times in 10 (`Observation.note`).
 - Client: hold `U` near a desk (hacker only; hint says so), "···" bubble and crouch for anyone `at-pc`.
 - 287 Vitest tests (new: engine and server `physical.test.ts`), 6 Playwright (the hacker test now uses the stick).
+
+### Part F and G: what exists now
+
+- Owner chose (2026-11-17) "Flag, win, alerts" after deferring D and E.
+- **Handing in the flag** (deviation from the earlier "exfiltrate" default, which would have been a Part D/E
+  tool): the hacker pastes the flag text into the briefing panel (`flag.submit`). Engine `submitFlag` accepts it
+  only from the hacker, only the exact text of the flag file, and only if the master log shows this player
+  really read that file in this match. Then `world.mission.won`, event `mission.won`, the server stands the
+  hacker up and sends `match.over { winner, hacker, at }` to every connected client (start screen included).
+  Client: end screen overlay. DESIGN.md section 1 already said "submit the flag".
+- **Audit log** (`/var/log/audit/audit.log`, root only, auditd-style SYSCALL + PATH lines) on the machine where
+  `/etc/shadow` or the flag file is read, successful or refused. `auid`/login account survives `su`
+  (`readTracked` follows the su chain). `watchedFile` in `engine/src/security/alerts.ts`.
+- **Security alerts** (`engine/src/security/alerts.ts`, hooked into `emit`): rules usb-keyboard (LOW),
+  new-listener (MEDIUM, a backdoor), sudo-denied (LOW), shadow-read (MEDIUM), flag-read (HIGH), *-denied (LOW),
+  auth-failures (MEDIUM: 3 failures for one account on one host within 2 min). Same rule/host/account at most
+  once per 5 min (except HIGH). Lines in `/var/log/security/alerts.log` on SEC-SRV-01 (root:adm 640: guard,
+  sysadmin). Server: any MEDIUM/HIGH alert -> one vague banner (`alert { text }`) to every PLAYING human,
+  at most one per 60 s game time. A test checks 30 minutes of bots raise no MEDIUM/HIGH alert.
+- **Route tests** (`packages/server/test/win.test.ts`): (1) plaintext root password in the old backup script ->
+  `su` on the server -> flag -> win; (2) shoulder-surf the sysadmin unlocking his PC several times, piece the
+  password together, ssh as k.nasser from Omar's PC, `sudo cat` the flag -> win. Both check the traces.
+- Dev panel `mission` view also lists backdoors (alive or dead) and the number of alerts.
+- Playwright server now runs with `VULNS=plaintext-password`; new browser test plays route 1 to the end screen.
+- 304 Vitest tests (new: engine `security.test.ts`, server `win.test.ts`), 7 Playwright.
+
+### What is left of Phase 4
+
+- Parts D and E (deferred by the owner).
+- CLI: joining as the hacker (`setHacker`) is not exposed in the CLI.
+- No "match over" reset: a new match needs every client to leave (the room then closes) or a server restart.
 
 ### Notes for Part D onwards
 

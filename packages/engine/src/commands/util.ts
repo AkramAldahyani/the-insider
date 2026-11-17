@@ -2,6 +2,7 @@
 import { emit } from '../events/log';
 import { FsError, readFile, resolvePath, writeFile } from '../fs/vfs';
 import type { FsNode } from '../types';
+import { watchedFile } from '../security/alerts';
 import type { CmdCtx } from './types';
 
 export interface ParsedArgs {
@@ -64,8 +65,21 @@ export function errText(e: unknown): string {
  */
 export function readTracked(c: CmdCtx, path: string): string {
   const full = abs(c, path);
-  const content = readFile(c.host, full, c.cred, c.world.time);
-  emit(c.world, { host: c.host.hostname, user: c.cred.user, sourceIp: c.session.sourceIp, type: 'file.read', details: { path: full, loginUser: c.session.user } });
+  // The LOGIN account, like Linux's "loginuid": after `su` it is still whoever logged in, not root.
+  let login = c.session;
+  while (login.kind === 'su' && login.parentId && c.world.sessions[login.parentId]) login = c.world.sessions[login.parentId];
+  const details = { path: full, loginUser: login.user, tty: c.session.tty, ses: login.logindId, comm: c.command ?? '' };
+  let content: string;
+  try {
+    content = readFile(c.host, full, c.cred, c.world.time);
+  } catch (e) {
+    // A refused read of a watched file (the password file, the flag) is recorded too: the audit log keeps failures.
+    if (e instanceof FsError && e.code === 'EACCES' && watchedFile(c.world, c.host.hostname, full)) {
+      emit(c.world, { host: c.host.hostname, user: c.cred.user, sourceIp: c.session.sourceIp, type: 'file.read', details: { ...details, denied: true } });
+    }
+    throw e;
+  }
+  emit(c.world, { host: c.host.hostname, user: c.cred.user, sourceIp: c.session.sourceIp, type: 'file.read', details });
   return content;
 }
 

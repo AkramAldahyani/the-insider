@@ -9,6 +9,7 @@
  */
 import type { GameEvent, World } from '../types';
 import { materialize } from './materialize';
+import { checkAlerts } from '../security/alerts';
 
 /**
  * Which PLAYER is physically at the keyboard for the input being processed.
@@ -58,6 +59,7 @@ export function emit(world: World, input: EmitInput): GameEvent {
   };
   world.events.push(event);
   materialize(world, event);
+  checkAlerts(world, event); // security monitoring (security/alerts.ts)
   return event;
 }
 

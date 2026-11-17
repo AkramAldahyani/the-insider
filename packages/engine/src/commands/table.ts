@@ -47,6 +47,7 @@ export function dispatch(c: CmdCtx, argv: string[], stdin: string): CmdResult {
   }
 
   const handler = commands[name];
+  c.command = name;
   if (!handler || (c.sudo && BUILTINS.has(name))) {
     return { stderr: `${shell}: ${name}: command not found\n`, exit: 127 };
   }

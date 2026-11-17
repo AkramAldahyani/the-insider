@@ -218,3 +218,18 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .mission ul { margin: 4px 0; padding-left: 18px; color: #c9c2b8; }
 .mission code { font-family: var(--mono); color: var(--amber); }
 .mission-sub { color: #9a938a; }
+
+/* ── Handing in the flag, the alert banner and the end of the match ── */
+.flag-form { display: flex; gap: 6px; margin: 10px 0 4px; }
+.flag-form input { flex: 1; min-width: 0; padding: 5px 7px; border-radius: 5px; border: 1px solid #6b5326; background: #120d08; color: #f3e6cf; font-family: var(--mono); font-size: 12px; }
+.flag-form button { padding: 5px 10px; border-radius: 5px; border: 1px solid var(--amber); background: #3a2a10; color: var(--amber); font-weight: 600; }
+.alert-banner {
+  position: absolute; top: 58px; left: 50%; transform: translateX(-50%); z-index: 8; padding: 9px 16px; border-radius: 8px;
+  background: rgba(70, 12, 16, 0.95); border: 1px solid #e5484d; color: #ffd7d9; font-size: 13.5px; font-weight: 600; pointer-events: none;
+  animation: alert-pulse 1.2s ease-in-out 3;
+}
+@keyframes alert-pulse { 50% { box-shadow: 0 0 0 6px rgba(229, 72, 77, 0.25); } }
+.match-over { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(5, 6, 9, 0.72); }
+.match-over-box { width: min(520px, calc(100% - 32px)); padding: 22px 24px; border-radius: 12px; background: #141a24; border: 1px solid #e5484d; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7); }
+.match-over-box h2 { margin: 8px 0 10px; font-size: 22px; }
+.match-over-box button { margin-top: 12px; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: inherit; }

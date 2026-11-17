@@ -45,6 +45,10 @@ export interface UiState {
   /** Start screen: is the hacker role still free, and did this player tick "join as the hacker"? */
   hackerOpen: boolean;
   asHacker: boolean;
+  /** The latest security-alert banner ("" = none showing). */
+  alert: string;
+  /** Set when the match is over: who won and who the hacker was. */
+  matchOver: { winner: 'hacker'; hacker: string; at: number } | null;
   /** The hacker's private briefing (null for everybody else) and whether it is shown. */
   briefing: MissionBriefing | null;
   briefingOpen: boolean;
@@ -82,7 +86,7 @@ export class Store {
   rawMap: TiledMap | null = null;
 
   private ui: UiState = {
-    phase: 'connecting', error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false,
+    phase: 'connecting', error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null,
     clock: 0, speed: 1, roomName: '', nearDesk: '', nearDoor: '', nearDoorName: '', seatedAt: '', notice: '', tasks: [], tasksCompleted: 0, tasksOpen: true, devOpen: false, devLog: [],
   };
   private listeners = new Set<Listener>();
@@ -107,6 +111,8 @@ export class Store {
     this.ui = { ...this.ui, ...patch };
     for (const listener of this.listeners) listener();
   }
+
+  private alertTimer = 0;
 
   notice(text: string): void {
     this.set({ notice: text });
@@ -160,6 +166,12 @@ export class Store {
       on('term.output', (screen) => this.term({ kind: 'output', screen }));
       on('term.close', () => this.set({ seatedAt: '' }));
       on('notice', ({ text }) => this.notice(text));
+      on('alert', ({ text }) => {
+        this.set({ alert: text });
+        window.clearTimeout(this.alertTimer);
+        this.alertTimer = window.setTimeout(() => this.set({ alert: '' }), 8000);
+      });
+      on('match.over', (over) => this.set({ matchOver: over })); 
       on('tasks', ({ tasks, completed }) => {
         if (completed > this.ui.tasksCompleted) this.notice('Task finished.');
         this.set({ tasks, tasksCompleted: completed });
