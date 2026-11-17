@@ -383,6 +383,15 @@ Use three tabs: Tariq (the guard), Dana (helpdesk) and Rami.
 6. As Tariq, walk right up to Rami: *Caught Rami Mansour in the act? Press X to detain.* Press `X`: *Press X again...*. Press `X` again. With no hacker in the match, everybody sees *Tariq Omar detained Rami Mansour, who was not the hacker*. Pressing `X` twice again: *you cannot detain anyone any more*.
 7. If someone had joined as the hacker and Tariq detained them, the match would end: *Tariq Omar caught NAME in the act.*
 
+## AD. Phase 5, part G: bots in meetings
+
+Use `pnpm dev` with bots (the default) and short meetings: `MEETING_SECONDS=40,25,5`. One tab: Sara.
+
+1. Wait until the office is full (a few minutes). Walk to Rami's PC (FIN-LT-04) while he is on a break and sit down there (it is fine if it is locked). Stay until Rami comes back and cannot sit.
+2. Walk to the red button and call a meeting. During the discussion, Rami says in the chat: *I saw Sara Alharbi sitting at my PC FIN-LT-04 at HH:MM, while I was away from it.* Others may say *Nothing odd on my side.*
+3. Without board evidence nobody can be accused, so the meeting ends with *Nobody was voted out.* (With three pins you could accuse someone; bots then vote for that person only if they saw something themselves, otherwise they do not vote.)
+4. Developer panel (`` ` ``): bots show *checking own PC* now and then; their PCs' command history (after they log out) contains `last -n 10` or `crontab -l`.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -395,7 +404,7 @@ Use three tabs: Tariq (the guard), Dana (helpdesk) and Rami.
 pnpm test
 ```
 
-Expected: `Test Files 32 passed (32)` and `Tests 352 passed (352)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
+Expected: `Test Files 33 passed (33)` and `Tests 361 passed (361)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
 
 ```bash
 pnpm e2e

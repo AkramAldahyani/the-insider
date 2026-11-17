@@ -17,13 +17,22 @@
  * once; when the human disconnects, a bot takes the employee over again and
  * walks in through the entrance a little later.
  *
- * This file also keeps each bot's OBSERVATIONS: who it saw, where, and when.
- * Nothing uses them yet; in Phase 5 bots will talk and vote based on them.
+ * This file also keeps each bot's OBSERVATIONS (who it saw, where, and when)
+ * and its FINDINGS (Phase 5, part G): the few things it would mention in an
+ * emergency meeting, each with a weight saying how suspicious it is:
+ *   3  somebody stood right behind me while I typed my password;
+ *   3  somebody fiddled with my PC while standing at it (the USB stick);
+ *   2  somebody sat at my PC while I was not there;
+ *   1  somebody without an IT job was in the server room;
+ *   0  facts from checking my own PC (a login from another address, an odd
+ *      crontab line): suspicious, but they name nobody.
+ * In a meeting a bot says its strongest findings in the chat, and votes only
+ * on what it knows itself (see `ballot`).
  */
 import { commandNames, screenState, type Scenario, type TerminalResult, type World } from '@insider/engine';
 import { PLAYER_RADIUS, isFree, roomAt, type MapDoor, type Point } from '@insider/shared';
 import type { Avatar } from '../visibility';
-import { employeeTree, newMind, type BotSubject, type BrainWorld, type Mind, type Persona } from './brain';
+import { employeeTree, firstCheck, newMind, type BotSubject, type BrainWorld, type Mind, type Persona } from './brain';
 import { Mover, type MoverWorld } from './mover';
 import { Random } from './random';
 import type { TaskBoard } from '../tasks';
@@ -72,6 +81,24 @@ export interface Observation {
   note?: string;
 }
 
+/** Something a bot would tell a meeting. */
+export interface Finding {
+  /** Game time (ms). */
+  time: number;
+  /** What it says, in its own words. */
+  text: string;
+  /** The person it points at ("" = nobody in particular). */
+  suspect: string;
+  /** How suspicious (0-3, see the top of this file). */
+  weight: number;
+}
+
+/** A bot votes for an accused person when what it knows against them adds up to at least this. */
+export const VOTE_THRESHOLD = 2;
+/** A bot that strongly suspects somebody who was NOT accused votes "skip" instead of abstaining. */
+const SKIP_THRESHOLD = 3;
+const MAX_FINDINGS = 40;
+
 export interface Bot {
   playerId: string;
   /** Game time at which the bot comes to work. */
@@ -80,6 +107,8 @@ export interface Bot {
   /** Null while the bot is not in the building. */
   subject: BotSubject | null;
   observations: Observation[];
+  /** What it would tell a meeting. Survives leaving and coming back to work (it is the person's memory). */
+  findings: Finding[];
   /** Player id -> how the bot last saw them ("room|desk"), to record only changes. */
   lastSeen: Map<string, string>;
 }
@@ -90,6 +119,8 @@ const ARRIVE_MAX_S = 240;
 /** A bot notices people in the same room up to this many pixels away (about 10 tiles). */
 const SIGHT = 320;
 const MAX_OBSERVATIONS = 300;
+/** "09:42" from a game time. */
+const clock = (ms: number) => new Date(ms).toISOString().slice(11, 16);
 
 /** Shell commands of ordinary office work. Only those the engine really has are used. */
 const EVERYDAY = [
@@ -121,7 +152,7 @@ export class BotManager {
     const delay = this.random.between(earliestInSeconds, Math.max(earliestInSeconds + 10, ARRIVE_MAX_S));
     // Every bot has its own generator, so removing one bot does not change what the others do.
     const random = new Random(Math.floor(this.random.next() * 2 ** 32));
-    this.bots.set(playerId, { playerId, arriveAt: this.host.world.time + delay * 1000, random, subject: null, observations: [], lastSeen: new Map() });
+    this.bots.set(playerId, { playerId, arriveAt: this.host.world.time + delay * 1000, random, subject: null, observations: [], findings: [], lastSeen: new Map() });
   }
 
   /** A human took this employee: the bot disappears (its PC, if it was at one, stays as it is). */
@@ -191,6 +222,55 @@ export class BotManager {
     if (!bot?.subject || !bot.random.chance(0.7)) return;
     bot.observations.push({ time: this.host.world.time, who: watcher.playerId, name: watcher.name, room, desk: '', note: `stood right behind me at ${desk} while I typed a password` });
     if (bot.observations.length > MAX_OBSERVATIONS) bot.observations.shift();
+    this.find(bot, { suspect: watcher.playerId, weight: 3, text: `${watcher.name} stood right behind me at ${desk} while I typed my password, at ${clock(this.host.world.time)}.` });
+  }
+
+  /** What a bot would tell a meeting, oldest first. */
+  findings(playerId: string): Finding[] {
+    return this.bots.get(playerId)?.findings ?? [];
+  }
+
+  /** Adds a finding, unless the bot already remembers the same thing. */
+  private find(bot: Bot, f: Omit<Finding, 'time'>): void {
+    const same = bot.findings.find((x) => x.text === f.text || (f.suspect && x.suspect === f.suspect && x.weight === f.weight && this.host.world.time - x.time < 5 * 60_000));
+    if (same) return; // seen again within minutes: it is the same story
+    bot.findings.push({ ...f, time: this.host.world.time });
+    if (bot.findings.length > MAX_FINDINGS) bot.findings.shift();
+  }
+
+  /**
+   * What a bot says in a meeting: its strongest findings (at most two), or
+   * now and then that it saw nothing. Every sentence is about things the bot
+   * itself saw on its own screen or with its own eyes.
+   */
+  speech(playerId: string, random: () => number): string[] {
+    const bot = this.bots.get(playerId);
+    if (!bot) return [];
+    const best = [...bot.findings].sort((a, b) => b.weight - a.weight || b.time - a.time).slice(0, 2);
+    if (best.length > 0) return best.map((f) => f.text);
+    return random() < 0.25 ? [random() < 0.5 ? 'Nothing odd on my side.' : 'I did not notice anything strange today.'] : [];
+  }
+
+  /** How much a bot has against one person (the sum of its findings about them). */
+  suspicion(playerId: string, suspect: string): number {
+    return this.findings(playerId).filter((f) => f.suspect === suspect).reduce((sum, f) => sum + f.weight, 0);
+  }
+
+  /**
+   * How a bot votes. It goes only by what it knows itself:
+   *  - an accused person it has enough against (VOTE_THRESHOLD) -> that person
+   *    (the one with the most, if several);
+   *  - nothing against anyone accused, but strong suspicion of someone who
+   *    was NOT accused -> "skip" (they are blaming the wrong person);
+   *  - otherwise null: it does not vote (it has no evidence either way, so it
+   *    leaves the decision to those who do).
+   */
+  ballot(playerId: string, accused: string[]): string | null {
+    const ranked = accused.filter((s) => s !== playerId).map((s) => ({ s, score: this.suspicion(playerId, s) })).sort((a, b) => b.score - a.score);
+    if (ranked[0] && ranked[0].score >= VOTE_THRESHOLD) return ranked[0].s;
+    const others = new Set(this.findings(playerId).map((f) => f.suspect).filter((s) => s && !accused.includes(s)));
+    if ([...others].some((s) => this.suspicion(playerId, s) >= SKIP_THRESHOLD)) return 'skip';
+    return null;
   }
 
   /** The game tells a seated bot that its screen changed by itself (it locked, a remote session closed...). */
@@ -272,6 +352,11 @@ export class BotManager {
       abandon: (taskId) => host.tasks.abandon(body.playerId, taskId),
       colleagueDesks: () => workstations.filter((h) => h.department === own?.department).map((h) => h.hostname),
       otherDesks: () => workstations.map((h) => h.hostname),
+      myIp: () => (own ? host.world.hosts[own.hostname]?.ip ?? '' : ''),
+      report: (f) => {
+        const bot = this.bots.get(body.playerId);
+        if (bot) this.find(bot, { suspect: f.suspect ?? '', weight: f.weight, text: f.text });
+      },
     };
   }
 
@@ -286,11 +371,14 @@ export class BotManager {
     };
     const mover = new Mover(body, { ...this.host, mayEnter: (a, d) => this.mayEnter(a, d) }, bot.random);
     const persona = this.persona(player.id);
+    // Its own sequence for checking the PC, from the player id (it takes nothing from the bot's other random numbers).
+    const checks = new Random([...player.id].reduce((h, ch) => Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0, 0xc4ec1d));
     bot.subject = {
-      persona, body, mover, random: bot.random,
+      persona, body, mover, random: bot.random, checks,
       mind: newMind(world.time, bot.random, persona.taskEveryMs),
       world: this.brainWorld(body, bot.random),
     };
+    bot.subject.mind.nextCheckAt = firstCheck(world.time, checks);
     this.host.addBody(body);
     this.host.tasks.assign(player.id);
   }
@@ -326,15 +414,22 @@ export class BotManager {
       const me = bot.subject?.body;
       if (!me) continue;
       const myRoom = roomAt(map, me.x, me.y);
+      const myDesk = bot.subject!.persona.desk;
       const visible = new Set<string>();
       for (const { body, room } of bodies) {
         if (body === me || !room || room !== myRoom || Math.hypot(body.x - me.x, body.y - me.y) > SIGHT) continue;
         visible.add(body.playerId);
-        const how = `${room}|${body.seatedAt}`;
+        const how = `${room}|${body.seatedAt}|${body.hold?.hostname ?? ''}`;
         if (bot.lastSeen.get(body.playerId) === how) continue;
         bot.lastSeen.set(body.playerId, how);
         bot.observations.push({ time: world.time, who: body.playerId, name: body.name, room, desk: body.seatedAt });
         if (bot.observations.length > MAX_OBSERVATIONS) bot.observations.shift();
+        // Is any of this worth telling a meeting?
+        const at = clock(world.time);
+        if (body.seatedAt === myDesk) this.find(bot, { suspect: body.playerId, weight: 2, text: `I saw ${body.name} sitting at my PC ${myDesk} at ${at}, while I was away from it.` });
+        if (body.hold?.hostname === myDesk) this.find(bot, { suspect: body.playerId, weight: 3, text: `I saw ${body.name} doing something to my PC ${myDesk} at ${at}, standing at it, not sitting.` });
+        const job = world.players.find((p) => p.id === body.playerId)?.role;
+        if (room === 'Server room' && job !== 'sysadmin' && job !== 'helpdesk') this.find(bot, { suspect: body.playerId, weight: 1, text: `I saw ${body.name} in the server room at ${at}. They do not work in IT.` });
       }
       // Out of sight: seeing them again later is a new observation.
       for (const id of [...bot.lastSeen.keys()]) if (!visible.has(id)) bot.lastSeen.delete(id);

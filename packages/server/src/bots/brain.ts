@@ -18,7 +18,7 @@
  * The decision logic is the behaviour tree at the bottom of this file. Read
  * it top-down: break time has priority over working.
  */
-import type { TerminalResult } from '@insider/engine';
+import { lastStamp, type TerminalResult } from '@insider/engine';
 import type { Point } from '@insider/shared';
 import type { Avatar } from '../visibility';
 import type { Mover } from './mover';
@@ -26,6 +26,11 @@ import type { Random } from './random';
 import { condition, selector, sequence, type Node, type Status } from './tree';
 
 const SECOND = 1000;
+/** When a bot first checks its own PC after arriving, and how often after that (game seconds). */
+const CHECK_FIRST: [number, number] = [240, 600];
+const CHECK_EVERY: [number, number] = [480, 1200];
+/** What an employee types to see whether anyone else used their PC. */
+export const SELF_CHECKS = ['last -n 10', 'crontab -l'];
 
 /** What the brain may do in the world. Supplied by the BotManager. */
 export interface BrainWorld {
@@ -54,6 +59,10 @@ export interface BrainWorld {
   colleagueDesks(): string[];
   /** Every desk except the bot's own. */
   otherDesks(): string[];
+  /** The address of the bot's own PC (what `ip a` would show). */
+  myIp(): string;
+  /** The bot noticed something odd while checking its own PC: it remembers it (and may tell a meeting). */
+  report(finding: { text: string; suspect?: string; weight: number }): void;
 }
 
 /** Everything fixed about one bot. */
@@ -101,6 +110,8 @@ export interface Mind {
   stepTries: number;
   /** A short description of what it is doing, for the developer panel. */
   doing: string;
+  /** Game time of the next look at its own PC for anything odd (Phase 5, part G). */
+  nextCheckAt: number;
 }
 
 export function newMind(now: number, random: Random, taskEveryMs: number): Mind {
@@ -110,6 +121,7 @@ export function newMind(now: number, random: Random, taskEveryMs: number): Mind 
     nextKeyAt: 0, screen: null, loginSteps: 0, leaving: 'undecided', doing: 'arriving',
     // The first task starts some time after sitting down, not all at once.
     typing: false, errand: '', errandMs: 0, nextTaskAt: now + random.between(0.2, 0.8) * taskEveryMs, stepKey: '', stepTries: 0,
+    nextCheckAt: Infinity, // set by firstCheck() (its own random numbers)
   };
 }
 
@@ -120,6 +132,8 @@ export interface BotSubject {
   mover: Mover;
   mind: Mind;
   random: Random;
+  /** Separate random numbers for checking the own PC, so adding those checks did not reshuffle the rest of the day. */
+  checks: Random;
   world: BrainWorld;
 }
 
@@ -367,6 +381,17 @@ function work(b: BotSubject): Status {
     return 'running';
   }
 
+  // Every now and then: is anything odd on my own PC? (The defenders' side of the game.)
+  if (!inRemoteShell(b) && b.world.now() >= mind.nextCheckAt) {
+    const command = b.checks.pick(SELF_CHECKS);
+    mind.screen = b.world.type(command);
+    for (const finding of inspect(command, mind.screen.output, { account: persona.account, desk: persona.desk, ip: b.world.myIp(), today: today(b.world.now()) })) b.world.report(finding);
+    mind.nextCheckAt = b.world.now() + b.checks.between(CHECK_EVERY[0], CHECK_EVERY[1]) * SECOND;
+    mind.doing = 'checking own PC';
+    mind.nextKeyAt = b.world.now() + b.checks.between(5, 15) * SECOND;
+    return 'running';
+  }
+
   // Nothing from a task right now: now and then an everyday command, otherwise
   // reading, thinking, a phone call... (idle time: no keys pressed at all).
   if (inRemoteShell(b)) {
@@ -380,6 +405,47 @@ function work(b: BotSubject): Status {
   } else mind.doing = 'reading';
   pause(b, 15, 50);
   return 'running';
+}
+
+// ───────────────────────────── Checking the own PC ─────────────────────────────
+
+/** When a newly arrived bot first checks its own PC. */
+export function firstCheck(now: number, checks: Random): number {
+  return now + checks.between(CHECK_FIRST[0], CHECK_FIRST[1]) * SECOND;
+}
+
+/** "Mon Mar  2": how `last` writes today's date (the start of its time column). */
+export function today(now: number): string {
+  return lastStamp(now).slice(0, 10);
+}
+
+/**
+ * What an employee concludes from a check of their own PC. Only what the
+ * screen shows is used:
+ *  - `last`: a login TODAY that came over the network (an address in the
+ *    third column) - nobody but the owner should use this PC, and the owner
+ *    sits in front of it. (Before today it is old news.)
+ *  - `crontab -l`: an "@reboot" line - ordinary employees never schedule
+ *    anything, so this was not them.
+ * Findings carry no suspect: the PC does not know WHO did it. The meeting
+ * hears the facts and the investigators follow them up.
+ */
+export function inspect(command: string, output: string, me: { account: string; desk: string; ip: string; today: string }): { text: string; weight: number }[] {
+  const found: { text: string; weight: number }[] = [];
+  if (command.startsWith('last')) {
+    for (const line of output.split('\n')) {
+      const [user, , from] = line.trim().split(/\s+/);
+      if (!user || !from || !/^\d+\.\d+\.\d+\.\d+$/.test(from) || from === me.ip || !line.includes(me.today)) continue;
+      const at = /(\d\d:\d\d)/.exec(line.slice(line.indexOf(me.today)))?.[1] ?? '?';
+      found.push({ text: `Someone logged in to my PC ${me.desk} as ${user} from ${from} at ${at}. That was not me.`, weight: 0 });
+    }
+  }
+  if (command.startsWith('crontab')) {
+    for (const line of output.split('\n')) {
+      if (line.trim().startsWith('@reboot')) found.push({ text: `My crontab on ${me.desk} has a line I never added: ${line.trim()}`, weight: 0 });
+    }
+  }
+  return found;
 }
 
 // ───────────────────────────── The tree ─────────────────────────────

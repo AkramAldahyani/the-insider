@@ -26,6 +26,7 @@ export type { WorldOptions } from './core/world';
 export { ALL_WEAKNESSES, briefing, chooseWeaknesses, setHacker, submitFlag } from './mission/mission';
 export { watchedFile } from './security/alerts';
 export { changePassword } from './auth/passwords';
+export { lastStamp } from './core/time';
 export { collect as siemCollect, siemQuery } from './security/siem';
 export type { SiemRecord, SiemResult } from './security/siem';
 export type { Severity } from './security/alerts';

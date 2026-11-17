@@ -92,6 +92,13 @@ export class OfficeGame {
   private readonly detainLost = new Set<string>();
   /** Every detention (for the debrief). */
   readonly detentions: { time: number; guardId: string; targetId: string; wasHacker: boolean }[] = [];
+  /**
+   * What the bots do in the current meeting (Phase 5, part G): when each one
+   * speaks and votes, in real milliseconds since the phase began.
+   */
+  private botMeeting: { phase: string; elapsed: number; speak: { id: string; at: number; lines: string[] }[]; vote: { id: string; at: number }[] } | null = null;
+  /** Random numbers for when bots talk and what filler they say (its own sequence). */
+  private readonly talk: Random;
   /** Every chat line, for the debrief. */
   readonly chatLog: { time: number; channel: 'meeting' | 'fired'; from: string; text: string }[] = [];
   /** Where people stand during a meeting: the free tiles around the meeting table. */
@@ -137,6 +144,7 @@ export class OfficeGame {
     this.meetings = new Meetings({ ...DEFAULT_MEETING_TIMES, ...options.meetingTimes });
     this.meetingSpots = this.findMeetingSpots();
     this.eyes = new Random((options.seed ?? 1) ^ 0x5ee5);
+    this.talk = new Random((options.seed ?? 1) ^ 0x7a1c);
     this.alertCursor = this.world.events.length;
     this.tasks = new TaskBoard(this.world, this.scenario, this.map, new Random((options.seed ?? 1) ^ 0x7a5c));
     this.bots = options.bots === false
@@ -650,7 +658,8 @@ export class OfficeGame {
     if (!this.atButton(avatar)) return this.send(avatar.clientId, 'notice', { text: 'The emergency button is in the meeting room.' });
     const why = this.meetings.whyNot(avatar.playerId);
     if (why) return this.send(avatar.clientId, 'notice', { text: why });
-    this.meetings.call(avatar.playerId, this.world.time, [...this.living()]);
+    const meeting = this.meetings.call(avatar.playerId, this.world.time, [...this.living()]);
+    this.planBotMeeting(meeting.voters);
     // Everybody comes to the table. PCs stay exactly as they were left (unlocked ones too).
     const bodies = [...this.avatars.values()];
     bodies.forEach((a, i) => {
@@ -664,6 +673,7 @@ export class OfficeGame {
   }
 
   private tickMeeting(realMs: number): void {
+    this.tickBotMeeting(realMs);
     const change = this.meetings.tick(realMs, (id) => this.world.mission.hacker === id);
     if (!change) return;
     const m = this.meetings.history.at(-1)!;
@@ -724,11 +734,65 @@ export class OfficeGame {
     const from = ghost ? this.nameOf(ghost) : this.avatars.get(clientId)?.name;
     if (!from) return;
     if (!ghost && !this.meetings.current) return this.send(clientId, 'notice', { text: 'You can talk to everybody during a meeting.' });
-    const line = { channel: ghost ? 'fired' as const : 'meeting' as const, from, text, time: this.world.time };
+    this.postChat(ghost ? 'fired' : 'meeting', from, text);
+  }
+
+  private postChat(channel: 'meeting' | 'fired', from: string, text: string): void {
+    const line = { channel, from, text, time: this.world.time };
     this.chatLog.push(line);
     // Fired players read the meeting, but nobody alive reads them.
-    const to = ghost ? [...this.ghosts.keys()] : [...this.humans().map((a) => a.clientId), ...this.ghosts.keys()];
+    const to = channel === 'fired' ? [...this.ghosts.keys()] : [...this.humans().map((a) => a.clientId), ...this.ghosts.keys()];
     for (const c of to) this.send(c, 'chat', line);
+  }
+
+  // ───────────────────────────── Bots in meetings (Phase 5, part G) ─────────────────────────────
+
+  /** When each bot at this meeting will speak (it decides what to say now, from what it knows). */
+  private planBotMeeting(voters: string[]): void {
+    const bots = this.bots;
+    if (!bots) return;
+    const at = (from: number, to: number, ms: number) => Math.round((from + this.talk.next() * (to - from)) * ms);
+    const speak = voters
+      .filter((id) => bots.isPresent(id))
+      .map((id) => ({ id, at: at(0.1, 0.6, this.meetings.times.discussionMs), lines: bots.speech(id, () => this.talk.next()) }))
+      .filter((s) => s.lines.length > 0)
+      .sort((a, b) => a.at - b.at);
+    this.botMeeting = { phase: 'discussion', elapsed: 0, speak, vote: [] };
+  }
+
+  /** Bots say their piece during the discussion and vote during the vote, at human-like moments. */
+  private tickBotMeeting(realMs: number): void {
+    const m = this.meetings.current;
+    const plan = this.botMeeting;
+    if (!m || !plan || !this.bots) {
+      this.botMeeting = null;
+      return;
+    }
+    const bots = this.bots;
+    if (plan.phase !== m.phase) {
+      plan.phase = m.phase;
+      plan.elapsed = 0;
+      if (m.phase === 'voting') {
+        plan.vote = m.voters.filter((id) => bots.isPresent(id)).map((id) => ({ id, at: Math.round((0.15 + this.talk.next() * 0.55) * this.meetings.times.votingMs) }));
+      }
+    }
+    plan.elapsed += realMs;
+    if (m.phase === 'discussion') {
+      while (plan.speak.length > 0 && plan.speak[0].at <= plan.elapsed) {
+        const s = plan.speak.shift()!;
+        if (!this.living().has(s.id)) continue;
+        for (const text of s.lines) this.postChat('meeting', this.nameOf(s.id), text);
+      }
+    } else if (m.phase === 'voting') {
+      const accused = [...new Set(m.accusations.map((a) => a.suspectId))];
+      let voted = false;
+      for (const v of plan.vote.filter((x) => x.at <= plan.elapsed)) {
+        const choice = bots.ballot(v.id, accused);
+        if (choice && this.meetings.vote(v.id, choice) === '') voted = true;
+      }
+      plan.vote = plan.vote.filter((x) => x.at > plan.elapsed);
+      if (voted) this.sendMeeting();
+    }
   }
 
   /**

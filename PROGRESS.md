@@ -12,9 +12,16 @@ Update it at the end of every part.
 | 3 Living office | done, pushed by the owner |
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | done except parts D and E (deferred by the owner) |
-| 5 Investigation & social deduction | **in progress**: Parts A-E done (see Phase 5 status) |
+| 5 Investigation & social deduction | **in progress**: Parts A-E and G done, F skipped (see Phase 5 status) |
 
-## Phase 5 status: plan APPROVED by the owner (defaults 1-6 accepted); Parts A, B, C, D and E DONE, Part F next
+## Phase 5 status: plan APPROVED by the owner (defaults 1-6 accepted); Parts A-E and G DONE; Part F SKIPPED by the owner; Part H next
+
+**Part F (bot hacker) is SKIPPED for now, at the owner's request ("Skip F, start G").** A first attempt was stopped
+by the assistant's safety filter while writing the bot's attack logic; nothing of it was kept. Do not restart F unless
+the owner asks. Options the owner was offered for later: a SCRIPTED hacker (the scenario file lists the hacker's day
+as fixed content, which the game replays so the logs get the same evidence), or the owner writes the route and the
+code only types the given lines. Until then the hacker is a human who joins as the hacker; matches without one have
+no hacker at all.
 
 ### Part A: what exists now
 
@@ -115,7 +122,31 @@ Update it at the end of every part.
   Press X to detain" (`data-testid="detain-hint"`); first X arms for 3 s ("Press X again..."), second X sends.
   The store applies `card` updates.
 - 352 Vitest tests (new: engine `helpdesk.test.ts`, server `guard.test.ts`), 10 Playwright (new: detain in the browser).
-- Not yet: bot hacker (Part F); bots never accuse, vote or detain (Part G).
+- Not yet: bot hacker (Part F, skipped); bots never accuse, vote or detain (Part G: they now speak and vote, see below).
+
+### Part G: what exists now
+
+- Bots keep FINDINGS (`bots/manager.ts`, `Finding { time, text, suspect, weight }`, `findings(id)`), separate from
+  observations and kept across leaving/returning. Sources, all from the bot's own eyes or screen:
+  weight 3 "X stood right behind me at DESK while I typed my password" (`watchedBy`, 7 in 10);
+  weight 3 "I saw X doing something to my PC" (someone holding the USB stick at the bot's desk, seen in `look()`);
+  weight 2 "I saw X sitting at my PC DESK while I was away" (`look()`);
+  weight 1 "I saw X in the server room; they do not work in IT" (`look()`, jobs other than sysadmin/helpdesk);
+  weight 0 own-PC checks. The same story within 5 minutes is not counted twice. At most 40 findings per bot.
+- Own-PC checks (`bots/brain.ts`): every 8-20 game minutes (first after 4-10) a bot at its own shell types
+  `last -n 10` or `crontab -l` (`SELF_CHECKS`) and `inspect()` reads the output: a login TODAY over the network from
+  another address ("Someone logged in to my PC ... as USER from IP at HH:MM"), or an `@reboot` crontab line.
+  These checks use their own random sequence (`BotSubject.checks`, seeded from the player id) so the rest of each
+  bot's day did not change (two statistical tests depended on it).
+- Meetings (`game.ts` `planBotMeeting` / `tickBotMeeting`): when a meeting is called each bot present decides what
+  it will say (`BotManager.speech`: its two strongest findings, or 1 in 4 times "Nothing odd on my side.") and says it
+  at 10-60 % of the discussion. In the vote each bot votes at 15-70 % of the voting time (`BotManager.ballot`):
+  the accused person it has the most against if that is >= 2 (`VOTE_THRESHOLD`); "skip" if it has >= 3 against
+  somebody NOT accused; otherwise it does not vote at all (abstains, so it never outvotes people who have evidence).
+  Bots never accuse (an accusation needs board items, which only humans pin) and never detain.
+- `postChat()` is now the single way a meeting/fired chat line is sent (humans and bots).
+- Engine exports `lastStamp` (time format of `last`).
+- 361 Vitest tests (new: server `defenders.test.ts`), 10 Playwright.
 
 ## Phase 5 plan (investigation & social deduction)
 

@@ -269,6 +269,13 @@ Decided in Phase 5 (part E):
 - **Helpdesk console.** The helpdesk's PC has a `helpdesk` command, usable only by the helpdesk account: `status` shows every PC's screen (login, locked, UNLOCKED), `lock HOST` locks a PC remotely, `reset USER` gives an account a new password on every machine. Like everything else it is only as safe as the helpdesk's own screen: whoever finds Dana's PC unlocked can use it.
 - **Traces.** A remote lock writes a line on the locked PC naming the account that asked and its IP; a reset writes two lines on the admin server. The new password is shown on the helpdesk's screen and reaches its owner on their card (a bot simply learns it); nobody else is sent it. Open sessions stay open after a reset, as on real Linux.
 
+Decided in Phase 5 (part G):
+
+- **Bot defenders are witnesses.** A bot employee remembers what it saw with its own eyes and on its own screen: somebody standing right behind it while it typed its password, somebody at its PC while it was away or fiddling with it, somebody without an IT job in the server room. Every few minutes it also checks its own PC (`last`, `crontab -l`) and notices a login from another address or a scheduled line it never added.
+- **In a meeting** each bot says its strongest one or two findings in the chat (or that it saw nothing). It never accuses: accusations need evidence on the board, and the board is the investigators' work.
+- **Bots vote only on what they know.** A bot votes for an accused person if what it saw adds up to enough (being watched while typing a password is enough on its own; one sighting in the server room is not). It votes "skip" if it strongly suspects someone else, and otherwise does not vote at all, so bots never outvote the people who did the investigating.
+- **Part F (a bot hacker) is postponed** at the owner's request; until it exists the hacker is a human player.
+
 ### Lobby scaling
 | Players | Hackers |
 |---|---|
