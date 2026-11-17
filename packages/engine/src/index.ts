@@ -60,5 +60,6 @@ export function deserializeWorld(json: string): World {
   if (world.version !== 1) throw new Error(`Unsupported world version: ${String(world.version)}`);
   // Saves from before Phase 4 D have no keyboard recorders yet.
   world.toolkit.keyloggers ??= [];
+  world.toolkit.phishing ??= [];
   return world;
 }

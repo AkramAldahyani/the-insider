@@ -287,6 +287,33 @@ As the hacker (Omar), sitting at `MKT-LT-11`:
 
 As anybody else: `ls /home/o.farouk/.tools` says `Permission denied`. Developer panel -> **Events -> show last** lists `tool.run` and `tool.done` with Omar's player id.
 
+## V2. Phase 4, part E: simulated reset mail and log cleaning
+
+Run `corepack pnpm dev`. Open two tabs: join as the hacker **Khalid (p5)** in the first, and **Lina (p3)**
+in the second. Use each character's onboarding card and their own PC. This choice gives the hacker
+the sysadmin's ordinary simulated sudo rights for the cleaning check.
+
+1. On Khalid's PC run `~/.tools/phish l.haddad`. Note the private result filename printed on screen.
+2. On Lina's PC run `mail`, then `mail NUMBER` for the newest IT reset message. Verify `From: IT`,
+   `spf=fail`, and a `Received` header naming `IT-WS-02` and its simulated IP.
+3. Read the result file on Khalid's PC: it should still say waiting. On Lina's PC use `curl -I URL`
+   with the exact displayed reset link; that also leaves the result waiting.
+4. On Lina's PC use `curl URL`. Her screen acknowledges receipt without showing a password.
+   Khalid's result file now contains Lina's **game** username/password. Visiting again does not recapture.
+5. On Khalid's PC use `ssh ADMIN-SRV-01`, authenticate with his card, and inspect `/var/log/mail.log`,
+   `/var/log/named/queries.log` and `/var/log/squid/access.log`. Correlate the message's sender and the
+   visiting PC. No password should appear in these logs. `exit` returns to his PC.
+6. Pin a selected auth-log line containing `session` to the evidence board. Run
+   `sudo ~/.tools/clean /var/log/auth.log "session"` and authenticate. Verify matching lines are removed,
+   `tail /var/log/auth.log` shows `EVENT=log-cleared`, and `journalctl -n 5` shows a clearing event.
+   The pinned item must still contain the original evidence. A plain account cannot edit the same log.
+7. With bots enabled, send a reset message to a bot employee and continue playing. Bots read their own
+   inbox and decide once per message whether to follow, with a 30% chance. A non-response is expected
+   for many messages. Successful visits leave the same DNS/proxy traces as a human's visit.
+
+Automated coverage: `packages/engine/test/phishing-cleaner.test.ts`,
+`packages/server/test/phishing-cleaner.test.ts`, and the `simulated reset mail` browser test.
+
 ## W. Phase 4, part C: the USB stick and shoulder surfing
 
 Start with `VULNS=none` and join as the hacker (Omar).

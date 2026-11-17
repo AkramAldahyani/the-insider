@@ -29,6 +29,8 @@ import { getNode, sysMkdir, sysWrite } from '../fs/vfs';
 import { removeProcess, spawn } from '../proc/processes';
 import type { Host, ToolJob, World } from '../types';
 import { remoteTools } from './remote';
+import { phish } from './phishing';
+import { clean } from './cleaner';
 import { findUser } from '../auth/accounts';
 
 export type Noise = 'quiet' | 'low' | 'loud';
@@ -87,7 +89,7 @@ const selftest: ToolDefinition = {
 };
 
 /** Every tool, in the order the README lists them. Later parts add theirs here. */
-export const TOOLS: ToolDefinition[] = [selftest, ...remoteTools];
+export const TOOLS: ToolDefinition[] = [selftest, ...remoteTools, phish, clean];
 
 export function toolByName(name: string): ToolDefinition | undefined {
   return TOOLS.find((t) => t.name === name);

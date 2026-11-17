@@ -13,7 +13,7 @@ import { renderMail } from '../commands/mail';
 import { uidOf } from '../auth/accounts';
 import { watchedFile } from '../security/alerts';
 import { fullStamp, isoSecond, syslogStamp } from '../core/time';
-import { sysWrite } from '../fs/vfs';
+import { getNode, sysWrite } from '../fs/vfs';
 import type { GameEvent, Host, World } from '../types';
 
 const str = (v: unknown) => String(v ?? '');
@@ -41,6 +41,14 @@ export function materialize(world: World, e: GameEvent): void {
   const sudoCtx = `TTY=${str(d.tty)} ; PWD=${str(d.cwd)} ; USER=${str(d.runAs)} ; COMMAND=${str(d.command)}`;
 
   switch (e.type) {
+    case 'log.clear': {
+      const text = `log cleared PATH=${str(d.path)} USER=${e.user} REMOVED=${str(d.removed)}`;
+      const path = str(d.path);
+      const prefix = getNode(host, path)?.content?.endsWith('\n') || !getNode(host, path)?.content ? '' : '\n';
+      sysWrite(host, path, `${prefix}${isoSecond(world.time)} EVENT=log-cleared ${text}\n`, { time: world.time, append: true });
+      syslog(world, host, 'log-cleaner', null, text);
+      break;
+    }
     case 'network.scan': {
       const sensor = world.hosts[world.badges.serverHost || world.dhcp.serverHost];
       if (sensor) sysWrite(sensor, '/var/log/ids/alerts.log', `${isoSecond(world.time)} RULE=network-scan SRC=${e.sourceIp} USER=${e.user} TARGET=${str(d.target)} HOSTS=${str(d.hosts)} SEVERITY=medium\n`, { owner: 'root', group: 'adm', mode: 0o640, time: world.time, append: true });

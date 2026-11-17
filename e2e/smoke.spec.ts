@@ -394,6 +394,59 @@ test('the hacker reads a forgotten root password, gets the flag, hands it in, an
   await other.close();
 });
 
+test('simulated reset mail leaves private loot and cleaning a log leaves a tamper marker', async ({ page, browser }) => {
+  await page.goto('/');
+  await page.getByTestId('join-as-hacker').check();
+  await page.getByTestId('employee-p5').click(); // Khalid: a hacker with the sysadmin's ordinary permissions.
+  const password = await page.getByTestId('card-password').innerText();
+  await page.keyboard.press('c');
+  const context = await browser.newContext();
+  const victim = await context.newPage();
+  try {
+    await victim.goto('/');
+    await victim.getByTestId('employee-p3').click();
+    const victimPassword = await victim.getByTestId('card-password').innerText();
+    await victim.keyboard.press('c');
+    const run = async (tab: Page, line: string) => {
+      await tab.locator('.xterm-helper-textarea').focus();
+      await tab.keyboard.type(line);
+      await tab.keyboard.press('Enter');
+    };
+    await walkToDesk(page, 'IT-WS-02');
+    await page.keyboard.press('e');
+    await expect(page.getByTestId('terminal')).toBeVisible();
+    if (await page.getByTestId('terminal').getAttribute('data-screen') === 'locked') await run(page, password);
+    await expect(page.getByTestId('terminal')).toHaveAttribute('data-screen', 'shell');
+    await run(page, '~/.tools/phish l.haddad');
+    await expect.poll(() => terminalText(page)).toContain('Reset message sent');
+    const file = /phish-\d+\.txt/.exec(await terminalText(page))![0];
+
+    await walkToDesk(victim, 'HR-LT-03');
+    await victim.keyboard.press('e');
+    await expect(victim.getByTestId('terminal')).toHaveAttribute('data-screen', 'shell');
+    await run(victim, 'mail');
+    await expect.poll(() => terminalText(victim)).toContain('IT password reset');
+    const number = /N\s*(\d+)\s+IT\s/.exec(await terminalText(victim))![1];
+    await run(victim, `mail ${number}`);
+    await expect.poll(() => terminalText(victim)).toContain('spf=fail');
+    await expect.poll(() => terminalText(victim)).toContain('password-reset.example/reset/');
+    const link = /https:\/\/password-reset\.example\/reset\/\d+/.exec(await terminalText(victim))![0];
+    await run(victim, `curl ${link}`);
+    await expect.poll(() => terminalText(victim)).toContain('request has been received');
+    expect(await terminalText(victim)).not.toContain(victimPassword);
+    await run(page, `cat ~/.tools/loot/${file}`);
+    await expect.poll(() => terminalText(page)).toContain(`l.haddad:${victimPassword}`);
+    await run(page, 'sudo ~/.tools/clean /var/log/auth.log "session"');
+    await expect.poll(() => terminalText(page)).toContain('[sudo] password for k.nasser');
+    await run(page, password);
+    await expect.poll(() => terminalText(page)).toContain('a log cleared trace remains');
+    await run(page, 'tail -n 2 /var/log/auth.log');
+    await expect.poll(() => terminalText(page)).toContain('EVENT=log-cleared');
+  } finally {
+    await context.close();
+  }
+});
+
 test('the guard uses the security monitors: camera pictures, badge log', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('employee-p10').click(); // Tariq, in the security office

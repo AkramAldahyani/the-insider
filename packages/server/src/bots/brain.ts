@@ -63,6 +63,8 @@ export interface BrainWorld {
   myIp(): string;
   /** The bot noticed something odd while checking its own PC: it remembers it (and may tell a meeting). */
   report(finding: { text: string; suspect?: string; weight: number }): void;
+  /** Whether the own inbox shows an unread IT reset subject; ordinary mail is part of everyday work. */
+  hasUnreadMail(): boolean;
 }
 
 /** Everything fixed about one bot. */
@@ -112,6 +114,10 @@ export interface Mind {
   doing: string;
   /** Game time of the next look at its own PC for anything odd (Phase 5, part G). */
   nextCheckAt: number;
+  /** The next inbox action learned from the bot's own terminal output. */
+  mailCommand: string;
+  /** A read message gets one response decision, even if ordinary work rereads it. */
+  seenMail: string[];
 }
 
 export function newMind(now: number, random: Random, taskEveryMs: number): Mind {
@@ -122,6 +128,7 @@ export function newMind(now: number, random: Random, taskEveryMs: number): Mind 
     // The first task starts some time after sitting down, not all at once.
     typing: false, errand: '', errandMs: 0, nextTaskAt: now + random.between(0.2, 0.8) * taskEveryMs, stepKey: '', stepTries: 0,
     nextCheckAt: Infinity, // set by firstCheck() (its own random numbers)
+    mailCommand: '', seenMail: [],
   };
 }
 
@@ -134,6 +141,7 @@ export interface BotSubject {
   random: Random;
   /** Separate random numbers for checking the own PC, so adding those checks did not reshuffle the rest of the day. */
   checks: Random;
+  mailRandom: Random;
   world: BrainWorld;
 }
 
@@ -156,6 +164,19 @@ function pause(b: BotSubject, min: number, max: number): void {
   b.mind.nextKeyAt = b.world.now() + b.random.between(min, max) * SECOND;
 }
 const ready = (b: BotSubject) => b.world.now() >= b.mind.nextKeyAt;
+
+/** Reading mail during a task or ordinary work uses the same response decision. */
+function typeWork(b: BotSubject, command: string): void {
+  const own = atOwnShell(b);
+  b.mind.screen = b.world.type(command);
+  if (own && /^mail\s+\d+$/.test(command)) {
+    const id = /^Message-ID: (.+)$/m.exec(b.mind.screen.output)?.[1];
+    if (id && !b.mind.seenMail.includes(id)) {
+      b.mind.seenMail.push(id);
+      b.mind.mailCommand = resetLink(b.mind.screen.output, b.mailRandom.next());
+    }
+  }
+}
 
 /** How often, and for how long, each role leaves its desk (game seconds). */
 function rhythm(role: string): { work: [number, number]; away: [number, number] } {
@@ -218,6 +239,7 @@ function leaveDesk(b: BotSubject): Status {
   }
   b.world.stand();
   mind.screen = null;
+  mind.mailCommand = '';
   mind.leaving = 'undecided';
   return 'success';
 }
@@ -349,6 +371,17 @@ function work(b: BotSubject): Status {
     return 'running';
   }
 
+  // A queued read/click comes only from the inbox text this bot saw. Never act
+  // on a message while using somebody else's account or a remote shell.
+  if (atOwnShell(b) && mind.mailCommand) {
+    const command = mind.mailCommand;
+    mind.mailCommand = '';
+    typeWork(b, command);
+    mind.doing = 'reading mail';
+    pause(b, 3, 8);
+    return 'running';
+  }
+
   // The next task step - unless it would START a new task before it is time (task pace).
   const next = b.world.nextStep();
   const step = next && (next.index > 0 || inRemoteShell(b) || b.world.now() >= mind.nextTaskAt) ? next : null;
@@ -375,9 +408,18 @@ function work(b: BotSubject): Status {
       pause(b, 2, 5);
       return 'running';
     }
-    mind.screen = b.world.type(step.run);
+    typeWork(b, step.run);
     mind.doing = `task: ${step.title}`;
     pause(b, 3, 10);
+    return 'running';
+  }
+
+  if (atOwnShell(b) && b.world.hasUnreadMail()) {
+    mind.screen = b.world.type('mail');
+    const unread = [...mind.screen.output.matchAll(/^N\s*(\d+)\s/gm)].at(-1);
+    mind.mailCommand = unread ? `mail ${unread[1]}` : '';
+    mind.doing = 'checking mail';
+    pause(b, 3, 8);
     return 'running';
   }
 
@@ -400,11 +442,18 @@ function work(b: BotSubject): Status {
     return 'running';
   }
   if (b.random.chance(0.6)) {
-    mind.screen = b.world.type(b.random.pick(persona.commands));
+    typeWork(b, b.random.pick(persona.commands));
     mind.doing = 'working';
   } else mind.doing = 'reading';
   pause(b, 15, 50);
   return 'running';
+}
+
+/** Only the fixed in-game reset links can become a bot command; mail text is never executable. */
+export function resetLink(output: string, roll: number): string {
+  const body = output.split('\n\n').slice(1).join('\n\n');
+  const link = /^https:\/\/password-reset\.example\/reset\/[1-9]\d*$/m.exec(body)?.[0];
+  return link && roll < 0.3 ? `curl ${link}` : '';
 }
 
 // ───────────────────────────── Checking the own PC ─────────────────────────────

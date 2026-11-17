@@ -7,6 +7,7 @@ import type { Host } from '../types';
 import type { CmdCtx, Handler } from './types';
 import { fail } from './types';
 import { parseArgs } from './util';
+import { phishingSite, visitPhishing } from '../tools/phishing';
 
 const ip: Handler = (c, args) => {
   const what = args.find((a) => !a.startsWith('-')) ?? '';
@@ -167,7 +168,7 @@ const curl: Handler = (c, args) => {
   const [, scheme, name, path = '/'] = match;
   const base = { host: c.host.hostname, user: c.cred.user, sourceIp: c.session.sourceIp };
 
-  const site = c.world.web.sites.find((s) => s.host.toLowerCase() === name.toLowerCase());
+  const site = phishingSite(c.world, name) ?? c.world.web.sites.find((s) => s.host.toLowerCase() === name.toLowerCase());
   const internal = site ? undefined : lookup(c, name);
   emit(c.world, { ...base, type: 'dns.query', details: { name, found: !!(site ?? internal), ip: site?.ip ?? internal?.ip ?? '' } });
   if (!site && !internal) return fail(`curl: (6) Could not resolve host: ${name}`, 6);
@@ -181,6 +182,8 @@ const curl: Handler = (c, args) => {
   emit(c.world, { ...base, type: 'web.request', details: { method: flags.has('I') ? 'HEAD' : 'GET', url: `${scheme.toLowerCase()}://${site.host}${path}`, site: site.host, ip: site.ip, status: 200, bytes: flags.has('I') ? 0 : bytes, ms, category: site.category, agent: 'curl' } });
 
   if (flags.has('I')) return { stdout: `HTTP/1.1 200 OK\nServer: nginx\nContent-Type: text/html; charset=utf-8\nContent-Length: ${bytes}\nVia: 1.1 ${c.world.web.proxyHost} (squid)\n\n` };
+  const reset = visitPhishing(c, url);
+  if (reset !== null) return { stdout: reset };
   return { stdout: `<!doctype html>\n<html>\n<head><title>${site.title}</title></head>\n<body>\n<h1>${site.title}</h1>\n<p>${site.category} page ${path} (${bytes} bytes, simulated).</p>\n</body>\n</html>\n` };
 };
 

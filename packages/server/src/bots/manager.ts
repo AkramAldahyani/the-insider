@@ -194,7 +194,7 @@ export class BotManager {
       const s = bot.subject;
       if (!s) continue;
       s.mover.stop();
-      Object.assign(s.mind, { screen: null, breakSpot: null, breakRoom: '', atBreakSpot: false, breakUntil: 0, errand: '', errandMs: 0, leaving: 'undecided', loginSteps: 0 });
+      Object.assign(s.mind, { screen: null, breakSpot: null, breakRoom: '', atBreakSpot: false, breakUntil: 0, errand: '', errandMs: 0, leaving: 'undecided', loginSteps: 0, mailCommand: '' });
     }
   }
 
@@ -353,6 +353,7 @@ export class BotManager {
       colleagueDesks: () => workstations.filter((h) => h.department === own?.department).map((h) => h.hostname),
       otherDesks: () => workstations.map((h) => h.hostname),
       myIp: () => (own ? host.world.hosts[own.hostname]?.ip ?? '' : ''),
+      hasUnreadMail: () => host.world.mail.messages.some((m) => m.to.includes(body.account) && !m.readBy.includes(body.account) && m.subject === 'IT password reset'),
       report: (f) => {
         const bot = this.bots.get(body.playerId);
         if (bot) this.find(bot, { suspect: f.suspect ?? '', weight: f.weight, text: f.text });
@@ -375,6 +376,7 @@ export class BotManager {
     const checks = new Random([...player.id].reduce((h, ch) => Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0, 0xc4ec1d));
     bot.subject = {
       persona, body, mover, random: bot.random, checks,
+      mailRandom: new Random([...player.id].reduce((h, ch) => Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0, world.seed ^ 0x6d61696c)),
       mind: newMind(world.time, bot.random, persona.taskEveryMs),
       world: this.brainWorld(body, bot.random),
     };

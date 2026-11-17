@@ -336,8 +336,20 @@ export interface ToolkitState {
   nextJob: number;
   backdoors: Backdoor[];
   keyloggers: Keylogger[];
+  /** Simulated reset messages and their private result destinations. Never public state. */
+  phishing: PhishingMessage[];
   /** USB devices plugged in so far (numbers the kernel's "device N" lines). */
   usbCount: number;
+}
+
+export interface PhishingMessage {
+  mailId: number;
+  url: string;
+  recipient: string;
+  host: string;
+  account: string;
+  path: string;
+  captured: boolean;
 }
 
 // ───────────────────────────── Unattended PCs ─────────────────────────────

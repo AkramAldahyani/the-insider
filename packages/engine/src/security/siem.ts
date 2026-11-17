@@ -186,6 +186,8 @@ const audit: Parser = (_world, host, line) => {
   return { time: Number(m[1]) * 1000 + Number(m[2]), host, source: 'audit', raw: line, fields: { result: m[3] === 'yes' ? 'success' : 'failure', auid: m[4], uid: m[5], command: m[6], key: m[7] } };
 };
 
+const cleared = isoLine('tamper', (_rest, f) => { f.action = 'log-cleared'; });
+
 /** Which files are collected, and how each is read. */
 const FILES: [string, Parser][] = [
   ['/var/log/auth.log', auth],
@@ -211,7 +213,8 @@ export function collect(world: World): SiemRecord[] {
       if (!content) continue;
       for (const line of content.split('\n')) {
         if (!line) continue;
-        const record = parse(world, host.hostname, line);
+        const record = line.slice(20).startsWith('EVENT=log-cleared ')
+          ? cleared(world, host.hostname, line) : parse(world, host.hostname, line);
         if (record) out.push(record);
       }
     }

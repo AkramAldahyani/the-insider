@@ -11,7 +11,7 @@ Update it at the end of every part.
 | 2 Office in the browser | done |
 | 3 Living office | done, pushed by the owner |
 | 3+ Owner's changes after Phase 3 | done (section below) |
-| 4 Hacker gameplay | done except parts D and E (deferred by the owner) |
+| 4 Hacker gameplay | Parts A-G done (including D and E); H partly done: CLI hacker selection remains |
 | 5 Investigation & social deduction | **in progress**: Parts A-E and G done, F skipped (see Phase 5 status) |
 
 ## Phase 5 status: plan APPROVED by the owner (defaults 1-6 accepted); Parts A-E and G DONE; Part F SKIPPED by the owner; Part H next
@@ -172,19 +172,19 @@ Defaults (approved by the owner):
 2. Chat: meeting-only text chat in Phase 5; open chat and the hackers' private chat stay in Phase 6.
 3. Roles follow the scenario's jobs for now; the hacker is a bot by default, a human can still join as the
    hacker. Random secret roles for humans come with multiplayer lobbies (Phase 6).
-4. The bot hacker uses only existing tools; remote tools and phishing stay deferred.
+4. The bot hacker uses only existing tools. Remote tools and phishing were deferred when this plan was approved; Phase 4 D and E are now implemented. Phase 5 F remains skipped.
 5. Detain: the guard may detain someone within 2 tiles; right = defenders win, wrong = the guard loses the power.
 6. No time limit; anti-stall as in DESIGN.md section 1 (every 10 game minutes the SIEM flags one real hacker event HIGH).
 
-## Phase 4 status: Parts A, B, C, D, F and G DONE; Part E DEFERRED by the owner; H partly done
+## Phase 4 status: Parts A-G DONE; H partly done
 
 | Part | State |
 |---|---|
 | A Match secrets: the hacker and the weaknesses | **done** |
-| B Tool framework | **done** (mechanism + the harmless `selftest` tool only) |
+| B Tool framework | **done** (mechanism and `selftest`; D and E add the remaining shell tools) |
 | C Physical tools: USB stick, shoulder surfing | **done** |
 | D Remote tools: implant, keylogger, hash cracker, network scanner | **done** (owner asked to finish it, 2026-11-17; see below) |
-| E Phishing kit and log cleaner | **deferred** (see below) |
+| E Phishing kit and log cleaner | **done** (owner requested completion, 2026-11-17; see below) |
 | F Flag, winning, audit log, security alerts | **done** |
 | G Route tests (2+ complete routes) | **done** (2 routes, see below) |
 | H Dev panel, browser test, CLI, docs | partly: dev panel and browser test done; CLI cannot join as the hacker yet |
@@ -208,17 +208,33 @@ tools import only the engine's own virtual files, processes and DNS).
 - Tests: engine `remote-tools.test.ts` (19), server `remote-tools.test.ts` (2: scan visibility and banner; captured
   passwords and job results never reach bystanders or public state). 383 Vitest, 10 Playwright.
 
-**Part E is still deferred (owner, 2026-11-17): "skip this part for now but we will do it later".** Under
-Opus 5.5 the first attempt at Part D was stopped by a safety classifier before any file changed. Do not start
-D or E again unless the owner asks. When they do: each tool is one `ToolDefinition` in `TOOLS`
-(`engine/src/tools/toolkit.ts`); the USB backdoors from Part C are in `world.toolkit.backdoors`.
-Without D and E the hacker can still reach the flag through the weaknesses (plaintext root password, extra sudo,
-careless sysadmin, weak admin password via shoulder surfing). Suggested next, pending the owner's choice:
-the defender-side parts of F (flag delivery and win, end screen, /etc/shadow audit line, IDS log and global
-alert), then Phase 5 work that needs no more tools.
+**Part E is DONE (2026-11-17).** The owner resumed it with "finish phase 4 e".
+- `engine/src/tools/phishing.ts`: `~/.tools/phish USER` sends a fixed simulated IT reset email to one
+  employee, with spoofed From, SPF fail, and the actual simulated sending host/IP in Received and mail.log.
+  Cooldown: 60 game seconds. Results belong to the sending account on the sending host, mode 600.
+- Following the exact `https://password-reset.example/reset/ID` link with the simulated `curl` submits
+  only that recipient account's current in-game credential, once. Reading mail and `curl -I` do not submit.
+  DNS and proxy logs identify the visiting PC/account; neither those logs nor the page response contains
+  the password. Public, missing, non-file or foreign-owned result destinations are refused. No real network or forms exist.
+- Bots notice unread reset subjects in their own inboxes, read messages through the terminal, and decide
+  once per message whether to follow (30%, separate seeded randomness). Only a strictly validated game
+  link can become a command. Ordinary mail and the existing job/check routines remain in place.
+- `engine/src/tools/cleaner.ts`: `~/.tools/clean LOG "TEXT"` removes literal matching lines from a writable
+  file under the current simulated host's `/var/log`. Cooldown: 30 game seconds. Unix permissions apply.
+  A new `EVENT=log-cleared` marker survives each successful removal, with a journal event and master record.
+  Remaining timestamps stay unchanged; the SIEM sees the remaining file and its tamper marker. Previously
+  pinned evidence, journal history, and the master event history are not deleted.
+- New engine/server tests cover headers, read/HEAD vs visit, current credentials, one-shot capture,
+  destinations, privacy, cross-world isolation, pivot attribution, save compatibility, literal matching,
+  permissions, SIEM tampering, pinned evidence and bot decisions. Browser coverage plays both tools.
+- Simulated `sudo` now accepts tool paths through the normal dispatcher after authorization; regression
+  coverage verifies password gating, refusal for unauthorized accounts and refusal to run ordinary scripts.
+- Validation: **398 Vitest tests passed**, typecheck passed, production build passed. All **11 browser
+  scenarios passed** (10 first attempt, 1 on retry: an edit during the run restarted the watched test server
+  and disconnected the first smoke test; its retry passed). The new Phase 4 E browser scenario passed.
 
 Owner-approved defaults: "join as the hacker" on the start screen (one per match); the hacker is NOT told which
-weaknesses are on; winning = exfiltrating the flag; bots fall for phishing about 30 %; scanner alerts go to everyone.
+weaknesses are on; winning = submitting the flag (Part F decision); bots fall for phishing about 30 %; scanner alerts go to everyone.
 
 ### Part A: what exists now
 
@@ -303,7 +319,7 @@ weaknesses are on; winning = exfiltrating the flag; bots fall for phishing about
 
 ### What is left of Phase 4
 
-- Parts D and E (deferred by the owner).
+- Parts D and E are complete; no deferred shell tools remain.
 - CLI: joining as the hacker (`setHacker`) is not exposed in the CLI.
 - No "match over" reset: a new match needs every client to leave (the room then closes) or a server restart.
 

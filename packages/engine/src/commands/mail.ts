@@ -47,7 +47,7 @@ export function renderMail(world: World, m: MailMessage): string {
     `Received: from ${m.sourceHost}.${world.domain} (${m.sourceHost}.${world.domain} [${m.sourceIp}])`,
     `\tby ${server} (Postfix) with ESMTP id ${m.queueId}`,
     `\tfor <${address(world, m.to[0])}>; ${mailDate(m.time)} (UTC)`,
-    `Authentication-Results: ${server}; spf=pass smtp.mailfrom=${world.domain}`,
+    `Authentication-Results: ${server}; spf=${m.headerFrom === m.from ? 'pass' : 'fail'} smtp.mailfrom=${world.domain}`,
     `Message-ID: <${m.queueId.toLowerCase()}.${m.id}@${m.sourceHost}.${world.domain}>`,
     `Date: ${mailDate(m.time)}`,
     `From: ${display(world, m.headerFrom)}`,
@@ -64,10 +64,10 @@ export function renderMail(world: World, m: MailMessage): string {
  * It draws NO random numbers (the queue id is derived from the message), so
  * old mail in a scenario does not change anything else in the world.
  */
-export function sendMail(world: World, input: { from: string; to: string[]; subject: string; body: string; sourceHost: string; sourceIp: string }): MailMessage {
+export function sendMail(world: World, input: { from: string; headerFrom?: string; to: string[]; subject: string; body: string; sourceHost: string; sourceIp: string }): MailMessage {
   const id = world.mail.messages.length + 1;
   const queueId = hashString(`${id}|${world.time}|${input.from}|${input.subject}`).toString(16).toUpperCase().padStart(8, '0') + (hashString(input.body, id) % 256).toString(16).toUpperCase().padStart(2, '0');
-  const message: MailMessage = { id, queueId, time: world.time, from: input.from, headerFrom: input.from, to: input.to, subject: input.subject, body: input.body, sourceHost: input.sourceHost, sourceIp: input.sourceIp, readBy: [] };
+  const message: MailMessage = { id, queueId, time: world.time, from: input.from, headerFrom: input.headerFrom ?? input.from, to: input.to, subject: input.subject, body: input.body, sourceHost: input.sourceHost, sourceIp: input.sourceIp, readBy: [] };
   world.mail.messages.push(message);
   emit(world, {
     host: world.mail.serverHost,
