@@ -13,14 +13,25 @@ Update it at the end of every part.
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | **planned, waiting for the owner's OK** (plan below) |
 
-## Phase 4 status: plan approved by the owner; Parts A, B and C DONE, Part D next
+## Phase 4 status: Parts A, B and C DONE; Parts D and E DEFERRED by the owner; next part not chosen yet
 
 | Part | State |
 |---|---|
 | A Match secrets: the hacker and the weaknesses | **done** |
 | B Tool framework | **done** (mechanism + the harmless `selftest` tool only) |
 | C Physical tools: USB stick, shoulder surfing | **done** |
-| D to H | not started |
+| D Remote tools: implant, keylogger, hash cracker, network scanner | **deferred** (see below) |
+| E Phishing kit and log cleaner | **deferred** (see below) |
+| F to H | not started |
+
+**Parts D and E are deferred (owner, 2026-11-17): "skip this part for now but we will do it later".** Under
+Opus 5.5 the first attempt at Part D was stopped by a safety classifier before any file changed. Do not start
+D or E again unless the owner asks. When they do: each tool is one `ToolDefinition` in `TOOLS`
+(`engine/src/tools/toolkit.ts`); the USB backdoors from Part C are in `world.toolkit.backdoors`.
+Without D and E the hacker can still reach the flag through the weaknesses (plaintext root password, extra sudo,
+careless sysadmin, weak admin password via shoulder surfing). Suggested next, pending the owner's choice:
+the defender-side parts of F (flag delivery and win, end screen, /etc/shadow audit line, IDS log and global
+alert), then Phase 5 work that needs no more tools.
 
 Owner-approved defaults: "join as the hacker" on the start screen (one per match); the hacker is NOT told which
 weaknesses are on; winning = exfiltrating the flag; bots fall for phishing about 30 %; scanner alerts go to everyone.
