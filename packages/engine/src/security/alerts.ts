@@ -19,6 +19,7 @@
  * a full office of bots and checks exactly that.
  */
 import { emit } from '../events/log';
+import { isoSecond } from '../core/time';
 import type { GameEvent, World } from '../types';
 
 export type Severity = 'low' | 'medium' | 'high';
@@ -53,6 +54,41 @@ function raise(world: World, rule: string, severity: Severity, about: GameEvent,
     host, user: '', sourceIp: about.sourceIp, type: 'security.alert',
     details: { rule, severity, target: about.host, account: about.user, summary },
   });
+}
+
+/**
+ * The hacker's actions that the anti-stall rule may pick: each left a line in
+ * some log, so an analyst can find it in the SIEM once pointed at it. Ordinary
+ * things everybody does (logging in at the own desk, typing commands) are not
+ * on the list; reading a file counts only for the watched files.
+ */
+const ESCALATION_TYPES = new Set([
+  'ssh.accept', 'ssh.fail', 'su.success', 'su.fail', 'sudo.exec', 'sudo.fail', 'sudo.denied', 'unlock.fail', 'login.fail',
+  'usb.insert', 'backdoor.install', 'implant.connect', 'keylogger.install', 'network.scan', 'scp.transfer', 'log.clear',
+  'mail.send', 'tool.run', 'file.read',
+]);
+
+/**
+ * ANTI-STALL (DESIGN.md section 1, "Match length"): called every few game
+ * minutes by the game server. It takes the OLDEST real action of the hacker
+ * that was not re-scored yet and raises it again as a HIGH alert, with the
+ * facts its log line has (machine, account, source address, time). So a
+ * long match slowly hands the defenders a trail to follow, from its start.
+ * The alert never names a player: WHO was at the keyboard is still for the
+ * investigators to work out. Returns the event it flagged, or null when the
+ * hacker has done nothing new worth flagging (or there is no hacker).
+ */
+export function escalate(world: World): GameEvent | null {
+  const hacker = world.mission.hacker;
+  if (!hacker || world.noise.from === null) return null;
+  const done = new Set(world.mission.escalated);
+  const e = world.events.find((x) => x.actor === hacker && x.time >= world.noise.from! && !done.has(x.id) && ESCALATION_TYPES.has(x.type)
+    && (x.type !== 'file.read' || (!x.details.denied && watchedFile(world, x.host, String(x.details.path)) !== null)));
+  if (!e) return null;
+  world.mission.escalated.push(e.id);
+  const from = e.sourceIp ? ` from ${e.sourceIp}` : '';
+  raise(world, 'threat-escalation', 'high', e, `earlier activity re-scored HIGH: ${e.type} on ${e.host} (account ${e.user || '-'}${from}) at ${isoSecond(e.time)}`);
+  return e;
 }
 
 /** Called for every new master event (see events/log.ts). */

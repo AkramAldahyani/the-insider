@@ -73,6 +73,7 @@ export function applyWeaknesses(scenario: Scenario, seed: number, choice: Weakne
     carelessPlayer: '',
     onePersonDoors: [],
     won: null,
+    escalated: [],
   };
   if (!m) return { scenario: s, mission };
 

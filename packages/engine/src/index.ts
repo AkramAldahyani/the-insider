@@ -24,7 +24,7 @@ export { ROLES, ROLE_IDS, roleOf } from './core/roles';
 export type { RoleId, RoleInfo } from './core/roles';
 export type { WorldOptions } from './core/world';
 export { ALL_WEAKNESSES, briefing, chooseWeaknesses, setHacker, submitFlag } from './mission/mission';
-export { watchedFile } from './security/alerts';
+export { escalate, watchedFile } from './security/alerts';
 export { changePassword } from './auth/passwords';
 export { lastStamp } from './core/time';
 export { collect as siemCollect, siemQuery } from './security/siem';

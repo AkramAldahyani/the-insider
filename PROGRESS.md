@@ -12,9 +12,9 @@ Update it at the end of every part.
 | 3 Living office | done, pushed by the owner |
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | Parts A-G done (including D and E); H partly done: CLI hacker selection remains |
-| 5 Investigation & social deduction | **in progress**: Parts A-E and G done, F skipped (see Phase 5 status) |
+| 5 Investigation & social deduction | **in progress**: Parts A-E, G and H done, F skipped (see Phase 5 status) |
 
-## Phase 5 status: plan APPROVED by the owner (defaults 1-6 accepted); Parts A-E and G DONE; Part F SKIPPED by the owner; Part H next
+## Phase 5 status: plan APPROVED by the owner (defaults 1-6 accepted); Parts A-E, G and H DONE; Part F SKIPPED by the owner; Part I next
 
 **Part F (bot hacker) is SKIPPED for now, at the owner's request ("Skip F, start G").** A first attempt was stopped
 by the assistant's safety filter while writing the bot's attack logic; nothing of it was kept. Do not restart F unless
@@ -147,6 +147,29 @@ no hacker at all.
 - `postChat()` is now the single way a meeting/fired chat line is sent (humans and bots).
 - Engine exports `lastStamp` (time format of `last`).
 - 361 Vitest tests (new: server `defenders.test.ts`), 10 Playwright.
+
+### Part H: what exists now
+
+How a match ends (all in `server/src/game.ts`, all through `endMatch(winner, hackerName, reason)`):
+- Defenders win: the hacker voted out (Part D), or detained by the guard (Part E).
+- Hacker wins: the flag handed in (Phase 4 F), or PARITY (new, `checkParity()`, run after every firing): the
+  defenders left (the whole staff list minus the hacker minus the fired, present or not) are no more than the
+  hackers left (1). With 11 employees that is after nine wrong firings. Reason text:
+  "Only 1 defender is left, as many as hackers: the hacker took over the company."
+- No parity and no escalation in a match without a hacker. Reputation reaching 0 is NOT a win condition (DESIGN
+  does not list it; it is only shown). Open question for the owner if they want it.
+Anti-stall (DESIGN section 1, "Match length"):
+- Engine `security/alerts.ts` `escalate(world)`: picks the OLDEST action of the hacker (event `actor` = hacker,
+  since the match started) that is on `ESCALATION_TYPES` (ssh/su/sudo/login failures and successes, USB, backdoor,
+  implant, keylogger, scan, scp, log clear, mail sent, tool run, and reads of WATCHED files only) and not yet in
+  `world.mission.escalated`, and raises it again as `[HIGH] threat-escalation` with the facts of its log line:
+  `earlier activity re-scored HIGH: TYPE on HOST (account USER from IP) at TIME`. Never a player name.
+  Returns null when there is nothing new (or no hacker).
+- Server: every `escalationMinutes` GAME minutes (default 10; `STALL_MINUTES` env; 0 = off), counted from the
+  game's start. A HIGH alert also gives every player the usual vague banner (once a minute at most).
+- The SIEM already reads `/var/log/security/alerts.log`, so `siem rule=threat-escalation` (or `severity=high`)
+  finds them.
+- 403 Vitest tests (new: server `endings.test.ts`), 11 Playwright.
 
 ## Phase 5 plan (investigation & social deduction)
 

@@ -33,6 +33,8 @@ export interface AppOptions {
   weaknesses?: string;
   /** Meeting lengths in seconds, "discussion,voting,result" (default 90,45,8). */
   meetingSeconds?: string;
+  /** Anti-stall: game minutes between two re-scored hacker actions (default 10, 0 = off). */
+  stallMinutes?: number;
 }
 
 /** "random" / "none" / "extra-sudo,tailgate" -> what the game expects. Unknown names stop the server. */
@@ -65,6 +67,7 @@ export function loadGameOptions(options: AppOptions = {}): OfficeGameOptions {
     bots: options.bots ?? true,
     weaknesses: parseWeaknesses(options.weaknesses),
     meetingTimes: parseMeetingSeconds(options.meetingSeconds),
+    escalationMinutes: options.stallMinutes,
     seed: options.seed ?? 1,
     speed: options.speed ?? 1,
     writeDump: dev

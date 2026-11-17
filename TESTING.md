@@ -419,6 +419,16 @@ Use `pnpm dev` with bots (the default) and short meetings: `MEETING_SECONDS=40,2
 3. Without board evidence nobody can be accused, so the meeting ends with *Nobody was voted out.* (With three pins you could accuse someone; bots then vote for that person only if they saw something themselves, otherwise they do not vote.)
 4. Developer panel (`` ` ``): bots show *checking own PC* now and then; their PCs' command history (after they log out) contains `last -n 10` or `crontab -l`.
 
+## AE. Phase 5, part H: anti-stall and parity
+
+Quicker with `STALL_MINUTES=1` and `TIME_SPEED=10` (PowerShell: `$env:STALL_MINUTES='1'; $env:TIME_SPEED='10'; pnpm dev`). Two tabs: Omar joining **as the hacker**, and Huda (SOC analyst).
+
+1. As Omar, log in at MKT-LT-11 and type `ssh ADMIN-SRV-01` with his password, then `exit`.
+2. Wait one game minute. Every tab shows the vague *SECURITY ALERT* banner.
+3. As Huda, at SOC-WS-01: `siem rule=threat-escalation`. One line: *earlier activity re-scored HIGH: ssh.accept on ADMIN-SRV-01 (account o.farouk from ...)*. It names an account and an address, never a player.
+4. Each further game minute flags the next of Omar's actions, oldest first; ordinary commands (`whoami`, `ls`) never appear. With nothing new to flag, nothing more comes.
+5. Parity needs nine wrong firings in an office of eleven, so it is checked by the automated tests (`endings.test.ts`), not by hand.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -431,7 +441,7 @@ Use `pnpm dev` with bots (the default) and short meetings: `MEETING_SECONDS=40,2
 pnpm test
 ```
 
-Expected: `Test Files 37 passed (37)` and `Tests 398 passed (398)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
+Expected: `Test Files 38 passed (38)` and `Tests 403 passed (403)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
 
 ```bash
 pnpm e2e

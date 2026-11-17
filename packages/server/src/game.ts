@@ -14,7 +14,7 @@
  */
 import {
   advanceTime, cancelInput, createWorld, dateStamp, leaveTerminal, openTerminal, parseDuration, refreshTerminal,
-  awaitingSecret, currentPrompt, glimpse, plugUsb, submitFlag, sendInput, serializeWorld, setHacker, shoulderSurf, switchUser, usbCooldown, type FsNode, type OpenResult, type Scenario, type TerminalResult, type WeaknessChoice, type World,
+  awaitingSecret, currentPrompt, escalate, glimpse, plugUsb, submitFlag, sendInput, serializeWorld, setHacker, shoulderSurf, switchUser, usbCooldown, type FsNode, type OpenResult, type Scenario, type TerminalResult, type WeaknessChoice, type World,
 } from '@insider/engine';
 import {
   ALERT_BANNER_GAP_MS, BUTTON_DISTANCE, DETAIN_DISTANCE, INTERACT_DISTANCE, MONITOR_SHOTS, PLAYER_RADIUS, REPUTATION_PER_FIRING, distanceToRect, isFree, PLAYER_SPEED, SURF_BEHIND, SURF_SIDE, USB_HOLD_MS, moveWithCollision, parseOfficeMap, roomAt,
@@ -49,6 +49,11 @@ export interface OfficeGameOptions {
    * Default "random".
    */
   weaknesses?: WeaknessChoice;
+  /**
+   * Anti-stall: every this many GAME minutes one real hacker action is
+   * re-scored as a HIGH alert (default 10; 0 switches it off).
+   */
+  escalationMinutes?: number;
   /** Enables the developer messages (dev.*). MUST be false in production. */
   dev?: boolean;
   /** Dev only: saves a world dump and returns where it went. The game itself never touches the disk. */
@@ -84,6 +89,9 @@ export class OfficeGame {
   readonly fired = new Set<string>();
   /** Network id -> player id of fired HUMANS still watching. */
   private readonly ghosts = new Map<string, string>();
+  /** Game time of the next anti-stall escalation (Infinity = off). */
+  private nextEscalation: number;
+  private readonly escalationMs: number;
   /** The company's reputation (0-100). */
   reputation = 100;
   /** Set when the match has ended. */
@@ -145,6 +153,8 @@ export class OfficeGame {
     this.meetingSpots = this.findMeetingSpots();
     this.eyes = new Random((options.seed ?? 1) ^ 0x5ee5);
     this.talk = new Random((options.seed ?? 1) ^ 0x7a1c);
+    this.escalationMs = (options.escalationMinutes ?? 10) * 60_000;
+    this.nextEscalation = this.escalationMs > 0 ? this.world.time + this.escalationMs : Infinity;
     this.alertCursor = this.world.events.length;
     this.tasks = new TaskBoard(this.world, this.scenario, this.map, new Random((options.seed ?? 1) ^ 0x7a5c));
     this.bots = options.bots === false
@@ -697,6 +707,20 @@ export class OfficeGame {
       this.ghosts.set(body.clientId, playerId);
       this.send(body.clientId, 'fired', { reason: 'You were voted out at the meeting. You can watch, and talk with other fired players.' });
     } else this.bots?.remove(playerId);
+    this.checkParity();
+  }
+
+  /**
+   * DESIGN.md section 1: the hackers also win when the defenders left are no
+   * more than the hackers left. Everybody on the company's staff list counts
+   * (present or not), except the fired. With one hacker in an office of 11,
+   * that takes nine wrong firings.
+   */
+  private checkParity(): void {
+    const hacker = this.world.mission.hacker;
+    if (!hacker || this.over || this.fired.has(hacker)) return;
+    const defenders = this.world.players.filter((p) => p.id !== hacker && !this.fired.has(p.id)).length;
+    if (defenders <= 1) this.endMatch('hacker', this.nameOf(hacker), `Only ${defenders} defender${defenders === 1 ? ' is' : 's are'} left, as many as hackers: the hacker took over the company.`);
   }
 
   /** The meeting as one player sees it. */
@@ -852,6 +876,11 @@ export class OfficeGame {
       avatar.facing = avatar.dx < 0 ? 'left' : avatar.dx > 0 ? 'right' : avatar.dy < 0 ? 'up' : 'down';
     }
     if (!frozen) this.bots?.tick(realMs);
+    // Anti-stall: the longer the match, the more of the hacker's trail the SIEM points at.
+    if (!this.over && this.world.time >= this.nextEscalation) {
+      escalate(this.world);
+      this.nextEscalation += this.escalationMs;
+    }
     // Job tasks: tick off what was just typed or reached, and tell the humans whose list changed.
     this.announceAlerts();
     this.tasks.update([...this.avatars.values()]);

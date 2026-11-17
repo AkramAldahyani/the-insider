@@ -93,7 +93,7 @@ Other commands:
 | `BOTS=0 pnpm dev` | an empty office without bot employees (PowerShell: `$env:BOTS=0; pnpm dev`) |
 | `pnpm map` | regenerate `maps/office-small.json` from `maps/build-office.ts` (overwrites edits made in Tiled) |
 
-Server settings are environment variables: `GAME_PORT` (2567), `SCENARIO` (`nexora-small`), `MAP` (`office-small`), `SEED` (1), `TIME_SPEED` (game seconds per real second, 1), `BOTS` (`0` = an empty office with no bot employees), `MEETING_SECONDS` (meeting discussion, voting and result lengths, `90,45,8`), `VULNS` (today's weaknesses: `random` by default, `none`, or a list such as `extra-sudo,tailgate`), and `NODE_ENV=production` to switch the developer tools off.
+Server settings are environment variables: `GAME_PORT` (2567), `SCENARIO` (`nexora-small`), `MAP` (`office-small`), `SEED` (1), `TIME_SPEED` (game seconds per real second, 1), `BOTS` (`0` = an empty office with no bot employees), `MEETING_SECONDS` (meeting discussion, voting and result lengths, `90,45,8`), `STALL_MINUTES` (anti-stall: every N game minutes one of the hacker's actions is flagged HIGH in the SIEM, `10`, `0` = off), `VULNS` (today's weaknesses: `random` by default, `none`, or a list such as `extra-sudo,tailgate`), and `NODE_ENV=production` to switch the developer tools off.
 
 ## Run the CLI
 
@@ -131,7 +131,7 @@ pnpm test
 pnpm typecheck
 ```
 
-398 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, bots, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule).
+403 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, bots, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule).
 
 ```bash
 pnpm e2e

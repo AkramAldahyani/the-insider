@@ -286,6 +286,8 @@ export interface Mission {
   onePersonDoors: string[];
   /** Set when the hacker has won: the game time it happened. */
   won: number | null;
+  /** Ids of the hacker's events the anti-stall rule has already re-scored HIGH (security/alerts.ts `escalate`). */
+  escalated: number[];
 }
 
 // ───────────────────────────── Toolkit ─────────────────────────────
