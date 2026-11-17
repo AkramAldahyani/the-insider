@@ -198,6 +198,7 @@ const FILES: [string, Parser][] = [
   ['/var/log/badge/doors.log', door],
   ['/var/log/cctv/motion.log', cctv],
   ['/var/log/security/alerts.log', alert],
+  ['/var/log/ids/alerts.log', isoLine('ids', (_rest, f) => { f.src_ip = f.src; })],
   ['/var/log/audit/audit.log', audit],
 ];
 

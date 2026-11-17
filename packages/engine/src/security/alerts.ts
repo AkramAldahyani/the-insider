@@ -60,6 +60,8 @@ export function checkAlerts(world: World, e: GameEvent): void {
   if (e.type === 'security.alert' || world.noise.from === null) return; // nothing before the match starts
   const from = e.sourceIp ? ` from ${e.sourceIp}` : '';
   switch (e.type) {
+    case 'network.scan':
+      return raise(world, 'network-scan', 'medium', e, `network service scan from ${e.sourceIp} (${e.host}) towards ${String(e.details.target)}`);
     case 'usb.insert':
       return raise(world, 'usb-keyboard', 'low', e, `a new USB keyboard was plugged into ${e.host}`);
     case 'backdoor.install':

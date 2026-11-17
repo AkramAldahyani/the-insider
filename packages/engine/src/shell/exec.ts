@@ -15,7 +15,8 @@ import { findUser, getCred } from '../auth/accounts';
 import { topSession } from '../auth/sessions';
 import { dispatch } from '../commands/table';
 import type { CmdCtx, CmdResult } from '../commands/types';
-import { FsError, readFile, resolvePath, writeFile } from '../fs/vfs';
+import { readTracked } from '../commands/util';
+import { FsError, resolvePath, writeFile } from '../fs/vfs';
 import type { Session, Terminal, World } from '../types';
 import { expandWord, type ExpandEnv } from './expand';
 import { ShellSyntaxError } from './lexer';
@@ -97,7 +98,7 @@ function startCommand(run: Run, session: Session, cmd: SimpleCommand, stdin: str
     const words = expandWord(cmd.stdin, env);
     try {
       if (words.length !== 1) throw new Error('ambiguous');
-      stdin = readFile(c.host, resolvePath(session.cwd, words[0]), c.cred, now);
+      stdin = readTracked(c, words[0]);
     } catch (e) {
       return bashError(words[0] ?? '', e);
     }

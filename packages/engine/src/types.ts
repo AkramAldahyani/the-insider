@@ -126,7 +126,9 @@ export interface Session {
   id: string;
   host: string;
   user: string;
-  kind: 'console' | 'ssh' | 'su';
+  kind: 'console' | 'ssh' | 'su' | 'implant';
+  /** Implant sessions depend on this simulated listener remaining alive. */
+  backdoorPid?: number;
   /** Login shells print "logout" on exit and start in the home directory. */
   loginShell: boolean;
   tty: string;
@@ -301,6 +303,18 @@ export interface ToolJob {
   player: string | null;
   startedAt: number;
   finishAt: number;
+  /** Private input snapshot for deterministic jobs, never sent to browsers. */
+  data?: Record<string, string>;
+}
+
+/** A one-shot simulated keyboard recorder on one PC, scoped to its installing account. */
+export interface Keylogger {
+  host: string;
+  account: string;
+  player: string | null;
+  pid: number;
+  path: string;
+  captured: boolean;
 }
 
 /** A backdoor set up by the USB stick (see tools/physical.ts). It works while its process is alive. */
@@ -321,6 +335,7 @@ export interface ToolkitState {
   jobs: ToolJob[];
   nextJob: number;
   backdoors: Backdoor[];
+  keyloggers: Keylogger[];
   /** USB devices plugged in so far (numbers the kernel's "device N" lines). */
   usbCount: number;
 }

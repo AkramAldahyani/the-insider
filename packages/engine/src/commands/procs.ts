@@ -68,7 +68,15 @@ const kill: Handler = (c, args) => {
       if (pid === 1 || proc.command.startsWith('[')) continue; // init and kernel threads ignore signals
       const session = proc.sessionId ? c.world.sessions[proc.sessionId] : undefined;
       if (session && session.logoutTime === null) terminateSession(c.world, session, hard);
-      else removeProcess(c.host, pid);
+      else {
+        removeProcess(c.host, pid);
+        // Stopping a USB listener also hangs up every shell reached through it, including pivots.
+        for (const remote of Object.values(c.world.sessions)) {
+          if (remote.host === c.host.hostname && remote.backdoorPid === pid && remote.logoutTime === null) {
+            terminateSession(c.world, remote, hard);
+          }
+        }
+      }
     }
   }
   return { stderr: err, exit: err ? 1 : 0 };

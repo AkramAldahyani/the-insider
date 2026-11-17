@@ -36,6 +36,8 @@ export interface OpenSessionInput {
    * in the logs, as on a real server.
    */
   conn?: { port: number; pid: number };
+  /** Only for a simulated USB implant connection. */
+  backdoor?: { pid: number; port: number };
 }
 
 /**
@@ -56,6 +58,7 @@ function freeTty(world: World, host: Host, prefix: 'pts/' | 'tty'): string {
 
 export function openSession(world: World, input: OpenSessionInput): Session {
   const { host, user, kind, from, parent } = input;
+  const remote = kind === 'ssh' || kind === 'implant';
   const now = world.time;
   const entry = findUser(host, user);
   const home = entry?.home ?? '/';
@@ -69,9 +72,9 @@ export function openSession(world: World, input: OpenSessionInput): Session {
     user,
     kind,
     loginShell,
-    tty: kind === 'console' ? freeTty(world, host, 'tty') : kind === 'ssh' ? freeTty(world, host, 'pts/') : parent!.tty,
-    sourceIp: kind === 'ssh' ? from!.ip : (parent?.sourceIp ?? null),
-    sourcePort: kind === 'ssh' ? (input.conn?.port ?? randInt(world, 32768, 60999)) : (parent?.sourcePort ?? null),
+    tty: kind === 'console' ? freeTty(world, host, 'tty') : remote ? freeTty(world, host, 'pts/') : parent!.tty,
+    sourceIp: remote ? from!.ip : (parent?.sourceIp ?? null),
+    sourcePort: remote ? (input.conn?.port ?? randInt(world, 32768, 60999)) : (parent?.sourcePort ?? null),
     loginTime: now,
     logoutTime: null,
     locked: false,
@@ -104,7 +107,18 @@ export function openSession(world: World, input: OpenSessionInput): Session {
     return p;
   };
 
-  if (kind === 'ssh') {
+  if (kind === 'implant') {
+    // An ordinary shell under the USB listener's account; no SSH authentication or fabricated login.
+    session.backdoorPid = input.backdoor!.pid;
+    session.authPid = own('sysupd: remote shell', user, session.tty).pid;
+    own('bash', user, session.tty);
+    const port = input.backdoor!.port;
+    const client = spawn(world, from!, { user: parent!.user, command: `implant ${host.hostname}`, tty: parent!.tty, stat: 'S+', sessionId: id });
+    session.client = { host: from!.hostname, pid: client.pid };
+    host.connections.push({ localIp: host.ip, localPort: port, peerIp: from!.ip, peerPort: session.sourcePort!, pid: session.authPid, program: 'sysupd', sessionId: id });
+    from!.connections.push({ localIp: from!.ip, localPort: session.sourcePort!, peerIp: host.ip, peerPort: port, pid: client.pid, program: 'implant', sessionId: id });
+    emit(world, { host: host.hostname, user, sourceIp: from!.ip, type: 'implant.connect', details: { port, pid: session.authPid, fromHost: from!.hostname } });
+  } else if (kind === 'ssh') {
     // Server side: the two sshd processes and the user's shell.
     const priv = own(`sshd: ${user} [priv]`, 'root', '?');
     if (input.conn) {
@@ -176,7 +190,9 @@ export function closeSession(world: World, session: Session, opts: { writeHistor
   syncHost(world, host.hostname);
 
   const base = { host: host.hostname, user: session.user, sourceIp: session.sourceIp };
-  if (session.kind === 'ssh') {
+  if (session.kind === 'implant') {
+    emit(world, { ...base, type: 'implant.disconnect', details: { pid: session.authPid } });
+  } else if (session.kind === 'ssh') {
     emit(world, { ...base, type: 'ssh.disconnect', details: { port: session.sourcePort, pid: session.authPid, logindId: session.logindId } });
   } else if (session.kind === 'console') {
     emit(world, { ...base, type: 'logout', details: { pid: session.authPid, logindId: session.logindId } });
@@ -222,7 +238,7 @@ export function terminateSession(world: World, session: Session, hard: boolean):
   }
   // A session hidden behind "switch user" is not on screen: nothing to show or reset.
   if (!visible) return;
-  if (session.kind === 'ssh') {
+  if (session.kind === 'ssh' || session.kind === 'implant') {
     terminal.notice += `Connection to ${session.host} closed by remote host.\nConnection to ${session.host} closed.\n`;
   } else if (session.kind === 'su') {
     terminal.notice += 'Session terminated, killing shell... ...killed.\n';

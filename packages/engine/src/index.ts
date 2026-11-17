@@ -58,5 +58,7 @@ export function serializeWorld(world: World, pretty = false): string {
 export function deserializeWorld(json: string): World {
   const world = JSON.parse(json) as World;
   if (world.version !== 1) throw new Error(`Unsupported world version: ${String(world.version)}`);
+  // Saves from before Phase 4 D have no keyboard recorders yet.
+  world.toolkit.keyloggers ??= [];
   return world;
 }

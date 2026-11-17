@@ -90,7 +90,7 @@ const exit: Handler = (c) => {
   closeSession(c.world, s);
   c.terminal.stack.pop();
   let out = s.loginShell ? 'logout\n' : 'exit\n';
-  if (s.kind === 'ssh') out += `Connection to ${s.host} closed.\n`;
+  if (s.kind === 'ssh' || s.kind === 'implant') out += `Connection to ${s.host} closed.\n`;
   return { stdout: out };
 };
 

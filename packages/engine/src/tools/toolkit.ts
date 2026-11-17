@@ -28,6 +28,8 @@ import { emit, withActor } from '../events/log';
 import { getNode, sysMkdir, sysWrite } from '../fs/vfs';
 import { removeProcess, spawn } from '../proc/processes';
 import type { Host, ToolJob, World } from '../types';
+import { remoteTools } from './remote';
+import { findUser } from '../auth/accounts';
 
 export type Noise = 'quiet' | 'low' | 'loud';
 
@@ -44,7 +46,7 @@ export interface ToolDefinition {
   /** The evidence this tool leaves, in words. Must not be empty. */
   traces: string[];
   /** Runs at once. Returns what to print. For a tool with an action time, this is the "started" message. */
-  start(c: CmdCtx, args: string[]): CmdResult;
+  start(c: CmdCtx, args: string[]): CmdResult & { job?: { durationMs: number; data: Record<string, string> } };
   /** Called when a background job ends normally (not killed). Writes results; returns a one-line summary for the log. */
   finish?(world: World, host: Host, job: ToolJob): string;
 }
@@ -53,7 +55,7 @@ const SECOND = 1000;
 
 /** Writes a file into the job owner's ~/.tools/loot on the machine the job ran on. */
 export function writeLoot(world: World, host: Host, job: ToolJob, name: string, content: string): string {
-  const dir = `/home/${job.account}/.tools/loot`;
+  const dir = `${findUser(host, job.account)?.home ?? `/home/${job.account}`}/.tools/loot`;
   const opts = { owner: job.account, group: job.account, mode: 0o700, time: world.time };
   sysMkdir(host, dir, opts);
   sysWrite(host, `${dir}/${name}`, content, { ...opts, mode: 0o600 });
@@ -85,7 +87,7 @@ const selftest: ToolDefinition = {
 };
 
 /** Every tool, in the order the README lists them. Later parts add theirs here. */
-export const TOOLS: ToolDefinition[] = [selftest];
+export const TOOLS: ToolDefinition[] = [selftest, ...remoteTools];
 
 export function toolByName(name: string): ToolDefinition | undefined {
   return TOOLS.find((t) => t.name === name);
@@ -146,7 +148,7 @@ export function runTool(c: CmdCtx, path: string, name: string, args: string[]): 
   const result = tool.start(c, args);
   if (result.exit && result.exit !== 0) return result;
   world.toolkit.cooldowns[key] = world.time + tool.cooldownMs;
-  const actionMs = tool.actionMs(args);
+  const actionMs = result.job?.durationMs ?? tool.actionMs(args);
   emit(world, {
     host: c.host.hostname, user: c.cred.user, sourceIp: c.session.sourceIp, type: 'tool.run',
     details: { tool: tool.name, args, noise: tool.noise, background: actionMs > 0, path },
@@ -159,6 +161,7 @@ export function runTool(c: CmdCtx, path: string, name: string, args: string[]): 
     const job: ToolJob = {
       id: ++world.toolkit.nextJob, tool: tool.name, args, host: c.host.hostname, pid: proc.pid,
       account: c.cred.user, player: c.terminal.playerId, startedAt: world.time, finishAt: world.time + actionMs,
+      ...(result.job ? { data: result.job.data } : {}),
     };
     world.toolkit.jobs.push(job);
     return { stdout: `${result.stdout ?? ''}[${job.id}] ${proc.pid}\n` };

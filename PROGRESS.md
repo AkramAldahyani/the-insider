@@ -176,20 +176,39 @@ Defaults (approved by the owner):
 5. Detain: the guard may detain someone within 2 tiles; right = defenders win, wrong = the guard loses the power.
 6. No time limit; anti-stall as in DESIGN.md section 1 (every 10 game minutes the SIEM flags one real hacker event HIGH).
 
-## Phase 4 status: Parts A, B, C, F and G DONE; Parts D and E DEFERRED by the owner; H partly done
+## Phase 4 status: Parts A, B, C, D, F and G DONE; Part E DEFERRED by the owner; H partly done
 
 | Part | State |
 |---|---|
 | A Match secrets: the hacker and the weaknesses | **done** |
 | B Tool framework | **done** (mechanism + the harmless `selftest` tool only) |
 | C Physical tools: USB stick, shoulder surfing | **done** |
-| D Remote tools: implant, keylogger, hash cracker, network scanner | **deferred** (see below) |
+| D Remote tools: implant, keylogger, hash cracker, network scanner | **done** (owner asked to finish it, 2026-11-17; see below) |
 | E Phishing kit and log cleaner | **deferred** (see below) |
 | F Flag, winning, audit log, security alerts | **done** |
 | G Route tests (2+ complete routes) | **done** (2 routes, see below) |
 | H Dev panel, browser test, CLI, docs | partly: dev panel and browser test done; CLI cannot join as the hacker yet |
 
-**Parts D and E are deferred (owner, 2026-11-17): "skip this part for now but we will do it later".** Under
+**Part D is DONE (2026-11-17).** The code appeared uncommitted in the working copy (not written in the assistant's
+session); the owner asked to "finish it and commit it". Finishing meant: one server test expected the alert banner
+to reach someone still on the start screen, which contradicts the Phase 4 F rule (banner only to players, tested in
+`win.test.ts`), so the test was corrected; then the full suite and docs. Everything stays inside the simulation (the
+tools import only the engine's own virtual files, processes and DNS).
+- `engine/src/tools/remote.ts`: four `ToolDefinition`s added to `TOOLS` (via `remoteTools`), each with its traces:
+  `implant HOST [USER]` (a shell through a live Part C USB backdoor: connections in `ss -tnp` on both hosts, processes
+  in `ps aux`, history on exit), `keylogger` (records the next password typed at that PC by that account: an
+  `.input-helper` process, a hidden capture file in /tmp), `crack FILE [USER]` (a background job on a copied shadow
+  file: a process in `ps aux`, the shadow read in the audit log, a result in ~/.tools/loot/), `scan [HOST]` (lists
+  simulated hosts and their listening services: an IDS line `RULE=network-scan` in `/var/log/ids/alerts.log` on the
+  badge server, a MEDIUM security alert and the vague global banner).
+- `engine/src/tools/keyboard.ts` (`recordPassword`): the keylogger's capture, called from the terminal when a password
+  is typed. Supporting changes in auth/sessions.ts (implant sessions), commands/procs.ts, commands/remote.ts,
+  commands/sessions.ts, core/world.ts, events/materialize.ts, security/alerts.ts, security/siem.ts, shell/exec.ts,
+  terminal.ts, types.ts (`world.toolkit.keyloggers` etc.).
+- Tests: engine `remote-tools.test.ts` (19), server `remote-tools.test.ts` (2: scan visibility and banner; captured
+  passwords and job results never reach bystanders or public state). 383 Vitest, 10 Playwright.
+
+**Part E is still deferred (owner, 2026-11-17): "skip this part for now but we will do it later".** Under
 Opus 5.5 the first attempt at Part D was stopped by a safety classifier before any file changed. Do not start
 D or E again unless the owner asks. When they do: each tool is one `ToolDefinition` in `TOOLS`
 (`engine/src/tools/toolkit.ts`); the USB backdoors from Part C are in `world.toolkit.backdoors`.

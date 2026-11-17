@@ -10,14 +10,14 @@ import { findUser, getCred, uidOf, verifyPassword } from '../auth/accounts';
 import { openSession } from '../auth/sessions';
 import { randInt } from '../core/rng';
 import { emit } from '../events/log';
-import { FsError, basename, getNode, readFile, resolvePath, writeFile } from '../fs/vfs';
+import { FsError, basename, getNode, resolvePath, writeFile } from '../fs/vfs';
 import { allocPid } from '../proc/processes';
 import { loginBanner } from '../shell/prompt';
 import type { Host, Pending } from '../types';
 import { lookup } from './net';
 import type { CmdCtx, CmdResult, Handler, PendingHandler } from './types';
 import { fail } from './types';
-import { abs, errText } from './util';
+import { abs, errText, readTracked } from './util';
 
 const MAX_TRIES = 3;
 
@@ -146,7 +146,10 @@ const scpPassword: PendingHandler = (c, pending, answer) => {
     if (getNode(srcHost, srcPath)?.type === 'dir') {
       result = fail(`scp: ${shownSrc}: not a regular file`);
     } else {
-      const content = readFile(srcHost, srcPath, srcCred, now);
+      const content = readTracked({
+        ...c, host: srcHost, cred: srcCred,
+        session: upload ? c.session : { ...c.session, host: target.hostname, user, kind: 'ssh', sourceIp: c.host.ip },
+      }, srcPath);
       // copying INTO a directory keeps the file's name
       const finalPath = getNode(dstHost, dstPath)?.type === 'dir' ? `${dstPath}/${basename(srcPath)}` : dstPath;
       writeFile(dstHost, finalPath, content, dstCred, now);

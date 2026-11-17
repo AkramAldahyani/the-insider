@@ -41,6 +41,11 @@ export function materialize(world: World, e: GameEvent): void {
   const sudoCtx = `TTY=${str(d.tty)} ; PWD=${str(d.cwd)} ; USER=${str(d.runAs)} ; COMMAND=${str(d.command)}`;
 
   switch (e.type) {
+    case 'network.scan': {
+      const sensor = world.hosts[world.badges.serverHost || world.dhcp.serverHost];
+      if (sensor) sysWrite(sensor, '/var/log/ids/alerts.log', `${isoSecond(world.time)} RULE=network-scan SRC=${e.sourceIp} USER=${e.user} TARGET=${str(d.target)} HOSTS=${str(d.hosts)} SEVERITY=medium\n`, { owner: 'root', group: 'adm', mode: 0o640, time: world.time, append: true });
+      break;
+    }
     // ── badge system (files on the badge server; see physical/badges.ts) ──
     case 'badge.tap':
       badgeLog(host, world.time, 'access.log', `DOOR=${str(d.door)} BADGE=${str(d.badge)} USER=${e.user} RESULT=${d.granted ? 'GRANTED' : 'DENIED'} DIR=${str(d.direction)}`);

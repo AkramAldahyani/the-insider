@@ -30,6 +30,7 @@ import { allocPid } from './proc/processes';
 import { makeCtx, resumeFrame, runLine, type Frame, type Run } from './shell/exec';
 import { loginBanner, shellPrompt } from './shell/prompt';
 import type { GameEvent, Pending, Terminal, World } from './types';
+import { recordPassword } from './tools/keyboard';
 
 /** What kind of screen a PC is showing. */
 export type ScreenKind = 'login' | 'locked' | 'shell';
@@ -226,6 +227,7 @@ export function sendInput(world: World, id: string, text: string): TerminalResul
     syncScreen(run);
     const pending = terminal.pending;
     if (pending) {
+      recordPassword(world, terminal, pending, line);
       terminal.pending = null;
       answerPending(run, pending, line);
     } else {

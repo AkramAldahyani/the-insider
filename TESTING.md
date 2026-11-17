@@ -404,7 +404,7 @@ Use `pnpm dev` with bots (the default) and short meetings: `MEETING_SECONDS=40,2
 pnpm test
 ```
 
-Expected: `Test Files 33 passed (33)` and `Tests 361 passed (361)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
+Expected: `Test Files 35 passed (35)` and `Tests 383 passed (383)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
 
 ```bash
 pnpm e2e
