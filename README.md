@@ -2,7 +2,7 @@
 
 A multiplayer social-deduction game that teaches real Linux forensics. The full design is in [DESIGN.md](DESIGN.md).
 
-**Current state: Phase 5 (in progress) — investigation.** Roles are in (each player's card shows their role and what it allows, and the office has a SOC analyst), the SOC analyst's PC has a SIEM search over every machine's logs (`siem`), the security office's monitors show the camera recordings and the badge log, and findings can be pinned to a shared evidence board (`B`). Phase 4 (hacker gameplay) is done except the deferred remote tools and phishing. Earlier:
+**Current state: Phase 5 (in progress) — investigation.** Roles are in (each player's card shows their role and what it allows, and the office has a SOC analyst), the SOC analyst's PC has a SIEM search over every machine's logs (`siem`), the security office's monitors show the camera recordings and the badge log, findings can be pinned to a shared evidence board (`B`), and the emergency button in the meeting room starts a meeting with chat, accusations backed by evidence, and a vote. Phase 4 (hacker gameplay) is done except the deferred remote tools and phishing. Earlier:
 
 **Phase 3 — a living office.** You walk around a top-down office full of bot employees, sit at any PC and use its simulated Linux shell. The bots come to work, badge through doors, log in, do job tasks, write each other email, browse, take breaks and sometimes forget to lock their screen, so badge, door, camera, mail, DNS, proxy and system logs fill up even while you stand still. Phase 4 (hacker gameplay) has started: you can join as the hacker, each match has random weaknesses, the toolkit mechanism works (`~/.tools/selftest`), and the physical tools work: the USB stick (hold `U` at an unlocked PC) and shoulder surfing. The hacker can win: read the flag on the server and hand it in from the briefing panel, which ends the match for everyone. Reading sensitive files is audited and security alerts are raised. The remote tools and phishing are deferred. There are no roles, meetings or log viewers yet. The client now has detailed procedural office art, original temporary directional pixel characters, and a dark HUD with a public employee directory. See [visual upgrade notes](docs/design/visual-upgrade.md) for assets, scope and reference differences. `PROGRESS.md` says what was built in which step.
 
@@ -82,7 +82,7 @@ Other commands:
 | `BOTS=0 pnpm dev` | an empty office without bot employees (PowerShell: `$env:BOTS=0; pnpm dev`) |
 | `pnpm map` | regenerate `maps/office-small.json` from `maps/build-office.ts` (overwrites edits made in Tiled) |
 
-Server settings are environment variables: `GAME_PORT` (2567), `SCENARIO` (`nexora-small`), `MAP` (`office-small`), `SEED` (1), `TIME_SPEED` (game seconds per real second, 1), `BOTS` (`0` = an empty office with no bot employees), `VULNS` (today's weaknesses: `random` by default, `none`, or a list such as `extra-sudo,tailgate`), and `NODE_ENV=production` to switch the developer tools off.
+Server settings are environment variables: `GAME_PORT` (2567), `SCENARIO` (`nexora-small`), `MAP` (`office-small`), `SEED` (1), `TIME_SPEED` (game seconds per real second, 1), `BOTS` (`0` = an empty office with no bot employees), `MEETING_SECONDS` (meeting discussion, voting and result lengths, `90,45,8`), `VULNS` (today's weaknesses: `random` by default, `none`, or a list such as `extra-sudo,tailgate`), and `NODE_ENV=production` to switch the developer tools off.
 
 ## Run the CLI
 
@@ -120,7 +120,7 @@ pnpm test
 pnpm typecheck
 ```
 
-331 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, bots, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule).
+342 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, bots, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule).
 
 ```bash
 pnpm e2e

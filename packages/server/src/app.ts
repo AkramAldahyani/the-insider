@@ -31,6 +31,8 @@ export interface AppOptions {
   bots?: boolean;
   /** Today's weaknesses: "random" (default), "none", or a comma-separated list of weakness ids. */
   weaknesses?: string;
+  /** Meeting lengths in seconds, "discussion,voting,result" (default 90,45,8). */
+  meetingSeconds?: string;
 }
 
 /** "random" / "none" / "extra-sudo,tailgate" -> what the game expects. Unknown names stop the server. */
@@ -41,6 +43,14 @@ function parseWeaknesses(text = 'random'): WeaknessChoice {
   const unknown = ids.filter((id) => !(ALL_WEAKNESSES as string[]).includes(id));
   if (unknown.length > 0) throw new Error(`Unknown weakness "${unknown.join(', ')}". Known: ${ALL_WEAKNESSES.join(', ')}, or "random" / "none".`);
   return ids as WeaknessChoice;
+}
+
+/** "90,45,8" -> meeting phase lengths. Anything else stops the server with a clear message. */
+function parseMeetingSeconds(text?: string): { discussionMs: number; votingMs: number; resultMs: number } | undefined {
+  if (!text) return undefined;
+  const parts = text.split(',').map((t) => Number(t.trim()));
+  if (parts.length !== 3 || parts.some((n) => !(n > 0))) throw new Error(`MEETING_SECONDS must be three positive numbers like "90,45,8", not "${text}"`);
+  return { discussionMs: parts[0] * 1000, votingMs: parts[1] * 1000, resultMs: parts[2] * 1000 };
 }
 
 /** Loads the content files and returns what a room needs to create its game. */
@@ -54,6 +64,7 @@ export function loadGameOptions(options: AppOptions = {}): OfficeGameOptions {
     scenario, map, mapName, dev,
     bots: options.bots ?? true,
     weaknesses: parseWeaknesses(options.weaknesses),
+    meetingTimes: parseMeetingSeconds(options.meetingSeconds),
     seed: options.seed ?? 1,
     speed: options.speed ?? 1,
     writeDump: dev

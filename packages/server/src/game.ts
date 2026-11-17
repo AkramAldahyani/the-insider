@@ -17,14 +17,15 @@ import {
   awaitingSecret, currentPrompt, glimpse, plugUsb, submitFlag, sendInput, serializeWorld, setHacker, shoulderSurf, switchUser, usbCooldown, type FsNode, type OpenResult, type Scenario, type TerminalResult, type WeaknessChoice, type World,
 } from '@insider/engine';
 import {
-  ALERT_BANNER_GAP_MS, INTERACT_DISTANCE, MONITOR_SHOTS, PLAYER_RADIUS, distanceToRect, PLAYER_SPEED, SURF_BEHIND, SURF_SIDE, USB_HOLD_MS, moveWithCollision, parseOfficeMap, roomAt,
-  type ClientMessages, type Facing, type OfficeMap, type PublicState, type ServerMessages, type ServerMessageType, type TiledMap,
+  ALERT_BANNER_GAP_MS, BUTTON_DISTANCE, INTERACT_DISTANCE, MONITOR_SHOTS, PLAYER_RADIUS, REPUTATION_PER_FIRING, distanceToRect, isFree, PLAYER_SPEED, SURF_BEHIND, SURF_SIDE, USB_HOLD_MS, moveWithCollision, parseOfficeMap, roomAt,
+  type ClientMessages, type Facing, type MeetingView, type OfficeMap, type PublicState, type ServerMessages, type ServerMessageType, type TiledMap,
 } from '@insider/shared';
 import { BotManager, type BotOptions } from './bots/manager';
 import { Doors, type Walker } from './doors';
 import { Random } from './bots/random';
 import { Cctv } from './cctv';
 import { EvidenceBoard } from './evidence';
+import { DEFAULT_MEETING_TIMES, Meetings, type MeetingTimes } from './meeting';
 import { checkMapAgainstScenario } from './mapCheck';
 import { TaskBoard } from './tasks';
 import { employeeChoices, missionBriefing, onboardingCard, publicDesk, publicDoor, publicPlayer, taskList, termScreen, type Avatar } from './visibility';
@@ -40,6 +41,8 @@ export interface OfficeGameOptions {
   bots?: boolean;
   /** How the bots behave (see BotOptions). */
   botOptions?: BotOptions;
+  /** Meeting lengths and button uses (tests shorten them). */
+  meetingTimes?: Partial<MeetingTimes>;
   /**
    * Today's weaknesses (DESIGN.md section 6): "random" picks 2-4 from the
    * seed, a list forces exactly those, [] gives an office without any.
@@ -75,6 +78,20 @@ export class OfficeGame {
   readonly tasks: TaskBoard;
   /** The shared evidence board. */
   readonly board = new EvidenceBoard();
+  /** Emergency meetings, with the record of every one (for the debrief). */
+  readonly meetings: Meetings;
+  /** Players voted out (humans and bots). They are out of the game for good. */
+  readonly fired = new Set<string>();
+  /** Network id -> player id of fired HUMANS still watching. */
+  private readonly ghosts = new Map<string, string>();
+  /** The company's reputation (0-100). */
+  reputation = 100;
+  /** Set when the match has ended. */
+  over: { winner: 'hacker' | 'defenders'; at: number } | null = null;
+  /** Every chat line, for the debrief. */
+  readonly chatLog: { time: number; channel: 'meeting' | 'fired'; from: string; text: string }[] = [];
+  /** Where people stand during a meeting: the free tiles around the meeting table. */
+  private readonly meetingSpots: { x: number; y: number; facing: Facing }[];
   /** The cameras' recordings (server only). */
   readonly cctv: Cctv;
   /** Random numbers for what a shoulder-surfer happens to catch (its own sequence: it never disturbs the bots). */
@@ -113,6 +130,8 @@ export class OfficeGame {
     this.dev = options.dev ?? false;
     this.writeDump = options.writeDump;
     this.cctv = new Cctv(this.world, this.map);
+    this.meetings = new Meetings({ ...DEFAULT_MEETING_TIMES, ...options.meetingTimes });
+    this.meetingSpots = this.findMeetingSpots();
     this.eyes = new Random((options.seed ?? 1) ^ 0x5ee5);
     this.alertCursor = this.world.events.length;
     this.tasks = new TaskBoard(this.world, this.scenario, this.map, new Random((options.seed ?? 1) ^ 0x7a5c));
@@ -170,12 +189,12 @@ export class OfficeGame {
     for (const desk of this.map.desks) desks[desk.hostname] = publicDesk(this.world, desk.hostname, occupants[desk.hostname] ?? '');
     const doors: PublicState['doors'] = {};
     for (const door of this.doors.looks()) doors[door.id] = publicDoor(door.id, door.look);
-    return { clock: this.world.time, speed: this.speed, players, desks, doors };
+    return { clock: this.world.time, speed: this.speed, reputation: this.reputation, players, desks, doors };
   }
 
   private sendLobby(to: string): void {
-    // "Taken" means: a HUMAN plays this employee. An employee played by a bot can still be picked.
-    const taken = new Set(this.humans().map((a) => a.playerId));
+    // "Taken" means: a HUMAN plays this employee, or they were fired. An employee played by a bot can still be picked.
+    const taken = new Set([...this.humans().map((a) => a.playerId), ...this.fired]);
     this.send(to, 'lobby', {
       scenarioName: this.world.scenarioName,
       mapName: this.mapName,
@@ -212,8 +231,9 @@ export class OfficeGame {
     this.removeBody(clientId);
     this.clients.delete(clientId);
     this.board.forget(clientId);
-    // The employee is not left empty: a bot comes to work in their place a little later.
-    if (avatar) this.bots?.schedule(avatar.playerId, 20);
+    this.ghosts.delete(clientId);
+    // The employee is not left empty: a bot comes to work in their place a little later (not if they were fired).
+    if (avatar && !this.fired.has(avatar.playerId)) this.bots?.schedule(avatar.playerId, 20);
     // People on the start screen see that employee become free again.
     for (const other of this.clients) if (!this.avatars.has(other)) this.sendLobby(other);
   }
@@ -230,7 +250,15 @@ export class OfficeGame {
     const avatar = this.avatars.get(clientId);
 
     if (type === 'choose') return this.choose(clientId, data);
+    // Fired players watching: they may only talk to each other.
+    if (this.ghosts.has(clientId)) {
+      if (type === 'chat.send') this.chat(clientId, data);
+      return;
+    }
     if (!avatar) return; // everything below needs a body in the office
+    if (this.over && !type.startsWith('dev.')) return; // the match is over: nothing changes any more
+    // During a meeting everybody stands at the table: talking, accusing and voting only.
+    if (this.meetings.current && !['chat.send', 'meeting.accuse', 'meeting.vote', 'evidence.unpin', 'move'].includes(type) && !type.startsWith('dev.')) return;
 
     switch (type as keyof ClientMessages) {
       case 'move': {
@@ -270,6 +298,21 @@ export class OfficeGame {
       case 'evidence.unpin':
         if (typeof data.id === 'string' && this.board.remove(avatar.playerId, data.id)) this.sendBoard();
         return;
+      case 'meeting.call':
+        return this.callMeeting(avatar);
+      case 'meeting.accuse': {
+        const evidence = Array.isArray(data.evidence) ? data.evidence.filter((x): x is string => typeof x === 'string').slice(0, 20) : [];
+        const error = this.meetings.accuse(avatar.playerId, String(data.suspect ?? ''), evidence, new Set(this.board.items.map((i) => i.id)), this.living());
+        if (error) return this.send(avatar.clientId, 'notice', { text: error });
+        return this.sendMeeting();
+      }
+      case 'meeting.vote': {
+        const error = this.meetings.vote(avatar.playerId, String(data.target ?? ''));
+        if (error) return this.send(avatar.clientId, 'notice', { text: error });
+        return this.sendMeeting();
+      }
+      case 'chat.send':
+        return this.chat(clientId, data);
       case 'flag.submit':
         if (typeof data.text === 'string') this.submitFlag(avatar, data.text.slice(0, 500));
         return;
@@ -325,6 +368,7 @@ export class OfficeGame {
     this.tasks.takeChanged();
     this.send(clientId, 'tasks', taskList(this.tasks.view(player.id)));
     this.send(clientId, 'board', { items: this.board.view(player.id) });
+    this.send(clientId, 'meeting', this.meetingView(player.id));
     for (const other of this.clients) if (!this.avatars.has(other)) this.sendLobby(other);
   }
 
@@ -518,8 +562,129 @@ export class OfficeGame {
   private submitFlag(avatar: Avatar, text: string): void {
     const result = submitFlag(this.world, avatar.playerId, text);
     if (!result.won) return this.send(avatar.clientId, 'notice', { text: result.text });
-    this.stand(avatar, 'The match is over.');
-    for (const client of this.clients) this.send(client, 'match.over', { winner: 'hacker', hacker: avatar.name, at: this.world.time });
+    this.endMatch('hacker', avatar.name, 'The hacker got the flag out.');
+  }
+
+  /** The end: everybody is told who won and who the hacker was. */
+  private endMatch(winner: 'hacker' | 'defenders', hackerName: string, reason: string): void {
+    this.over = { winner, at: this.world.time };
+    for (const a of [...this.avatars.values()]) if (a.seatedAt) this.stand(a, 'The match is over.');
+    for (const client of this.clients) this.send(client, 'match.over', { winner, hacker: hackerName, at: this.world.time, reason });
+  }
+
+  // ───────────────────────────── Meetings (Phase 5, part D) ─────────────────────────────
+
+  /** Player ids of everybody still at the company: bodies in the office, not fired. */
+  private living(): Set<string> {
+    return new Set([...this.avatars.values()].map((a) => a.playerId).filter((id) => !this.fired.has(id)));
+  }
+
+  private nameOf(playerId: string): string {
+    return this.world.players.find((p) => p.id === playerId)?.name ?? playerId;
+  }
+
+  /** The free tiles around the meeting table, where people stand during a meeting. */
+  private findMeetingSpots(): { x: number; y: number; facing: Facing }[] {
+    const table = this.map.furniture.find((f) => f.name === 'Meeting table');
+    if (!table) return [{ ...this.map.defaultSpawn, facing: 'up' }];
+    const t = this.map.tile;
+    const spots: { x: number; y: number; facing: Facing }[] = [];
+    const c0 = Math.floor(table.x / t) - 1, c1 = Math.ceil((table.x + table.width) / t);
+    const r0 = Math.floor(table.y / t) - 1, r1 = Math.ceil((table.y + table.height) / t);
+    for (let c = c0; c <= c1; c++) for (const [r, facing] of [[r0, 'down'], [r1, 'up']] as const) spots.push({ x: (c + 0.5) * t, y: (r + 0.5) * t, facing });
+    for (let r = r0 + 1; r < r1; r++) for (const [c, facing] of [[c0, 'right'], [c1, 'left']] as const) spots.push({ x: (c + 0.5) * t, y: (r + 0.5) * t, facing });
+    return spots.filter((s) => isFree(this.map, s.x, s.y, PLAYER_RADIUS));
+  }
+
+  /** The emergency button (furniture of kind "button" in the meeting room). */
+  private atButton(avatar: Avatar): boolean {
+    const button = this.map.furniture.find((f) => f.kind === 'button');
+    return !!button && !avatar.seatedAt && distanceToRect(button, avatar.x, avatar.y) <= BUTTON_DISTANCE;
+  }
+
+  private callMeeting(avatar: Avatar): void {
+    if (!this.atButton(avatar)) return this.send(avatar.clientId, 'notice', { text: 'The emergency button is in the meeting room.' });
+    const why = this.meetings.whyNot(avatar.playerId);
+    if (why) return this.send(avatar.clientId, 'notice', { text: why });
+    this.meetings.call(avatar.playerId, this.world.time, [...this.living()]);
+    // Everybody comes to the table. PCs stay exactly as they were left (unlocked ones too).
+    const bodies = [...this.avatars.values()];
+    bodies.forEach((a, i) => {
+      if (a.seatedAt) this.stand(a, 'An emergency meeting was called.');
+      if (a.hold) this.endItem(a, 'An emergency meeting was called.');
+      const spot = this.meetingSpots[i % this.meetingSpots.length];
+      Object.assign(a, { x: spot.x, y: spot.y, facing: spot.facing, dx: 0, dy: 0, activity: '' });
+    });
+    this.bots?.interrupt();
+    this.sendMeeting();
+  }
+
+  private tickMeeting(realMs: number): void {
+    const change = this.meetings.tick(realMs, (id) => this.world.mission.hacker === id);
+    if (!change) return;
+    const m = this.meetings.history.at(-1)!;
+    if (change === 'decided' && m.result?.firedId) {
+      if (m.result.wasHacker) {
+        this.sendMeeting();
+        return this.endMatch('defenders', this.nameOf(m.result.firedId), `${this.nameOf(m.result.firedId)} was voted out. They were the hacker.`);
+      }
+      this.fire(m.result.firedId);
+    }
+    this.sendMeeting();
+  }
+
+  /** Voted out and innocent: out of the game for good, and the company looks bad. */
+  private fire(playerId: string): void {
+    this.fired.add(playerId);
+    this.reputation = Math.max(0, this.reputation - REPUTATION_PER_FIRING);
+    const body = [...this.avatars.values()].find((a) => a.playerId === playerId);
+    if (body && this.clients.has(body.clientId)) {
+      this.removeBody(body.clientId);
+      this.ghosts.set(body.clientId, playerId);
+      this.send(body.clientId, 'fired', { reason: 'You were voted out at the meeting. You can watch, and talk with other fired players.' });
+    } else this.bots?.remove(playerId);
+  }
+
+  /** The meeting as one player sees it. */
+  private meetingView(playerId: string): MeetingView {
+    const m = this.meetings.current;
+    const usesLeft = this.meetings.usesLeft(playerId);
+    if (!m) return { active: false, usesLeft, number: 0, phase: '', calledBy: '', endsIn: 0, accusations: [], voted: [], myVote: '', canVote: false, result: null };
+    return {
+      active: true, usesLeft, number: m.number, phase: m.phase, calledBy: this.nameOf(m.calledById), endsIn: Math.max(0, Math.round(m.leftMs)),
+      accusations: m.accusations.map((a) => ({ id: a.id, accuser: this.nameOf(a.accuserId), suspectId: a.suspectId, suspect: this.nameOf(a.suspectId), evidence: [...a.evidence] })),
+      voted: Object.keys(m.votes).map((id) => this.nameOf(id)),
+      myVote: m.votes[playerId] ?? '',
+      canVote: m.voters.includes(playerId) && !this.fired.has(playerId),
+      result: m.result && {
+        fired: m.result.firedId ? this.nameOf(m.result.firedId) : '',
+        wasHacker: m.result.wasHacker,
+        tally: Object.entries(m.result.tally).map(([id, votes]) => ({ id, name: this.nameOf(id), votes })),
+        skips: m.result.skips,
+        abstained: m.result.abstained,
+      },
+    };
+  }
+
+  /** Sends the meeting to everybody: players and those watching. */
+  private sendMeeting(): void {
+    for (const a of this.humans()) this.send(a.clientId, 'meeting', this.meetingView(a.playerId));
+    for (const [clientId, playerId] of this.ghosts) this.send(clientId, 'meeting', this.meetingView(playerId));
+  }
+
+  /** Meeting chat for everybody at a meeting; fired players talk only among themselves. */
+  private chat(clientId: string, data: Record<string, unknown>): void {
+    const text = typeof data.text === 'string' ? data.text.trim().slice(0, 300) : '';
+    if (!text) return;
+    const ghost = this.ghosts.get(clientId);
+    const from = ghost ? this.nameOf(ghost) : this.avatars.get(clientId)?.name;
+    if (!from) return;
+    if (!ghost && !this.meetings.current) return this.send(clientId, 'notice', { text: 'You can talk to everybody during a meeting.' });
+    const line = { channel: ghost ? 'fired' as const : 'meeting' as const, from, text, time: this.world.time };
+    this.chatLog.push(line);
+    // Fired players read the meeting, but nobody alive reads them.
+    const to = ghost ? [...this.ghosts.keys()] : [...this.humans().map((a) => a.clientId), ...this.ghosts.keys()];
+    for (const c of to) this.send(c, 'chat', line);
   }
 
   /**
@@ -556,8 +721,12 @@ export class OfficeGame {
     this.carryMs = gameMs - whole;
     if (whole > 0) advanceTime(this.world, whole);
 
+    this.tickMeeting(realMs);
     const step = (PLAYER_SPEED * realMs) / 1000;
+    // During a meeting (and after the match) nobody walks.
+    const frozen = this.meetings.current !== null || this.over !== null;
     for (const avatar of [...this.avatars.values()]) {
+      if (frozen && !avatar.seatedAt) continue;
       if (avatar.seatedAt) {
         // The screen may have changed without this player typing (a remote lock, a closed connection...).
         const changed = refreshTerminal(this.world, avatar.terminalId);
@@ -573,7 +742,7 @@ export class OfficeGame {
       avatar.y = moved.y;
       avatar.facing = avatar.dx < 0 ? 'left' : avatar.dx > 0 ? 'right' : avatar.dy < 0 ? 'up' : 'down';
     }
-    this.bots?.tick(realMs);
+    if (!frozen) this.bots?.tick(realMs);
     // Job tasks: tick off what was just typed or reached, and tell the humans whose list changed.
     this.announceAlerts();
     this.tasks.update([...this.avatars.values()]);

@@ -18,6 +18,8 @@ declare global {
       doors(): { id: string; look: string; reader: boolean }[];
       /** Where to stand to use the security monitors (a point just in front of them). */
       monitors(): { x: number; y: number };
+      /** Where to stand to press the emergency button. */
+      button(): { x: number; y: number };
       desks(): { hostname: string; seatX: number; seatY: number; screen: string }[];
       map(): { tile: number; cols: number; rows: number; solid: boolean[][] } | null;
     };
@@ -33,6 +35,10 @@ window.__insider = {
     return (store.map?.desks ?? []).map((d) => ({
       hostname: d.hostname, seatX: d.seatX, seatY: d.seatY, screen: store.room?.state.desks?.get(d.hostname)?.screen ?? '',
     }));
+  },
+  button() {
+    const f = store.map?.furniture.find((x) => x.kind === 'button');
+    return f ? { x: f.x + f.width / 2, y: f.y + f.height + 14 } : { x: 0, y: 0 };
   },
   monitors() {
     const f = store.map?.furniture.find((x) => x.kind === 'monitors');

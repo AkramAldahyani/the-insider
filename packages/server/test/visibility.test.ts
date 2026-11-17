@@ -33,10 +33,13 @@ const ALLOWED_FIELDS: Record<string, string[]> = {
   notice: ['text'],
   tasks: ['tasks', 'completed'],
   alert: ['text'],
-  'match.over': ['winner', 'hacker', 'at'],
+  'match.over': ['winner', 'hacker', 'at', 'reason'],
   'monitors.index': ['cameras', 'badges', 'motion'],
   'monitors.frame': ['camera', 'id', 'time', 'people'],
   board: ['items'],
+  meeting: ['active', 'usesLeft', 'number', 'phase', 'calledBy', 'endsIn', 'accusations', 'voted', 'myVote', 'canVote', 'result'],
+  chat: ['channel', 'from', 'text', 'time'],
+  fired: ['reason'],
 };
 
 /** Plays the match: Sara (client "sara") at her own PC, Omar (client "omar") at Lina's unlocked one. */
@@ -121,7 +124,7 @@ describe('visibility: what the game sends', () => {
 
   it('the public state has exactly the documented shape', () => {
     for (const state of r.states as PublicState[]) {
-      expect(Object.keys(state).sort()).toEqual(['clock', 'desks', 'doors', 'players', 'speed']);
+      expect(Object.keys(state).sort()).toEqual(['clock', 'desks', 'doors', 'players', 'reputation', 'speed']);
       for (const door of Object.values(state.doors)) expect(Object.keys(door).sort()).toEqual(['id', 'look']);
       for (const player of Object.values(state.players)) {
         expect(Object.keys(player).sort()).toEqual(['activity', 'facing', 'id', 'name', 'seatedAt', 'x', 'y']);

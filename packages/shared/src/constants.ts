@@ -19,6 +19,10 @@ export const INTERACT_DISTANCE = 44;
 export const TAP_DISTANCE = 40;
 /** How many recorded pictures per camera the monitors list (the newest ones). */
 export const MONITOR_SHOTS = 400;
+/** The company's reputation drops by this much each time an innocent person is fired. */
+export const REPUTATION_PER_FIRING = 25;
+/** How close (pixels) a player must be to the emergency button to press it. */
+export const BUTTON_DISTANCE = 44;
 /** At most one security-alert banner per this much game time, however many alerts fire. */
 export const ALERT_BANNER_GAP_MS = 60_000;
 /** How long the hacker must hold still at a PC to use the USB stick (real milliseconds). */

@@ -416,3 +416,32 @@ test('the guard uses the security monitors: camera pictures, badge log', async (
   await page.keyboard.up('ArrowUp');
   await expect(page.getByTestId('monitors')).toBeHidden();
 });
+
+test('an emergency meeting: the button, the meeting chat, and nobody voted out without an accusation', async ({ page, browser }) => {
+  await page.goto('/');
+  await page.getByTestId('employee-p6').click(); // Noor, HR
+  await expect(page.getByTestId('card')).toBeVisible();
+  await page.keyboard.press('c');
+  await page.waitForFunction(() => window.__insider?.me() != null && window.__insider.map() != null);
+  const other = await (await browser.newContext()).newPage();
+  await other.goto('/');
+  await other.getByTestId('employee-p2').click(); // Rami
+  await expect(other.getByTestId('card')).toBeVisible();
+
+  const button = await page.evaluate(() => window.__insider!.button());
+  await walkTo(page, button.x, button.y);
+  await expect(page.getByTestId('hint')).toContainText('call an emergency meeting (1 left)');
+  await page.keyboard.press('e');
+  await expect(page.getByTestId('meeting')).toBeVisible();
+  await expect(page.getByTestId('meeting')).toContainText('called by Noor Saleh');
+  await expect(other.getByTestId('meeting')).toBeVisible(); // everybody is in it
+  await page.getByTestId('chat-input-meeting').fill('Anyone seen anything odd?');
+  await page.getByTestId('chat-input-meeting').press('Enter');
+  await expect(other.getByTestId('chat-meeting')).toContainText('Noor Saleh: Anyone seen anything odd?');
+  await expect(page.getByTestId('accuse-form')).toBeVisible();
+  await page.screenshot({ path: `${SHOTS}/16-meeting.png` });
+  // Nobody accused anybody: the meeting ends with nobody voted out.
+  await expect(page.getByTestId('meeting-result')).toContainText('Nobody was voted out.', { timeout: 15_000 });
+  await expect(page.getByTestId('meeting')).toBeHidden({ timeout: 10_000 });
+  await other.close();
+});

@@ -97,6 +97,8 @@ const FURNITURE: [string, string, number, number, number, number][] = [
   ['Reception sofa', 'sofa', 9, 21, 2, 4],
   ['CCTV monitors', 'monitors', 13, 30, 6, 1], // on the back wall: the door is in the top wall
   ['Meeting table', 'table', 24, 22, 7, 2],
+  // Pressing it calls an emergency meeting at the table (DESIGN.md section 9).
+  ['Emergency button', 'button', 32, 20, 1, 1],
   ['Cafeteria table', 'table', 23, 27, 3, 2],
   ['Cafeteria table', 'table', 29, 27, 3, 2],
   ['Printer', 'printer', 35, 20, 2, 1],

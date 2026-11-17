@@ -14,7 +14,7 @@ Update it at the end of every part.
 | 4 Hacker gameplay | done except parts D and E (deferred by the owner) |
 | 5 Investigation & social deduction | **in progress**: Part A done (see Phase 5 status) |
 
-## Phase 5 status: plan APPROVED by the owner (defaults 1-6 accepted); Parts A, B and C DONE, Part D next
+## Phase 5 status: plan APPROVED by the owner (defaults 1-6 accepted); Parts A, B, C and D DONE, Part E next
 
 ### Part A: what exists now
 
@@ -66,6 +66,31 @@ Update it at the end of every part.
   on the monitors, `ui/BoardPanel.tsx` on `B` (camera pictures drawn with `drawFrame`), HUD button "B Evidence (n)".
 - Part D will need: accusations reference board item ids; fired players must not pin.
 - 331 Vitest tests (new: server `evidence.test.ts`), 8 Playwright (the first smoke test now pins and opens the board).
+
+### Part D: what exists now
+
+- `packages/server/src/meeting.ts`: `Meetings` (rules + record of every meeting for the debrief) and `countVotes`.
+  Phases (REAL time): discussion 90 s, voting 45 s, result 8 s; button cooldown 60 s; 1 use per player
+  (`OfficeGameOptions.meetingTimes`, env `MEETING_SECONDS=90,45,8`). No accusation -> straight to "nobody voted out".
+  Voting ends early when every voter has voted. Plurality: the single top suspect wins if they beat "skip"; ties fire nobody.
+- Map: furniture "Emergency button" (kind `button`) at tile 32,20 in the meeting room; drawn as a red button.
+- `game.ts`: `meeting.call` (within BUTTON_DISTANCE of the button) gathers every body at free tiles around the
+  "Meeting table" (seated people are stood up; PCs stay as they were), freezes walking and bots
+  (`BotManager.interrupt` afterwards resets their walk and screen). During a meeting only chat, accuse, vote,
+  unpin and move (ignored) are handled. `meeting.accuse { suspect, evidence[] }` (3+ existing board ids, living
+  suspect, not yourself, one per person); `meeting.vote { target }`; `meeting` message per player (who voted is
+  public, not what). Hacker voted out -> `endMatch('defenders', ...)` (`match.over` now has `winner` hacker|defenders
+  and `reason`); innocent voted out -> `fire()`: human becomes a ghost (body removed, `fired` message, may only use
+  `chat.send` on channel "fired"), bot removed and never rescheduled; `reputation` -25 (public state field).
+  After the match ends nothing but dev messages is handled.
+- Chat: `chat.send` -> channel "meeting" (only during a meeting, to players and ghosts) or "fired" (ghosts only,
+  any time). `game.chatLog` keeps all lines.
+- Client: `ui/MeetingPanel.tsx` (meeting screen: chat, accusations, accuse form with board checkboxes, vote
+  buttons, result) and `FiredPanel` (ghost chat; arrow keys move the view). HUD shows "Reputation N%".
+  Test hook `window.__insider.button()`.
+- Not yet: guard detain, helpdesk powers (Part E); bots never accuse or vote (Part G); reputation 0 and parity as
+  win conditions (Part H).
+- 342 Vitest tests (new: server `meetings.test.ts`), 9 Playwright (new: an emergency meeting).
 
 ## Phase 5 plan (investigation & social deduction)
 

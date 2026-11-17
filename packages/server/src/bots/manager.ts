@@ -153,6 +153,20 @@ export class BotManager {
     }));
   }
 
+  /**
+   * Everything the bots were doing is interrupted (an emergency meeting
+   * gathered everybody at the table). Each bot forgets its walk and its
+   * screen, and its routine starts again from where it now stands.
+   */
+  interrupt(): void {
+    for (const bot of this.bots.values()) {
+      const s = bot.subject;
+      if (!s) continue;
+      s.mover.stop();
+      Object.assign(s.mind, { screen: null, breakSpot: null, breakRoom: '', atBreakSpot: false, breakUntil: 0, errand: '', errandMs: 0, leaving: 'undecided', loginSteps: 0 });
+    }
+  }
+
   /** A bot's memory (tests and the developer panel). */
   mind(playerId: string): Mind | undefined {
     return this.bots.get(playerId)?.subject?.mind;

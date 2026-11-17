@@ -72,6 +72,8 @@ export function PhaserView() {
         dx += MOVE_KEYS[code][0];
         dy += MOVE_KEYS[code][1];
       }
+      // Fired players have no body: the arrows move their view instead.
+      if (store.getUi().fired) return store.set({ pan: { dx: Math.sign(dx), dy: Math.sign(dy) } });
       const key = `${Math.sign(dx)},${Math.sign(dy)}`;
       if (key === sent) return;
       sent = key;
@@ -111,6 +113,8 @@ export function PhaserView() {
       } else if (event.code === 'KeyE' && ui.nearDoor) {
         // Hold the badge against the reader. The server decides; the answer comes back as a notice.
         store.send('tap', { door: ui.nearDoor });
+      } else if (event.code === 'KeyE' && ui.nearButton) {
+        store.send('meeting.call', {});
       } else if (event.code === 'KeyE' && ui.nearMonitors) {
         if (ui.monitors) store.set({ monitors: null, monitorFrame: null });
         else store.send('monitors.open', {});

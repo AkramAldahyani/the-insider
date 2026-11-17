@@ -15,7 +15,7 @@
 import { Client, type Room } from 'colyseus.js';
 import {
   ROOM_NAME, SERVER_PORT, parseOfficeMap,
-  type ClientMessages, type EmployeeChoice, type EvidenceView, type MissionBriefing, type OfficeMap, type OnboardingCard, type PublicDesk, type PublicDoor, type PublicPlayer,
+  type ClientMessages, type EmployeeChoice, type EvidenceView, type MeetingView, type MissionBriefing, type OfficeMap, type OnboardingCard, type PublicDesk, type PublicDoor, type PublicPlayer,
   type ServerMessages, type TaskView, type TermScreen, type TiledMap,
 } from '@insider/shared';
 
@@ -26,6 +26,7 @@ const MAP_FILES = import.meta.glob<TiledMap>('../../../../maps/*.json', { eager:
 export interface RoomState {
   clock: number;
   speed: number;
+  reputation: number;
   players: { get(id: string): PublicPlayer | undefined; forEach(cb: (player: PublicPlayer, id: string) => void): void };
   desks: { get(hostname: string): PublicDesk | undefined; forEach(cb: (desk: PublicDesk, hostname: string) => void): void };
   doors: { get(id: string): PublicDoor | undefined; forEach(cb: (door: PublicDoor, id: string) => void): void };
@@ -56,7 +57,18 @@ export interface UiState {
   /** The latest security-alert banner ("" = none showing). */
   alert: string;
   /** Set when the match is over: who won and who the hacker was. */
-  matchOver: { winner: 'hacker'; hacker: string; at: number } | null;
+  matchOver: ServerMessages['match.over'] | null;
+  /** The meeting as the server last described it, and when that message arrived (for the countdown). */
+  meeting: MeetingView | null;
+  meetingAt: number;
+  /** Meeting chat and fired players' chat. */
+  chat: ServerMessages['chat'][];
+  /** Why this player was fired ("" = still at the company). */
+  fired: string;
+  /** Standing at the emergency button. */
+  nearButton: boolean;
+  /** Fired players move the view with the arrow keys: the direction held. */
+  pan: { dx: number; dy: number };
   /** The hacker's private briefing (null for everybody else) and whether it is shown. */
   briefing: MissionBriefing | null;
   briefingOpen: boolean;
@@ -94,7 +106,7 @@ export class Store {
   rawMap: TiledMap | null = null;
 
   private ui: UiState = {
-    phase: 'connecting', error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
+    phase: 'connecting', error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, meeting: null, meetingAt: 0, chat: [], fired: '', nearButton: false, pan: { dx: 0, dy: 0 }, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
     clock: 0, speed: 1, roomName: '', nearDesk: '', nearDoor: '', nearDoorName: '', seatedAt: '', notice: '', tasks: [], tasksCompleted: 0, tasksOpen: true, devOpen: false, devLog: [],
   };
   private listeners = new Set<Listener>();
@@ -182,6 +194,13 @@ export class Store {
       on('match.over', (over) => this.set({ matchOver: over }));
       on('monitors.index', (index) => this.set({ monitors: index }));
       on('board', ({ items }) => this.set({ board: items }));
+      on('meeting', (meeting) => {
+        // A new meeting closes everything else and starts a fresh chat.
+        const fresh = meeting.active && (!this.ui.meeting?.active || this.ui.meeting.number !== meeting.number);
+        this.set({ meeting, meetingAt: Date.now(), ...(fresh ? { chat: this.ui.chat.filter((l) => l.channel === 'fired'), boardOpen: false, monitors: null, cardOpen: false } : {}) });
+      });
+      on('chat', (line) => this.set({ chat: [...this.ui.chat.slice(-200), line] }));
+      on('fired', ({ reason }) => this.set({ fired: reason, seatedAt: '' }));
       on('monitors.frame', (frame) => this.set({ monitorFrame: frame })); 
       on('tasks', ({ tasks, completed }) => {
         if (completed > this.ui.tasksCompleted) this.notice('Task finished.');

@@ -256,6 +256,13 @@ Decided in Phase 5 (part C):
 
 - **The evidence board is shared and honest.** Anyone playing can pin text selected in a PC's terminal, a camera picture or a badge/motion log line from the security monitors, and everybody sees the board (`B`). The server accepts a pin only if that exact text or picture really appeared on that player's own screen, so evidence cannot be invented. Each item shows who pinned it and when; only they can take it down.
 
+Decided in Phase 5 (part D):
+
+- **Meetings.** The emergency button stands in the meeting room; each player may press it once per match, and it needs a minute's rest after each meeting. Everybody is brought to the meeting table and stands still; seated players are stood up and their PCs stay exactly as they were (an unlocked PC stays unlocked). Discussion lasts 90 seconds, voting 45, and the result is shown for 8 (real seconds).
+- **Accusations and votes.** During the discussion anyone still at the company may accuse one other person, linking at least 3 items of the evidence board. Without an accusation there is no vote. Each person present when the meeting was called votes once, for an accused person or "skip"; who has voted is public, what they voted is not until the result. The single person with the most votes is voted out if they got more votes than "skip"; a tie fires nobody.
+- **Results.** The hacker voted out: the defenders win and everybody is told. An innocent person voted out is fired: out of the game for good, and the company's reputation (shown to all, starting at 100%) drops by 25 points.
+- **Chat.** Players talk only during meetings in Phase 5 (open chat comes with multiplayer). Fired players read the meeting chat and talk only with each other.
+
 ### Lobby scaling
 | Players | Hackers |
 |---|---|

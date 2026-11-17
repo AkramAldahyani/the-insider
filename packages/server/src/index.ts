@@ -11,6 +11,7 @@
  *   SEED=1              random seed of the simulated world
  *   TIME_SPEED=1        game seconds per real second
  *   BOTS=0              an empty office: no bot employees
+ *   MEETING_SECONDS=90,45,8  meeting discussion, voting and result lengths
  *   VULNS=random        today's weaknesses: random (2-4 from the seed), none, or a list like extra-sudo,tailgate
  *   NODE_ENV=production switches the developer panel OFF
  */
@@ -25,6 +26,7 @@ const options: AppOptions = {
   speed: process.env.TIME_SPEED ? Number(process.env.TIME_SPEED) : undefined,
   bots: process.env.BOTS === undefined ? undefined : process.env.BOTS !== '0',
   weaknesses: process.env.VULNS,
+  meetingSeconds: process.env.MEETING_SECONDS,
 };
 const port = Number(process.env.GAME_PORT ?? SERVER_PORT);
 

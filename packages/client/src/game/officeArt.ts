@@ -115,6 +115,13 @@ function furniture(g: Phaser.GameObjects.Graphics, f: MapFurniture): void {
         g.fillStyle(0xc5d3d2).fillRect(x + dx + 22, y + 12, 3, 3);
       }
       break;
+    case 'button':
+      // The emergency button: a red mushroom button on a small grey stand.
+      g.fillStyle(0x3a4350).fillRoundedRect(x + 2, y + 6, w - 4, h - 8, 4);
+      g.fillStyle(0x7a1218).fillCircle(x + w / 2, y + h / 2, w / 2 - 3);
+      g.fillStyle(0xe5484d).fillCircle(x + w / 2, y + h / 2 - 2, w / 2 - 5);
+      g.fillStyle(0xffffff, 0.35).fillCircle(x + w / 2 - 3, y + h / 2 - 5, 3);
+      break;
     default: frame(0x647180);
   }
 }

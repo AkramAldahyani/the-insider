@@ -59,11 +59,34 @@ export interface PublicDoor {
   look: DoorLook;
 }
 
+/** A meeting as one player sees it (sent whenever something changes). */
+export interface MeetingView {
+  /** False between meetings (then only `usesLeft` matters). */
+  active: boolean;
+  /** How many times this player may still press the emergency button. */
+  usesLeft: number;
+  number: number;
+  phase: 'discussion' | 'voting' | 'result' | '';
+  calledBy: string;
+  /** Real milliseconds left in this phase when the message was sent. */
+  endsIn: number;
+  accusations: { id: string; accuser: string; suspectId: string; suspect: string; evidence: string[] }[];
+  /** Names of those who have voted (not what they voted). */
+  voted: string[];
+  /** This player's own vote ("skip", a player id, or "" for none yet). */
+  myVote: string;
+  /** May this player vote (they were at the company when the meeting was called and are not fired)? */
+  canVote: boolean;
+  result: { fired: string; wasHacker: boolean; tally: { id: string; name: string; votes: number }[]; skips: number; abstained: number } | null;
+}
+
 export interface PublicState {
   /** Game time, milliseconds since 1970 (UTC). */
   clock: number;
   /** How many game seconds pass per real second. */
   speed: number;
+  /** The company's reputation, 0-100: it drops each time an innocent person is fired. */
+  reputation: number;
   players: Record<string, PublicPlayer>;
   desks: Record<string, PublicDesk>;
   doors: Record<string, PublicDoor>;
@@ -189,7 +212,13 @@ export interface ServerMessages {
    */
   alert: { text: string };
   /** The match is over. Sent to everybody, including people on the start screen. */
-  'match.over': { winner: 'hacker'; hacker: string; at: number };
+  'match.over': { winner: 'hacker' | 'defenders'; hacker: string; at: number; reason: string };
+  /** The current meeting (or none), as this player sees it. */
+  meeting: MeetingView;
+  /** A chat line: in a meeting (everybody), or between fired players. */
+  chat: { channel: 'meeting' | 'fired'; from: string; text: string; time: number };
+  /** You were voted out: you can watch, and talk with other fired players. */
+  fired: { reason: string };
   /**
    * The security-office monitors (only for someone standing at them): what
    * each camera has recorded, and the latest badge and camera-motion lines.
@@ -237,6 +266,14 @@ export interface ClientMessages {
   'evidence.pin': { kind: 'screen' | 'snapshot' | 'log'; text?: string; camera?: string; snapshot?: string; source?: 'badges' | 'motion' };
   /** Take one of your own pins down. */
   'evidence.unpin': { id: string };
+  /** Press the emergency button (the server checks you stand at it). */
+  'meeting.call': Record<string, never>;
+  /** Accuse someone in a meeting, pointing at 3 or more evidence-board items. */
+  'meeting.accuse': { suspect: string; evidence: string[] };
+  /** Vote for an accused player's id, or "skip". */
+  'meeting.vote': { target: string };
+  /** Say something in the meeting (or, when fired, to the other fired players). */
+  'chat.send': { text: string };
   /** The hacker hands in the flag (the text of the flag file). */
   'flag.submit': { text: string };
   /** One finished line typed at the PC. */

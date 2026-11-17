@@ -33,7 +33,7 @@ export default defineConfig({
   webServer: {
     command: 'node scripts/dev.mjs',
     url: `http://localhost:${PAGE_PORT}`,
-    env: { GAME_PORT, CLIENT_PORT: PAGE_PORT, VITE_SERVER_URL: `ws://localhost:${GAME_PORT}`, BOTS: '0', VULNS: 'plaintext-password' },
+    env: { GAME_PORT, CLIENT_PORT: PAGE_PORT, VITE_SERVER_URL: `ws://localhost:${GAME_PORT}`, BOTS: '0', VULNS: 'plaintext-password', MEETING_SECONDS: '8,6,3' },
     reuseExistingServer: false,
     timeout: 60_000,
   },

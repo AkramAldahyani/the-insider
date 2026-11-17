@@ -90,6 +90,7 @@ export function Hud({ ui }: { ui: UiState }) {
         <span className="hud-clock" data-testid="clock">{clockText(ui.clock)}</span>
         {ui.speed !== 1 && <span className="hud-speed">×{ui.speed}</span>}
         <span className="hud-room" data-testid="room">{ui.roomName || '—'}</span>
+        <span className="hud-reputation" data-testid="reputation" title="Company reputation: it drops each time an innocent person is fired">Reputation {store.room?.state.reputation ?? 100}%</span>
         <span className="hud-spacer" />
         <span className="hud-location">NEXORA HQ <span className="signal-dot" /></span>
       </div>
@@ -107,6 +108,11 @@ export function Hud({ ui }: { ui: UiState }) {
         <div className="hud-hint" data-testid="hint">
           Press <kbd>E</kbd> to use {ui.nearDesk}
           {ui.briefing && <> · hold <kbd>U</kbd> to plug in the USB stick</>}
+        </div>
+      )}
+      {ui.nearButton && !ui.seatedAt && !ui.meeting?.active && (
+        <div className="hud-hint" data-testid="hint">
+          Press <kbd>E</kbd> to call an emergency meeting ({ui.meeting?.usesLeft ?? 0} left)
         </div>
       )}
       {ui.nearMonitors && !ui.nearDesk && !ui.nearDoor && !ui.seatedAt && !ui.monitors && (
@@ -198,13 +204,17 @@ export function AlertBanner({ ui }: { ui: UiState }) {
 /** The end of the match. */
 export function MatchOver({ ui }: { ui: UiState }) {
   if (!ui.matchOver) return null;
-  const me = ui.card?.name === ui.matchOver.hacker && ui.briefing !== null;
+  const o = ui.matchOver;
+  const iAmHacker = ui.briefing !== null;
+  const title = o.winner === 'hacker'
+    ? (iAmHacker ? 'You got the flag out. You win.' : 'The hacker got the flag out.')
+    : (iAmHacker ? 'You were caught.' : 'The hacker was caught. The company is safe.');
   return (
     <div className="match-over" data-testid="match-over">
       <div className="match-over-box">
-        <div className="eyebrow">MATCH OVER · {clockText(ui.matchOver.at)}</div>
-        <h2>{me ? 'You got the flag out. You win.' : 'The hacker got the flag out.'}</h2>
-        <p>The hacker was <strong data-testid="match-over-hacker">{ui.matchOver.hacker}</strong>.</p>
+        <div className="eyebrow">MATCH OVER · {clockText(o.at)}</div>
+        <h2>{title}</h2>
+        <p>{o.reason} The hacker was <strong data-testid="match-over-hacker">{o.hacker}</strong>.</p>
         <p className="start-note">Everything they did is still in the logs. The full debrief (timeline, evidence, what was missed) comes in a later version. Reload the page once everybody has left to start a new match.</p>
         <button type="button" onClick={() => store.set({ matchOver: null })}>Look around the office</button>
       </div>

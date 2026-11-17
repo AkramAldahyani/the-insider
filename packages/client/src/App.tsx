@@ -6,6 +6,7 @@ import { Suspense, lazy, useEffect, useSyncExternalStore } from 'react';
 import { PhaserView } from './game/PhaserView';
 import { store } from './game/store';
 import { BoardPanel } from './ui/BoardPanel';
+import { FiredPanel, MeetingPanel } from './ui/MeetingPanel';
 import { MonitorsPanel } from './ui/MonitorsPanel';
 import { TerminalOverlay } from './ui/TerminalOverlay';
 import { AlertBanner, Hud, MatchOver, MissionPanel, OnboardingCard, StartScreen, TaskList } from './ui/panels';
@@ -47,6 +48,8 @@ export function App() {
       {ui.monitors && !ui.seatedAt && <MonitorsPanel ui={ui} />}
       {!ui.seatedAt && <BoardPanel ui={ui} />}
       <AlertBanner ui={ui} />
+      <MeetingPanel ui={ui} />
+      <FiredPanel ui={ui} />
       <MatchOver ui={ui} />
       {ui.cardOpen && ui.card && !ui.seatedAt && <OnboardingCard card={ui.card} />}
       {DevPanel && ui.dev && ui.devOpen && (

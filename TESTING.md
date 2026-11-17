@@ -359,6 +359,18 @@ Start with `VULNS=plaintext-password` (PowerShell: `$env:VULNS='plaintext-passwo
 4. As Tariq at the security monitors: pick a camera, **Pin this picture** (the board shows the drawn picture and who was in it); on the Badge log tab, **Pin** next to a line.
 5. Made-up evidence is impossible from the page: the server only accepts text, pictures and lines it showed to that player (the automated tests try it).
 
+## AB. Phase 5, part D: meetings and voting
+
+Shorter meetings make this quicker: start with `MEETING_SECONDS=30,20,5` (PowerShell: `$env:MEETING_SECONDS='30,20,5'; pnpm dev`). Use three tabs: Sara, Maha, and Omar.
+
+1. As Sara, pin three things from her terminal (step AA). The bottom bar shows *Evidence (3)*.
+2. As Maha, walk to the red button in the meeting room: *Press E to call an emergency meeting (1 left)*. Press `E`. Everybody is brought to the table and the meeting screen opens for all three, with a countdown. Walking does nothing.
+3. Type in the meeting chat: everybody sees it.
+4. As Sara: choose *Omar Farouk*, tick the three items, **Accuse**. Everybody sees *Sara Alharbi accuses Omar Farouk: E1, E2, E3*. Trying with fewer than three items is refused.
+5. When voting starts, vote *Omar* as Sara and Maha, *Skip* as Omar. Result: *Omar Farouk was voted out. They were not the hacker.* Reputation drops to 75%. Omar's tab shows *YOU WERE FIRED*: arrows move his view; his chat reaches only other fired players.
+6. Maha's button now says *0 left*. A meeting with no accusation ends with *Nobody was voted out.*
+7. If Omar had joined as the hacker, the vote ends the match: *The hacker was caught.*
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -371,13 +383,13 @@ Start with `VULNS=plaintext-password` (PowerShell: `$env:VULNS='plaintext-passwo
 pnpm test
 ```
 
-Expected: `Test Files 29 passed (29)` and `Tests 331 passed (331)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
+Expected: `Test Files 30 passed (30)` and `Tests 342 passed (342)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
 
 ```bash
 pnpm e2e
 ```
 
-Expected: `8 passed`. Playwright starts its own game (ports 2577 and 5183, no bots, only the plaintext-password weakness), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes ten screenshots to `e2e/screenshots/`.
+Expected: `9 passed`. Playwright starts its own game (ports 2577 and 5183, no bots, only the plaintext-password weakness), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes ten screenshots to `e2e/screenshots/`.
 
 ---
 

@@ -40,6 +40,7 @@ export type DoorSchema = SchemaType<typeof DoorSchema>;
 export const OfficeState = schema({
   clock: 'number',
   speed: 'number',
+  reputation: 'number',
   players: { map: PlayerSchema },
   desks: { map: DeskSchema },
   doors: { map: DoorSchema },
@@ -50,6 +51,7 @@ export function newOfficeState(): OfficeState {
   const state = new OfficeState();
   state.clock = 0;
   state.speed = 1;
+  state.reputation = 100;
   state.players = new MapSchema<PlayerSchema>();
   state.desks = new MapSchema<DeskSchema>();
   state.doors = new MapSchema<DoorSchema>();
@@ -66,6 +68,7 @@ function copy<T extends object>(target: T, source: Record<string, string | numbe
 export function syncState(state: OfficeState, snapshot: PublicState): void {
   if (state.clock !== snapshot.clock) state.clock = snapshot.clock;
   if (state.speed !== snapshot.speed) state.speed = snapshot.speed;
+  if (state.reputation !== snapshot.reputation) state.reputation = snapshot.reputation;
 
   for (const [id, player] of Object.entries(snapshot.players)) {
     let row = state.players.get(id);

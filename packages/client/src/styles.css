@@ -276,3 +276,26 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .monitors-pin { margin: 6px 0; }
 .monitors-line { display: flex; gap: 8px; align-items: baseline; white-space: pre; }
 .monitors-line button { padding: 0 6px; font-size: 10.5px; flex: none; }
+
+/* ── Meetings, fired players, reputation ── */
+.hud-reputation { font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: #c9d3df; }
+.meeting { position: absolute; inset: 0; z-index: 15; display: grid; place-items: center; background: rgba(5, 6, 9, 0.6); }
+.meeting-box { width: min(900px, calc(100% - 32px)); max-height: calc(100% - 80px); overflow: auto; padding: 14px 16px; border-radius: 12px; background: #151b26; border: 1px solid #e5484d; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7); }
+.meeting-head { display: flex; justify-content: space-between; gap: 12px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; color: #ff9da0; }
+.meeting-body { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px; }
+@media (max-width: 760px) { .meeting-body { grid-template-columns: 1fr; } }
+.meeting-chat-lines { height: 260px; overflow: auto; padding: 8px; border-radius: 6px; background: #0d1118; font-size: 13px; line-height: 1.45; }
+.meeting-chat form, .flag-form { display: flex; gap: 6px; margin-top: 6px; }
+.meeting-chat input { flex: 1; min-width: 0; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line); background: #0d1118; color: inherit; }
+.meeting button, .fired button { padding: 5px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: inherit; }
+.meeting-label { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #9aa6b6; margin: 8px 0 4px; }
+.meeting-muted { color: #8b93a3; font-size: 12.5px; }
+.accusation { padding: 6px 8px; margin: 4px 0; border-radius: 6px; background: #241820; border: 1px solid #5c2a30; font-size: 13px; }
+.accuse select { width: 100%; padding: 5px; border-radius: 6px; background: #0d1118; color: inherit; border: 1px solid var(--line); }
+.accuse-evidence { max-height: 160px; overflow: auto; margin: 6px 0; display: grid; gap: 4px; font-size: 12px; }
+.accuse-evidence label { display: flex; gap: 6px; align-items: flex-start; }
+.votes { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.votes .meeting-label { flex-basis: 100%; }
+.meeting-verdict { font-size: 18px; font-weight: 700; margin: 8px 0; }
+.fired { position: absolute; right: 12px; bottom: 56px; z-index: 6; width: 320px; padding: 10px 12px; border-radius: 8px; background: rgba(20, 16, 24, 0.95); border: 1px solid #8b5cf6; font-size: 12.5px; }
+.fired .meeting-chat-lines { height: 140px; }
