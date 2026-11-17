@@ -42,6 +42,8 @@ const LABEL = { fontFamily: 'ui-monospace, Consolas, monospace', fontSize: '11px
 interface PlayerView {
   container: Phaser.GameObjects.Container;
   sprite: Phaser.GameObjects.Image;
+  /** Shown while the person is visibly busy at a PC (crouched, fiddling with it). */
+  busy: Phaser.GameObjects.Text;
   walkTime: number;
   /** Latest position reported by the server. */
   targetX: number;
@@ -184,12 +186,14 @@ export function createOfficeScene(store: Store): Phaser.Scene {
       const sprite = this.add.image(0, 10, key, 0).setOrigin(0.5, 1);
       const self = p.id === store.getUi().playerId;
       const name = this.add.text(0, 17, self ? `${p.name} (you)` : p.name, { ...LABEL, fontFamily: 'Segoe UI, sans-serif', fontSize: '10px', backgroundColor: '#132131', padding: { x: 4, y: 2 }, color: self ? '#9fe8d0' : '#e6e8ee' }).setOrigin(0.5, 0);
-      const container = this.add.container(p.x, p.y, [shadow, sprite, name]).setDepth(10);
+      // A little "..." bubble: what anybody walking past sees when someone fiddles with a PC.
+      const busy = this.add.text(12, -34, '···', { ...LABEL, fontSize: '13px', color: '#ffd27a', backgroundColor: '#2b2113', padding: { x: 3, y: 0 } }).setOrigin(0.5).setVisible(false);
+      const container = this.add.container(p.x, p.y, [shadow, sprite, name, busy]).setDepth(10);
       if (self) {
         const marker = this.add.triangle(0, -37, 0, 0, 8, 0, 4, 5, 0x8fe3cd).setStrokeStyle(1, 0x143b45);
         container.add(marker);
       }
-      const view = { container, sprite, walkTime: 0, targetX: p.x, targetY: p.y };
+      const view = { container, sprite, busy, walkTime: 0, targetX: p.x, targetY: p.y };
       players.set(p.id, view);
       if (self) this.cameras.main.startFollow(container, true, 0.15, 0.15);
       return view;
@@ -229,6 +233,10 @@ export function createOfficeScene(store: Store): Phaser.Scene {
         view.sprite.setFrame(DIRECTIONS.indexOf(p.facing) * 4 + frame);
         view.container.setDepth(10 + p.y / map.height);
         view.container.setAlpha(p.seatedAt ? 0.9 : 1);
+        // Crouched at a PC: lower the body a little and show the bubble.
+        const atPc = p.activity === 'at-pc';
+        view.busy.setVisible(atPc);
+        view.sprite.setScale(1, atPc ? 0.85 : 1);
       });
       for (const [id, view] of players) {
         if (!alive.has(id)) {

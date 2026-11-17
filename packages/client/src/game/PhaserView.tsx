@@ -77,9 +77,15 @@ export function PhaserView() {
       sent = key;
       store.send('move', { dx: Math.sign(dx), dy: Math.sign(dy) });
     };
+    /** True while U is held to use the USB stick (the server counts the seconds). */
+    let usb = false;
     const stop = () => {
       held.clear();
       sendDirection();
+      if (usb) {
+        usb = false;
+        store.send('item.stop', {});
+      }
     };
     /** Keys belong to the terminal while seated, and to a text box while typing in one. */
     const busy = (event: KeyboardEvent) => {
@@ -108,11 +114,20 @@ export function PhaserView() {
       } else if (event.code === 'KeyC') store.set({ cardOpen: !ui.cardOpen });
       else if (event.code === 'KeyT') store.set({ tasksOpen: !ui.tasksOpen });
       else if (event.code === 'KeyM' && ui.briefing) store.set({ briefingOpen: !ui.briefingOpen });
+      else if (event.code === 'KeyU' && ui.briefing && ui.nearDesk) {
+        // The hacker's USB stick: hold U at a PC. Letting go (or walking) before 5 s cancels it.
+        usb = true;
+        store.send('item.start', { item: 'usb', hostname: ui.nearDesk });
+      }
       else if (event.code === 'Escape') store.set({ cardOpen: false });
       else if (event.code === 'Backquote' && ui.dev) store.set({ devOpen: !ui.devOpen });
     };
     const up = (event: KeyboardEvent) => {
       if (held.delete(event.code)) sendDirection();
+      if (event.code === 'KeyU' && usb) {
+        usb = false;
+        store.send('item.stop', {});
+      }
     };
 
     window.addEventListener('keydown', down);

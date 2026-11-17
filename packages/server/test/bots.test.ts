@@ -153,7 +153,7 @@ describe('bot employees in a match', () => {
     const players = Object.values(state.players);
     expect(players.length).toBeGreaterThan(3);
     // Same fields for everyone, and no value anywhere that marks a bot.
-    for (const p of players) expect(Object.keys(p).sort()).toEqual(['facing', 'id', 'name', 'seatedAt', 'x', 'y']);
+    for (const p of players) expect(Object.keys(p).sort()).toEqual(['activity', 'facing', 'id', 'name', 'seatedAt', 'x', 'y']);
     const everything = JSON.stringify({ states: r.states as PublicState[], sent: [...r.sent.values()] }).toLowerCase();
     expect(everything).not.toContain('bot');
     // Positions are rounded the same way for humans and bots (one decimal).

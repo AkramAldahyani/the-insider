@@ -81,7 +81,7 @@ describe('what the other players learn', () => {
     // The public state has no new fields, and says nothing about roles.
     const states = JSON.stringify(r.states);
     expect(states).not.toMatch(/hacker|mission|weak|rumour/i);
-    for (const p of Object.values(r.game.publicState().players)) expect(Object.keys(p).sort()).toEqual(['facing', 'id', 'name', 'seatedAt', 'x', 'y']);
+    for (const p of Object.values(r.game.publicState().players)) expect(Object.keys(p).sort()).toEqual(['activity', 'facing', 'id', 'name', 'seatedAt', 'x', 'y']);
     // The start screen says only whether the role is free.
     expect(Object.keys(r.last('late', 'lobby')!.payload as object).sort()).toEqual(['dev', 'employees', 'hackerOpen', 'mapName', 'scenarioName']);
   });

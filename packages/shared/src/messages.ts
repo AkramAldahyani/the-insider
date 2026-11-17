@@ -26,7 +26,15 @@ export interface PublicPlayer {
   facing: Facing;
   /** Hostname of the desk the player sits at, "" when walking. */
   seatedAt: string;
+  /**
+   * Something anybody nearby can see the person doing: "" (nothing special) or
+   * "at-pc" (crouched at a PC, fiddling with it while standing).
+   */
+  activity: Activity;
 }
+
+/** What a person is visibly busy with (see PublicPlayer.activity). */
+export type Activity = '' | 'at-pc';
 
 export interface PublicDesk {
   hostname: string;
@@ -158,6 +166,13 @@ export interface ClientMessages {
   stand: Record<string, never>;
   /** Hold the badge against a door's reader (the server checks the distance and decides). */
   tap: { door: string };
+  /**
+   * Start / stop using a physical item (hold the key down / let go). Only the
+   * hacker has one: the USB stick, used on the PC of `hostname`. The server
+   * checks everything and counts the 5 seconds itself.
+   */
+  'item.start': { item: 'usb'; hostname: string };
+  'item.stop': Record<string, never>;
   /** One finished line typed at the PC. */
   'term.line': { text: string };
   /** Ctrl+C. */

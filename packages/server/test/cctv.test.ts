@@ -54,7 +54,7 @@ describe('snapshots', () => {
     const first = r.game.cctv.at('CAM-01', r.game.world.time)!;
     const me = r.position('p9');
     expect(first.id).toMatch(/^CAM-01-\d{6}$/);
-    expect(first.people).toEqual([{ playerId: 'p9', name: 'Maha Yousef', x: Math.round(me.x), y: Math.round(me.y), facing: 'up', seatedAt: '' }]);
+    expect(first.people).toEqual([{ playerId: 'p9', name: 'Maha Yousef', x: Math.round(me.x), y: Math.round(me.y), facing: 'up', seatedAt: '', activity: '' }]);
 
     r.sitAt('a', 'p9', 'REC-PC-01');
     r.tick(seconds(3));

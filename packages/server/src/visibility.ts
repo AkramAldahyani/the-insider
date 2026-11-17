@@ -14,7 +14,7 @@
  * test/visibility.test.ts plays a match and checks every byte sent.
  */
 import { briefing, screenState, type Scenario, type TerminalResult, type World } from '@insider/engine';
-import type { DoorLook, EmployeeChoice, MissionBriefing, OnboardingCard, PublicDesk, PublicDoor, PublicPlayer, ServerMessages, TaskView, TermScreen, Facing } from '@insider/shared';
+import type { Activity, DoorLook, EmployeeChoice, MissionBriefing, OnboardingCard, PublicDesk, PublicDoor, PublicPlayer, ServerMessages, TaskView, TermScreen, Facing } from '@insider/shared';
 
 /** A player's body in the office (server-side record). */
 export interface Avatar {
@@ -33,6 +33,10 @@ export interface Avatar {
   /** Wanted walking direction, each -1, 0 or 1. */
   dx: number;
   dy: number;
+  /** What others can see this person doing (see PublicPlayer.activity). */
+  activity?: Activity;
+  /** A physical item being used right now: which, on which PC, and for how long so far (real ms). */
+  hold?: { item: 'usb'; hostname: string; ms: number } | null;
 }
 
 /** Start screen: who can be played. Names and desks are public; passwords are not included. */
@@ -114,7 +118,7 @@ export function taskList(view: { tasks: TaskView[]; completed: number }): Server
 
 /** A player as seen by everyone in the office. */
 export function publicPlayer(a: Avatar): PublicPlayer {
-  return { id: a.playerId, name: a.name, x: Math.round(a.x * 10) / 10, y: Math.round(a.y * 10) / 10, facing: a.facing, seatedAt: a.seatedAt };
+  return { id: a.playerId, name: a.name, x: Math.round(a.x * 10) / 10, y: Math.round(a.y * 10) / 10, facing: a.facing, seatedAt: a.seatedAt, activity: a.activity ?? '' };
 }
 
 /**

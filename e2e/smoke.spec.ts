@@ -315,4 +315,16 @@ test('joining as the hacker: a private briefing and a hidden tools folder; the r
   await page.keyboard.type('cat .tools/README');
   await page.keyboard.press('Enter');
   await expect.poll(() => terminalText(page)).toContain('Every tool leaves a trace');
+
+  // The USB stick: stand at Yousef's open PC (same room) and hold U for 5 seconds.
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('terminal')).toBeHidden();
+  await walkToDesk(page, 'MKT-LT-09');
+  await expect(page.getByTestId('hint')).toContainText('hold U to plug in the USB stick');
+  await page.keyboard.down('u');
+  await expect(page.getByTestId('notice')).toContainText('keep holding U');
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${SHOTS}/12-usb-stick.png` });
+  await expect(page.getByTestId('notice')).toContainText('Backdoor installed on MKT-LT-09 for y.khalil', { timeout: 10_000 });
+  await page.keyboard.up('u');
 });

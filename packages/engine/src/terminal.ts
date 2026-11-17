@@ -189,6 +189,11 @@ export function leaveTerminal(world: World, id: string): void {
   syncUnattended(world, terminal); // walking away from an unlocked screen starts the clock
 }
 
+/** Is the next line typed at this terminal a password (shown as stars)? */
+export function awaitingSecret(world: World, id: string): boolean {
+  return world.terminals[id]?.pending?.masked ?? false;
+}
+
 /** The prompt a terminal is currently showing, without sending any input. */
 export function currentPrompt(world: World, id: string): string {
   const terminal = getTerminal(world, id);

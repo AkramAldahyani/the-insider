@@ -119,7 +119,7 @@ describe('visibility: what the game sends', () => {
       expect(Object.keys(state).sort()).toEqual(['clock', 'desks', 'doors', 'players', 'speed']);
       for (const door of Object.values(state.doors)) expect(Object.keys(door).sort()).toEqual(['id', 'look']);
       for (const player of Object.values(state.players)) {
-        expect(Object.keys(player).sort()).toEqual(['facing', 'id', 'name', 'seatedAt', 'x', 'y']);
+        expect(Object.keys(player).sort()).toEqual(['activity', 'facing', 'id', 'name', 'seatedAt', 'x', 'y']);
       }
       for (const desk of Object.values(state.desks)) {
         expect(Object.keys(desk).sort()).toEqual(['hostname', 'lockUser', 'occupantId', 'screen']);

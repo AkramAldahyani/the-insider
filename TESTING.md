@@ -286,6 +286,28 @@ As the hacker (Omar), sitting at `MKT-LT-11`:
 
 As anybody else: `ls /home/o.farouk/.tools` says `Permission denied`. Developer panel -> **Events -> show last** lists `tool.run` and `tool.done` with Omar's player id.
 
+## W. Phase 4, part C: the USB stick and shoulder surfing
+
+Start with `VULNS=none` and join as the hacker (Omar).
+
+1. Walk to Yousef's desk `MKT-LT-09` (unlocked at the start), stand at the chair. The hint adds *hold U to plug in the USB stick*.
+2. Hold `U`. A notice says *keep holding U and stand still (5 s)*; your character crouches with a "···" bubble. After 5 seconds: *Backdoor installed on MKT-LT-09 for y.khalil (listening on port 4440)*.
+3. Try again at once elsewhere: *You need … s before you can use the USB stick again*. Let go after 2 seconds, or walk: *Nothing happened*.
+4. Hold `U` at a LOCKED PC (for example Noor's `HR-LT-05`): *… is locked: … achieved nothing*.
+5. As Khalid (second tab), `ssh k.nasser@MKT-LT-09`, then:
+
+| Type | Expected |
+|---|---|
+| `dmesg \| grep -i usb` | `New USB device found, idVendor=1b4f, idProduct=9208`, `USB HID v1.11 Keyboard`, `USB disconnect`. |
+| `ps aux \| grep sysupd` | `y.khalil … /home/y.khalil/.cache/.sysupd/sysupd -d` |
+| `sudo ss -tlnp` | `0.0.0.0:4440 … users:(("sysupd",pid=…` |
+| `sudo crontab -l -u y.khalil` | `@reboot /home/y.khalil/.cache/.sysupd/sysupd -d` |
+| `sudo kill <pid>`, then `sudo ss -tlnp` | Port 4440 is gone. |
+
+On `HR-LT-05` the `dmesg` lines are there too, even though nothing was installed.
+
+6. **Shoulder surfing.** Third tab as Sara: sit at `FIN-LT-07` (locked). As Omar, stand one tile right behind her chair. When Sara types her password, Omar gets *You saw Sara Alharbi type a password at FIN-LT-07 ("Password:"): R?y??h2??4!* (some characters shown). `cat ~/.tools/loot/shoulder.txt` on Omar's PC has the line. Standing two tiles away, or beside her, shows nothing.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -298,7 +320,7 @@ As anybody else: `ls /home/o.farouk/.tools` says `Permission denied`. Developer 
 pnpm test
 ```
 
-Expected: `Test Files 22 passed (22)` and `Tests 265 passed (265)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
+Expected: `Test Files 24 passed (24)` and `Tests 287 passed (287)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
 
 ```bash
 pnpm e2e

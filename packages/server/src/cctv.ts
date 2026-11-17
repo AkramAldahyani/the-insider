@@ -39,6 +39,8 @@ export interface SeenPerson {
   facing: Facing;
   /** Hostname of the desk they sit at, "" when standing. */
   seatedAt: string;
+  /** What they were visibly doing ("at-pc": crouched at a PC). */
+  activity: string;
 }
 
 export interface Snapshot {
@@ -71,6 +73,7 @@ export interface Filmed {
   y: number;
   facing: Facing;
   seatedAt: string;
+  activity?: string;
 }
 
 /** A camera looks this often (game ms). */
@@ -117,11 +120,11 @@ export class Cctv {
     for (const camera of this.cameras) {
       const people: SeenPerson[] = bodies
         .filter((b) => this.sees(camera, b.x, b.y))
-        .map((b) => ({ playerId: b.playerId, name: b.name, x: Math.round(b.x), y: Math.round(b.y), facing: b.facing, seatedAt: b.seatedAt }))
+        .map((b) => ({ playerId: b.playerId, name: b.name, x: Math.round(b.x), y: Math.round(b.y), facing: b.facing, seatedAt: b.seatedAt, activity: b.activity ?? '' }))
         .sort((a, b) => a.playerId.localeCompare(b.playerId));
       const recording = this.recordings.get(camera.id)!;
       // "Changed" = somebody is on another tile, turned, sat down or stood up, came or went.
-      const scene = people.map((p) => `${p.playerId}:${Math.floor(p.x / this.map.tile)},${Math.floor(p.y / this.map.tile)}:${p.facing}:${p.seatedAt}`).join('|');
+      const scene = people.map((p) => `${p.playerId}:${Math.floor(p.x / this.map.tile)},${Math.floor(p.y / this.map.tile)}:${p.facing}:${p.seatedAt}:${p.activity}`).join('|');
       const last = recording.at(-1);
       if (last && scene === this.lastScene.get(camera.id) && this.world.time - last.time < KEYFRAME_MS) continue;
 

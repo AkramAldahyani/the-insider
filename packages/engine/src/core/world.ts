@@ -243,7 +243,7 @@ export function createWorld(original: Scenario, seed = 1, options: WorldOptions 
     },
     unattended: [],
     mission,
-    toolkit: { cooldowns: {}, jobs: [], nextJob: 0 },
+    toolkit: { cooldowns: {}, jobs: [], nextJob: 0, backdoors: [], usbCount: 0 },
     mail: { serverHost: scenario.mail?.server ?? scenario.dhcp.server, messages: [] },
     web: {
       proxyHost: scenario.web ? (scenario.web.proxy ?? scenario.dhcp.server) : '',

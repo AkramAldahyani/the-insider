@@ -303,11 +303,26 @@ export interface ToolJob {
   finishAt: number;
 }
 
+/** A backdoor set up by the USB stick (see tools/physical.ts). It works while its process is alive. */
+export interface Backdoor {
+  host: string;
+  /** The account it runs as: whoever was logged in at the PC. */
+  account: string;
+  pid: number;
+  port: number;
+  installedAt: number;
+  /** The player who plugged the stick in. */
+  player: string;
+}
+
 export interface ToolkitState {
   /** "playerId/tool" -> game time from which it may be used again. */
   cooldowns: Record<string, number>;
   jobs: ToolJob[];
   nextJob: number;
+  backdoors: Backdoor[];
+  /** USB devices plugged in so far (numbers the kernel's "device N" lines). */
+  usbCount: number;
 }
 
 // ───────────────────────────── Unattended PCs ─────────────────────────────

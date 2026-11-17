@@ -19,6 +19,7 @@ export const PlayerSchema = schema({
   y: 'number',
   facing: 'string',
   seatedAt: 'string',
+  activity: 'string',
 }, 'PlayerSchema');
 export type PlayerSchema = SchemaType<typeof PlayerSchema>;
 

@@ -17,6 +17,12 @@ export const PLAYER_RADIUS = 10;
 export const INTERACT_DISTANCE = 44;
 /** How close (pixels) a player must be to a doorway to tap a badge on its reader. */
 export const TAP_DISTANCE = 40;
+/** How long the hacker must hold still at a PC to use the USB stick (real milliseconds). */
+export const USB_HOLD_MS = 5000;
+/** Shoulder surfing: how far behind a seated person's chair the watcher may stand (pixels, below the chair). */
+export const SURF_BEHIND = 52;
+/** ...and how far to the side of it. */
+export const SURF_SIDE = 32;
 /** A granted badge tap holds the door open this long (real milliseconds). */
 export const DOOR_OPEN_MS = 3000;
 /** A refused badge makes the reader flash red this long (real milliseconds). */

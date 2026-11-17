@@ -14,10 +14,10 @@
  */
 import {
   advanceTime, cancelInput, createWorld, dateStamp, leaveTerminal, openTerminal, parseDuration, refreshTerminal,
-  sendInput, serializeWorld, setHacker, switchUser, type FsNode, type OpenResult, type Scenario, type TerminalResult, type WeaknessChoice, type World,
+  awaitingSecret, currentPrompt, glimpse, plugUsb, sendInput, serializeWorld, setHacker, shoulderSurf, switchUser, usbCooldown, type FsNode, type OpenResult, type Scenario, type TerminalResult, type WeaknessChoice, type World,
 } from '@insider/engine';
 import {
-  INTERACT_DISTANCE, PLAYER_RADIUS, PLAYER_SPEED, moveWithCollision, parseOfficeMap,
+  INTERACT_DISTANCE, PLAYER_RADIUS, PLAYER_SPEED, SURF_BEHIND, SURF_SIDE, USB_HOLD_MS, moveWithCollision, parseOfficeMap, roomAt,
   type ClientMessages, type Facing, type OfficeMap, type PublicState, type ServerMessages, type ServerMessageType, type TiledMap,
 } from '@insider/shared';
 import { BotManager, type BotOptions } from './bots/manager';
@@ -74,6 +74,8 @@ export class OfficeGame {
   readonly tasks: TaskBoard;
   /** The cameras' recordings (server only). */
   readonly cctv: Cctv;
+  /** Random numbers for what a shoulder-surfer happens to catch (its own sequence: it never disturbs the bots). */
+  private readonly eyes: Random;
   readonly dev: boolean;
   speed: number;
 
@@ -105,6 +107,7 @@ export class OfficeGame {
     this.dev = options.dev ?? false;
     this.writeDump = options.writeDump;
     this.cctv = new Cctv(this.world, this.map);
+    this.eyes = new Random((options.seed ?? 1) ^ 0x5ee5);
     this.tasks = new TaskBoard(this.world, this.scenario, this.map, new Random((options.seed ?? 1) ^ 0x7a5c));
     this.bots = options.bots === false
       ? null
@@ -117,7 +120,7 @@ export class OfficeGame {
           // A bot acts through the same functions as a human's messages: same checks, same logs.
           sit: (a, hostname) => this.sitBody(a, hostname),
           stand: (a) => void this.standBody(a),
-          type: (a, line) => sendInput(this.world, a.terminalId, line.slice(0, MAX_LINE)),
+          type: (a, line) => this.typeLine(a, line),
           cancel: (a) => cancelInput(this.world, a.terminalId),
           switchUser: (a) => switchUser(this.world, a.terminalId),
           tasks: this.tasks,
@@ -231,9 +234,14 @@ export class OfficeGame {
       }
       case 'term.line': {
         if (!avatar.seatedAt || typeof data.text !== 'string') return;
-        this.screen(avatar, sendInput(this.world, avatar.terminalId, data.text.slice(0, MAX_LINE)));
+        this.screen(avatar, this.typeLine(avatar, data.text));
         return;
       }
+      case 'item.start':
+        return this.startItem(avatar, data);
+      case 'item.stop':
+        if (avatar.hold) this.endItem(avatar, 'You let go before it was done. Nothing happened.');
+        return;
       case 'term.cancel':
         if (avatar.seatedAt) this.screen(avatar, cancelInput(this.world, avatar.terminalId));
         return;
@@ -334,6 +342,70 @@ export class OfficeGame {
     if (entrance) this.doors.passThrough(this.walker(avatar), entrance, direction);
   }
 
+  // ───────────────────────────── Physical tools (Phase 4, part C) ─────────────────────────────
+
+  /**
+   * One line typed at a PC, by a human or a bot. Before it reaches the PC: if
+   * it answers a password question and the hacker stands right behind the
+   * chair, the hacker catches a glimpse of it (shoulder surfing).
+   */
+  private typeLine(typist: Avatar, text: string): TerminalResult {
+    const line = text.slice(0, MAX_LINE);
+    if (typist.seatedAt && awaitingSecret(this.world, typist.terminalId)) this.watchPassword(typist, line);
+    return sendInput(this.world, typist.terminalId, line);
+  }
+
+  private watchPassword(typist: Avatar, password: string): void {
+    const hackerId = this.world.mission.hacker;
+    const hacker = [...this.avatars.values()].find((a) => a.playerId === hackerId && this.clients.has(a.clientId));
+    const desk = this.map.desks.find((d) => d.hostname === typist.seatedAt);
+    if (!hacker || hacker === typist || hacker.seatedAt || !desk || !password) return;
+    // "Right behind": just below the chair (people sit facing their desk, which is above them).
+    const behind = hacker.y - desk.seatY;
+    if (behind <= 4 || behind > SURF_BEHIND || Math.abs(hacker.x - desk.seatX) > SURF_SIDE) return;
+    const prompt = currentPrompt(this.world, typist.terminalId);
+    const pattern = glimpse(password, () => this.eyes.next());
+    shoulderSurf(this.world, { hacker: hacker.playerId, victim: typist.playerId, host: desk.hostname, prompt, pattern });
+    this.send(hacker.clientId, 'notice', { text: `You saw ${typist.name} type a password at ${desk.hostname} ("${prompt.trim()}"): ${pattern}  (saved in ~/.tools/loot/shoulder.txt)` });
+    this.bots?.watchedBy(typist.playerId, hacker, roomAt(this.map, typist.x, typist.y), desk.hostname);
+  }
+
+  /** The hacker starts holding the USB stick against a PC. Every condition is checked here, not in the browser. */
+  private startItem(avatar: Avatar, data: Record<string, unknown>): void {
+    if (data.item !== 'usb' || avatar.hold || avatar.seatedAt) return;
+    if (this.world.mission.hacker !== avatar.playerId) return; // only the hacker has the stick
+    const desk = this.map.desks.find((d) => d.hostname === data.hostname);
+    if (!desk) return;
+    const notice = (text: string) => this.send(avatar.clientId, 'notice', { text });
+    if (Math.hypot(desk.seatX - avatar.x, desk.seatY - avatar.y) > INTERACT_DISTANCE) return notice(`You are too far from ${desk.hostname}.`);
+    const occupant = [...this.avatars.values()].find((a) => a.seatedAt === desk.hostname);
+    if (occupant) return notice(`${occupant.name} is sitting at ${desk.hostname}.`);
+    const wait = usbCooldown(this.world, avatar.playerId);
+    if (wait > 0) return notice(`You need ${wait} s before you can use the USB stick again.`);
+    Object.assign(avatar, { hold: { item: 'usb', hostname: desk.hostname, ms: 0 }, activity: 'at-pc', dx: 0, dy: 0, facing: 'up' as Facing });
+    notice(`Plugging the USB stick into ${desk.hostname}... keep holding U and stand still (${USB_HOLD_MS / 1000} s).`);
+  }
+
+  private holdItem(avatar: Avatar, realMs: number): void {
+    const hold = avatar.hold!;
+    const desk = this.map.desks.find((d) => d.hostname === hold.hostname)!;
+    if (avatar.dx !== 0 || avatar.dy !== 0 || Math.hypot(desk.seatX - avatar.x, desk.seatY - avatar.y) > INTERACT_DISTANCE) {
+      return this.endItem(avatar, 'You moved away. Nothing happened.');
+    }
+    const occupant = [...this.avatars.values()].find((a) => a.seatedAt === desk.hostname);
+    if (occupant) return this.endItem(avatar, `${occupant.name} sat down at ${desk.hostname}. You stopped.`);
+    hold.ms += realMs;
+    if (hold.ms < USB_HOLD_MS) return;
+    const result = plugUsb(this.world, hold.hostname, avatar.playerId);
+    this.endItem(avatar, result.text);
+  }
+
+  private endItem(avatar: Avatar, text: string): void {
+    avatar.hold = null;
+    avatar.activity = '';
+    this.send(avatar.clientId, 'notice', { text });
+  }
+
   /** An avatar as the doors see it. */
   private walker(a: Avatar): Walker {
     return { key: a.clientId, playerId: a.playerId, account: a.account, x: a.x, y: a.y, seated: a.seatedAt !== '' };
@@ -377,6 +449,7 @@ export class OfficeGame {
       const human = this.humans().find((a) => a.playerId === playerId);
       if (human) this.send(human.clientId, 'tasks', taskList(this.tasks.view(playerId)));
     }
+    for (const avatar of this.avatars.values()) if (avatar.hold) this.holdItem(avatar, realMs);
     this.cctv.update([...this.avatars.values()]);
     // Doors last: they look at where everybody ended up.
     this.doors.tick(realMs, [...this.avatars.values()].map((a) => this.walker(a)));

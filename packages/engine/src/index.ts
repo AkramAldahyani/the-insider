@@ -23,12 +23,13 @@ export { createWorld } from './core/world';
 export type { WorldOptions } from './core/world';
 export { ALL_WEAKNESSES, briefing, chooseWeaknesses, setHacker } from './mission/mission';
 export { TOOLS, toolByName, toolAt } from './tools/toolkit';
+export { USB_COOLDOWN_MS, glimpse, plugUsb, shoulderSurf, usbCooldown } from './tools/physical';
 export type { ToolDefinition, Noise } from './tools/toolkit';
 export type { WeaknessChoice } from './mission/mission';
 export { advanceTime, advanceTo } from './core/clock';
 export { parseDuration, dateStamp } from './core/time';
 export {
-  openTerminal, leaveTerminal, sendInput, currentPrompt, cancelInput, switchUser, refreshTerminal, screenState,
+  openTerminal, leaveTerminal, sendInput, currentPrompt, awaitingSecret, cancelInput, switchUser, refreshTerminal, screenState,
 } from './terminal';
 export type { TerminalResult, OpenResult, ScreenKind, ScreenState } from './terminal';
 export { queryEvents } from './events/log';

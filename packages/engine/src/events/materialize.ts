@@ -50,6 +50,22 @@ export function materialize(world: World, e: GameEvent): void {
       badgeLog(host, world.time, 'doors.log', `DOOR=${str(d.door)} EVENT=CLOSE OPEN_FOR=${(Number(d.openMs) / 1000).toFixed(1)}s PASSAGES=${str(d.passages)}`);
       break;
 
+    // ── USB devices (the kernel's view; see tools/physical.ts) ──
+    case 'usb.insert': {
+      const k = (msg: string) => syslog(world, host, 'kernel', null, msg, 'kernel');
+      const n = str(d.device);
+      k(`usb 1-1: new full-speed USB device number ${n} using xhci_hcd`);
+      k(`usb 1-1: New USB device found, idVendor=${str(d.vendor)}, idProduct=${str(d.product)}, bcdDevice= 1.00`);
+      k('usb 1-1: New USB device strings: Mfr=1, Product=2, SerialNumber=0');
+      k(`usb 1-1: Product: ${str(d.name)}`);
+      k(`input: ${str(d.name)} as /devices/pci0000:00/0000:00:14.0/usb1/1-1/1-1:1.0/0003:${str(d.vendor).toUpperCase()}:${str(d.product).toUpperCase()}.000${n}/input/input${10 + Number(n)}`);
+      k(`hid-generic 0003:${str(d.vendor).toUpperCase()}:${str(d.product).toUpperCase()}.000${n}: input,hidraw0: USB HID v1.11 Keyboard [${str(d.name)}] on usb-0000:00:14.0-1/input0`);
+      break;
+    }
+    case 'usb.remove':
+      syslog(world, host, 'kernel', null, `usb 1-1: USB disconnect, device number ${str(d.device)}`, 'kernel');
+      break;
+
     case 'cctv.motion':
       sysWrite(host, '/var/log/cctv/motion.log', `${isoSecond(world.time)} ${str(d.camera)} MOTION persons=${str(d.persons)} snapshot=${str(d.snapshot)}\n`, { owner: 'root', group: 'adm', mode: 0o640, time: world.time, append: true });
       break;

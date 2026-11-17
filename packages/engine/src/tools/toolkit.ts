@@ -111,6 +111,12 @@ export function installTools(world: World, host: Host, account: string): void {
     '',
     ...TOOLS.map((t) => `  ~/.tools/${t.usage.padEnd(22)} ${t.summary}`),
     '',
+    'Physical items (used in the office, not typed):',
+    '  USB stick       stand at an UNLOCKED PC (not sitting) and hold U for 5 seconds:',
+    '                  sets up a backdoor for whoever is logged in there. Seen by anyone nearby and by cameras.',
+    '  your eyes       stand right behind someone sitting at a PC while they type a password:',
+    '                  you catch a few of its characters (written to loot/shoulder.txt).',
+    '',
     'loot/ is where your tools put what they find.',
     '',
   ].join('\n'), { ...opts, mode: 0o600 });

@@ -105,6 +105,7 @@ export function Hud({ ui }: { ui: UiState }) {
       {ui.nearDesk && !ui.seatedAt && (
         <div className="hud-hint" data-testid="hint">
           Press <kbd>E</kbd> to use {ui.nearDesk}
+          {ui.briefing && <> · hold <kbd>U</kbd> to plug in the USB stick</>}
         </div>
       )}
       {ui.nearDoor && !ui.nearDesk && !ui.seatedAt && (

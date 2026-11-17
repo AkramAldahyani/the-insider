@@ -68,6 +68,8 @@ export interface Observation {
   room: string;
   /** Hostname of the desk they were sitting at, "" if they were standing. */
   desk: string;
+  /** Something remarkable about it, e.g. "stood right behind me while I typed my password". */
+  note?: string;
 }
 
 export interface Bot {
@@ -159,6 +161,17 @@ export class BotManager {
   /** What a bot has seen so far, oldest first. */
   observations(playerId: string): Observation[] {
     return this.bots.get(playerId)?.observations ?? [];
+  }
+
+  /**
+   * Somebody stood right behind this bot while it typed a password. People
+   * often notice that: the bot remembers it (7 times in 10), with the time.
+   */
+  watchedBy(playerId: string, watcher: { playerId: string; name: string }, room: string, desk: string): void {
+    const bot = this.bots.get(playerId);
+    if (!bot?.subject || !bot.random.chance(0.7)) return;
+    bot.observations.push({ time: this.host.world.time, who: watcher.playerId, name: watcher.name, room, desk: '', note: `stood right behind me at ${desk} while I typed a password` });
+    if (bot.observations.length > MAX_OBSERVATIONS) bot.observations.shift();
   }
 
   /** The game tells a seated bot that its screen changed by itself (it locked, a remote session closed...). */

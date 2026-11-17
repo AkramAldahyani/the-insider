@@ -13,13 +13,14 @@ Update it at the end of every part.
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | **planned, waiting for the owner's OK** (plan below) |
 
-## Phase 4 status: plan approved by the owner; Parts A and B DONE, Part C next
+## Phase 4 status: plan approved by the owner; Parts A, B and C DONE, Part D next
 
 | Part | State |
 |---|---|
 | A Match secrets: the hacker and the weaknesses | **done** |
 | B Tool framework | **done** (mechanism + the harmless `selftest` tool only) |
-| C to H | not started |
+| C Physical tools: USB stick, shoulder surfing | **done** |
+| D to H | not started |
 
 Owner-approved defaults: "join as the hacker" on the start screen (one per match); the hacker is NOT told which
 weaknesses are on; winning = exfiltrating the flag; bots fall for phishing about 30 %; scanner alerts go to everyone.
@@ -61,7 +62,26 @@ weaknesses are on; winning = exfiltrating the flag; bots fall for phishing about
 - A test enforces that every tool lists at least one trace.
 - 265 Vitest tests (new: `engine/test/toolkit.test.ts`, one server test).
 
-### Notes for Part C onwards
+### Part C: what exists now
+
+- Engine `tools/physical.ts`: `plugUsb(world, hostname, playerId)`: always `usb.insert` + `usb.remove` (kernel lines in
+  dmesg / kern.log); on an UNLOCKED console session also a backdoor for that session's user: hidden program
+  `~/.cache/.sysupd/sysupd`, a process, a listening port (4440 + n, `ss -tlnp`), an `@reboot` crontab line,
+  `world.toolkit.backdoors` record, `backdoor.install` event. Cooldown 60 s (`usbCooldown`). Killing the process
+  closes the port (Part D's remote tool must check the process is alive). `shoulderSurf` appends to the hacker's
+  `~/.tools/loot/shoulder.txt` on their own PC and emits `shoulder.surf` (no password in the event). `glimpse`
+  shows about 40 % of characters. Engine `awaitingSecret(world, terminalId)`.
+- Server: messages `item.start { item: 'usb', hostname }` / `item.stop`. Only the hacker; standing (not seated),
+  within INTERACT_DISTANCE of the chair, nobody seated there, cooldown over. Hold 5 s real time (`USB_HOLD_MS`);
+  moving, walking off, someone sitting down or letting go cancels with nothing logged. While holding,
+  `PublicPlayer.activity = 'at-pc'` (new public field; CCTV snapshots record it too).
+  Shoulder surfing: every line typed by a human or bot goes through `game.typeLine`; if it answers a masked prompt
+  and the HUMAN hacker stands just behind the chair (0 < dy <= 52 px below the seat, |dx| <= 32 px, not seated),
+  the hacker gets a notice and loot; a bot victim remembers it 7 times in 10 (`Observation.note`).
+- Client: hold `U` near a desk (hacker only; hint says so), "···" bubble and crouch for anyone `at-pc`.
+- 287 Vitest tests (new: engine and server `physical.test.ts`), 6 Playwright (the hacker test now uses the stick).
+
+### Notes for Part D onwards
 
 - Add a tool = add a `ToolDefinition` to `TOOLS`; it gets its file, README line, cooldown and job handling for free.
 - Physical tools (BadUSB: hold E 5 s at an unlocked PC; shoulder surfing) also need server/client work: a hold
