@@ -13,7 +13,7 @@ This document is the single source of truth for the game's design. Read it fully
 - Each player has an assigned desk with a personal Linux workstation (a **simulated** Linux shell, see §4).
 - One or more players are secretly **HACKERS**. Their mission: read `/root/flag.txt` on `ADMIN-SRV-01` (only the sysadmin/root account can read it) and submit the flag.
 - Everyone else is a **DEFENDER**. They keep the company running (job tasks) and investigate digital and physical evidence to identify the hacker.
-- Empty player slots are filled with **bots**, so a match works with any mix of humans and bots (e.g. 1 human + 14 bots, or 30 humans).
+- Empty player slots are filled with **bots**, so a match works with any mix of humans and bots (e.g. 1 human + 14 bots, or 30 humans). The game has three modes, two of them solo against bots (see §1a).
 
 ### Win conditions
 - **Hackers win** if:
@@ -24,6 +24,49 @@ This document is the single source of truth for the game's design. Read it fully
 ### Match length
 - **No time limit.** A match continues until a win condition is reached.
 - **Anti-stall:** as time passes, threat escalation slowly surfaces extra clues in the SIEM (e.g. every 10 minutes one real hacker-generated event is flagged as high severity), so matches cannot drag on forever.
+
+---
+
+## 1a. Game modes
+
+The game has three modes that share the same engine, office, bots, tools and evidence systems. Only the rules differ.
+
+| Mode | Players | You play | Goal |
+|---|---|---|---|
+| **Investigation** (solo) | 1 human + bots | A defender | Find the bot hacker using evidence before the flag is stolen |
+| **Infiltration** (solo) | 1 human + bots | The hacker | Get the admin flag without getting caught by bot defenders |
+| **The Insider** (multiplayer) | 8–30, humans + bots | Random secret role | The full social-deduction game (§1–§12) |
+
+### Investigation (solo defender)
+- The player picks or is given a defender role (regular employee, SOC analyst, security guard, sysadmin…).
+- One or more bot hackers attack using the same tools and randomized vulnerabilities as in multiplayer.
+- Bot employees act as coworkers: they do tasks, share findings in chat, attend meetings and vote based on the evidence they have seen.
+- The player wins by getting the hacker voted out or detained with a valid evidence chain. They lose if the flag is stolen or the hackers reach parity.
+- Difficulty controls the bot hacker's stealth, how much bot coworkers help, and how many vulnerabilities are open.
+- Does not require any human hacker, so it is the first mode to ship.
+
+### Infiltration (solo hacker)
+- The player is always the hacker; every other employee is a bot.
+- Bot defenders actively investigate: they notice people at the wrong desk, check their own logs (`last`, `ps aux`, `ss -tnp`), notice USB events and odd logins, report to others, call meetings and vote.
+- The player wins by submitting the admin flag. They lose if they are voted out or detained.
+- This is not a pure CTF: stealth matters, because every action leaves evidence that the bots can find.
+- Optional **scenario ladder**: a series of fixed scenarios with increasing difficulty (fewer vulnerabilities, more careful bots, more cameras), each with a short briefing and a debrief.
+- Depends on the hacker toolkit (§5).
+
+### The Insider (multiplayer)
+- The full game as described in §1–§12: humans and bots, secret roles, one or more hackers, meetings, evidence and voting.
+
+### Shared across all modes
+- The post-match debrief (§11) shows the full timeline, the evidence each action produced, and what was found or missed.
+- Difficulty modes (§12: Beginner / Realistic) apply to every mode.
+- Progress and stats are tracked per mode.
+
+### Release order
+1. Investigation (solo), right after Phase 5.
+2. Infiltration (solo), once the hacker toolkit is complete.
+3. The Insider (multiplayer), after Phase 6.
+
+Shipping the solo modes first means new players always have something to play, even when few people are online, and gives real playtesting before multiplayer.
 
 ---
 
@@ -309,6 +352,7 @@ After each match, show a full timeline replay: every hacker action, the evidence
 | 3 | **Living office** — bot employees, tasks, background noise, badges, doors, server room, CCTV | Office feels alive; realistic logs, badge and CCTV records accumulate |
 | 4 | **Hacker gameplay** — toolkit, randomized vulnerabilities, flag | Win as the hacker by at least 2 routes; every action is traceable |
 | 5 | **Investigation & social deduction** — roles, SIEM, viewers, evidence board, meetings, voting, win conditions, bot hacker, debrief | A full match as defender vs a bot hacker, with debrief |
+| 5a | **Solo modes** (§1a) — Investigation (solo defender) first, then Infiltration (solo hacker) with investigating bot defenders and the optional scenario ladder | One human can finish an Investigation match and an Infiltration match against bots, each with debrief |
 | 6 | **Multiplayer** — Colyseus rooms, 8–30 lobbies, bot backfill, chat, hacker chat, ghosts, reconnects | Friends on different computers finish a match together |
 | 7 | **Art, sound, polish** — art pack, sounds, beginner mode, tutorial, mobile controls | A new player learns from the tutorial alone |
 | 8 | **Accounts & launch** — accounts, stats, matchmaking, Docker, deployment, privacy policy, chat reporting | Anyone can open a link, sign up and join a public match |
