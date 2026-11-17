@@ -108,6 +108,11 @@ export function Hud({ ui }: { ui: UiState }) {
           {ui.briefing && <> · hold <kbd>U</kbd> to plug in the USB stick</>}
         </div>
       )}
+      {ui.nearMonitors && !ui.nearDesk && !ui.nearDoor && !ui.seatedAt && !ui.monitors && (
+        <div className="hud-hint" data-testid="hint">
+          Press <kbd>E</kbd> to use the security monitors (cameras, badge log)
+        </div>
+      )}
       {ui.nearDoor && !ui.nearDesk && !ui.seatedAt && (
         <div className="hud-hint" data-testid="hint">
           Press <kbd>E</kbd> to tap your badge at the {ui.nearDoorName.toLowerCase()}

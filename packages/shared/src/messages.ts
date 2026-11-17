@@ -124,6 +124,18 @@ export interface MissionBriefing {
   rumours: string[];
 }
 
+/** A person as a camera recorded them. */
+export interface MonitorPerson {
+  name: string;
+  x: number;
+  y: number;
+  facing: Facing;
+  /** Desk they sat at, "" when standing. */
+  seatedAt: string;
+  /** What they were visibly doing ("at-pc": crouched at a PC). */
+  activity: string;
+}
+
 /** What a PC's screen shows after something happened. */
 export interface TermScreen {
   /** Text to print. */
@@ -159,6 +171,13 @@ export interface ServerMessages {
   alert: { text: string };
   /** The match is over. Sent to everybody, including people on the start screen. */
   'match.over': { winner: 'hacker'; hacker: string; at: number };
+  /**
+   * The security-office monitors (only for someone standing at them): what
+   * each camera has recorded, and the latest badge and camera-motion lines.
+   */
+  'monitors.index': { cameras: { id: string; shots: { id: string; time: number; count: number }[] }[]; badges: string[]; motion: string[] };
+  /** One recorded picture of a camera: who stood where. `id` is "" when the camera has nothing for that time. */
+  'monitors.frame': { camera: string; id: string; time: number; people: MonitorPerson[] };
   /** A short note for the HUD ("Too far from the desk"). */
   notice: { text: string };
   /** Developer panel replies. Never sent by a production server. */
@@ -184,6 +203,10 @@ export interface ClientMessages {
    */
   'item.start': { item: 'usb'; hostname: string };
   'item.stop': Record<string, never>;
+  /** Use the security-office monitors (the server checks that you stand at them). */
+  'monitors.open': Record<string, never>;
+  /** Show a camera's picture at a time (game ms; omitted = the latest). */
+  'monitors.frame': { camera: string; time?: number };
   /** The hacker hands in the flag (the text of the flag file). */
   'flag.submit': { text: string };
   /** One finished line typed at the PC. */

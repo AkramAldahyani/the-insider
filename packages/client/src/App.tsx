@@ -5,6 +5,7 @@
 import { Suspense, lazy, useEffect, useSyncExternalStore } from 'react';
 import { PhaserView } from './game/PhaserView';
 import { store } from './game/store';
+import { MonitorsPanel } from './ui/MonitorsPanel';
 import { TerminalOverlay } from './ui/TerminalOverlay';
 import { AlertBanner, Hud, MatchOver, MissionPanel, OnboardingCard, StartScreen, TaskList } from './ui/panels';
 
@@ -42,6 +43,7 @@ export function App() {
       <TaskList ui={ui} />
       {/* The briefing shares the right-hand side with the onboarding card: card first, then (after C) the briefing. */}
       {!ui.seatedAt && !ui.cardOpen && <MissionPanel ui={ui} />}
+      {ui.monitors && !ui.seatedAt && <MonitorsPanel ui={ui} />}
       <AlertBanner ui={ui} />
       <MatchOver ui={ui} />
       {ui.cardOpen && ui.card && !ui.seatedAt && <OnboardingCard card={ui.card} />}

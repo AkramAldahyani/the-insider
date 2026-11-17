@@ -7,6 +7,7 @@ import { helpCommands } from './help';
 import { identityCommands } from './identity';
 import { logCommands } from './logs';
 import { mailCommands } from './mail';
+import { siemCommands } from './siem';
 import { netCommands } from './net';
 import { privCommands, privPending } from './priv';
 import { procCommands } from './procs';
@@ -18,7 +19,7 @@ import { textCommands } from './text';
 Object.assign(
   commands,
   fileCommands, textCommands, identityCommands, sessionCommands, procCommands,
-  netCommands, logCommands, remoteCommands, privCommands, helpCommands, mailCommands,
+  netCommands, logCommands, remoteCommands, privCommands, helpCommands, mailCommands, siemCommands,
 );
 Object.assign(pendingHandlers, remotePending, privPending);
 

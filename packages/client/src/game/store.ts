@@ -45,6 +45,11 @@ export interface UiState {
   /** Start screen: is the hacker role still free, and did this player tick "join as the hacker"? */
   hackerOpen: boolean;
   asHacker: boolean;
+  /** Standing at the security-office monitors (for the "Press E" hint). */
+  nearMonitors: boolean;
+  /** What the monitors show (null = not using them), and the picture asked for last. */
+  monitors: ServerMessages['monitors.index'] | null;
+  monitorFrame: ServerMessages['monitors.frame'] | null;
   /** The latest security-alert banner ("" = none showing). */
   alert: string;
   /** Set when the match is over: who won and who the hacker was. */
@@ -86,7 +91,7 @@ export class Store {
   rawMap: TiledMap | null = null;
 
   private ui: UiState = {
-    phase: 'connecting', error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null,
+    phase: 'connecting', error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, nearMonitors: false, monitors: null, monitorFrame: null,
     clock: 0, speed: 1, roomName: '', nearDesk: '', nearDoor: '', nearDoorName: '', seatedAt: '', notice: '', tasks: [], tasksCompleted: 0, tasksOpen: true, devOpen: false, devLog: [],
   };
   private listeners = new Set<Listener>();
@@ -171,7 +176,9 @@ export class Store {
         window.clearTimeout(this.alertTimer);
         this.alertTimer = window.setTimeout(() => this.set({ alert: '' }), 8000);
       });
-      on('match.over', (over) => this.set({ matchOver: over })); 
+      on('match.over', (over) => this.set({ matchOver: over }));
+      on('monitors.index', (index) => this.set({ monitors: index }));
+      on('monitors.frame', (frame) => this.set({ monitorFrame: frame })); 
       on('tasks', ({ tasks, completed }) => {
         if (completed > this.ui.tasksCompleted) this.notice('Task finished.');
         this.set({ tasks, tasksCompleted: completed });

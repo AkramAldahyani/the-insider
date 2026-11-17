@@ -216,11 +216,23 @@ export function resumeFrame(run: Run, frame: Frame, injected?: CmdResult): void 
   }
 }
 
+/**
+ * A SIEM query has its own "|" steps (`siem source=auth | count by user`).
+ * Like a search box, the whole rest of a line that starts with `siem` belongs
+ * to the query, so it is passed on as one argument instead of being split
+ * into shell pipes. (A query already written in quotes is left as it is.)
+ */
+function siemLine(line: string): string {
+  const m = /^(\s*siem)\s+(.+)$/.exec(line);
+  if (!m || /^(['"])[^'"]*\1\s*$/.test(m[2])) return line;
+  return `${m[1]} '${m[2].replace(/'/g, "'\\''")}'`;
+}
+
 /** Parses and runs one line typed at a shell prompt. */
 export function runLine(run: Run, line: string): void {
   let items: ListItem[];
   try {
-    items = parse(line);
+    items = parse(siemLine(line));
   } catch (e) {
     if (!(e instanceof ShellSyntaxError)) throw e;
     run.out.push(`bash: ${e.message}\n`);

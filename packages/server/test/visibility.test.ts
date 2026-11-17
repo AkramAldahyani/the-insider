@@ -34,6 +34,8 @@ const ALLOWED_FIELDS: Record<string, string[]> = {
   tasks: ['tasks', 'completed'],
   alert: ['text'],
   'match.over': ['winner', 'hacker', 'at'],
+  'monitors.index': ['cameras', 'badges', 'motion'],
+  'monitors.frame': ['camera', 'id', 'time', 'people'],
 };
 
 /** Plays the match: Sara (client "sara") at her own PC, Omar (client "omar") at Lina's unlocked one. */

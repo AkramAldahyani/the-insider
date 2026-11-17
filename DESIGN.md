@@ -247,6 +247,11 @@ Decided in Phase 5 (part A):
 - **The hacker keeps the role of the employee they pose as.** The hacker's private briefing is separate from the card.
 - The small office has one **SOC analyst**: Huda Rahman, at `SOC-WS-01` in the security office. She can read the network and security logs on both servers but has no `sudo`.
 
+Decided in Phase 5 (part B):
+
+- **The SIEM is a command, `siem`, on the SOC analyst's PC** (any machine with `/etc/siem.conf`). It searches the log files of every machine at once with a small query language: `field=value` filters (with `*`), words, `since=`/`until=`, then `| where`, `| count by`, `| fields`, `| sort`, `| head`, `| tail`. Example: `siem source=auth result=failure | count by user`. It reads the logs themselves, so it knows exactly what the logs say and nothing more. Whoever sits at that PC can use it, and every search is recorded for the debrief.
+- **The camera and badge viewers are the CCTV monitors in the security office.** Whoever stands at them can browse each camera's recording (a drawn picture of who stood where at any recorded moment), the badge log and the camera motion log. Being in the room is the only requirement: the security office's badge door is what keeps people out.
+
 ### Lobby scaling
 | Players | Hackers |
 |---|---|

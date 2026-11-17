@@ -19,7 +19,7 @@
  */
 import Phaser from 'phaser';
 import {
-  INTERACT_DISTANCE, TAP_DISTANCE, nearestDesk, nearestReaderDoor, roomAt,
+  INTERACT_DISTANCE, TAP_DISTANCE, distanceToRect, nearestDesk, nearestReaderDoor, roomAt,
   type MapDesk, type MapDoor, type OfficeMap, type PublicDesk, type PublicDoor, type PublicPlayer,
 } from '@insider/shared';
 import { playSound } from './sound';
@@ -263,7 +263,13 @@ export function createOfficeScene(store: Store): Phaser.Scene {
       const near = nearestDesk(map, me.x, me.y);
       const door = nearestReaderDoor(map, me.x, me.y);
       const atDoor = !me.seatedAt && door && door.distance <= TAP_DISTANCE - 4 ? door.door : null;
+      // The CCTV monitors in the security office (furniture of kind "monitors").
+      const station = map.furniture.find((f) => f.kind === 'monitors');
+      const atMonitors = !me.seatedAt && !!station && distanceToRect(station, me.x, me.y) <= INTERACT_DISTANCE - 4;
+      // Walking away from the monitors switches them off.
+      if (!atMonitors && store.getUi().monitors) store.set({ monitors: null, monitorFrame: null });
       store.set({
+        nearMonitors: atMonitors,
         nearDoor: atDoor?.code ?? '',
         nearDoorName: atDoor?.name ?? '',
         clock: Math.floor(state.clock / 1000) * 1000,

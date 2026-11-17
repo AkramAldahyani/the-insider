@@ -17,7 +17,7 @@ import {
   awaitingSecret, currentPrompt, glimpse, plugUsb, submitFlag, sendInput, serializeWorld, setHacker, shoulderSurf, switchUser, usbCooldown, type FsNode, type OpenResult, type Scenario, type TerminalResult, type WeaknessChoice, type World,
 } from '@insider/engine';
 import {
-  ALERT_BANNER_GAP_MS, INTERACT_DISTANCE, PLAYER_RADIUS, PLAYER_SPEED, SURF_BEHIND, SURF_SIDE, USB_HOLD_MS, moveWithCollision, parseOfficeMap, roomAt,
+  ALERT_BANNER_GAP_MS, INTERACT_DISTANCE, MONITOR_SHOTS, PLAYER_RADIUS, distanceToRect, PLAYER_SPEED, SURF_BEHIND, SURF_SIDE, USB_HOLD_MS, moveWithCollision, parseOfficeMap, roomAt,
   type ClientMessages, type Facing, type OfficeMap, type PublicState, type ServerMessages, type ServerMessageType, type TiledMap,
 } from '@insider/shared';
 import { BotManager, type BotOptions } from './bots/manager';
@@ -246,6 +246,10 @@ export class OfficeGame {
       case 'item.stop':
         if (avatar.hold) this.endItem(avatar, 'You let go before it was done. Nothing happened.');
         return;
+      case 'monitors.open':
+        return this.monitorsOpen(avatar);
+      case 'monitors.frame':
+        return this.monitorsFrame(avatar, data);
       case 'flag.submit':
         if (typeof data.text === 'string') this.submitFlag(avatar, data.text.slice(0, 500));
         return;
@@ -411,6 +415,49 @@ export class OfficeGame {
     avatar.hold = null;
     avatar.activity = '';
     this.send(avatar.clientId, 'notice', { text });
+  }
+
+  // ───────────────────────────── The security-office monitors (Phase 5, part B) ─────────────────────────────
+
+  /**
+   * Is this person standing at the CCTV monitors? They are furniture of kind
+   * "monitors" on the map (in the security office). Being physically there is
+   * the only requirement: the room's door is what keeps people out.
+   */
+  private atMonitors(avatar: Avatar): boolean {
+    const station = this.map.furniture.find((f) => f.kind === 'monitors');
+    return !!station && !avatar.seatedAt && distanceToRect(station, avatar.x, avatar.y) <= INTERACT_DISTANCE;
+  }
+
+  /** The list of recordings and the latest badge and motion lines, for someone at the monitors. */
+  private monitorsOpen(avatar: Avatar): void {
+    if (!this.atMonitors(avatar)) return this.send(avatar.clientId, 'notice', { text: 'The security monitors are in the security office.' });
+    const host = this.world.badges.serverHost;
+    const lines = (path: string, n: number) => this.tail(host, path, n).split('\n').filter((l) => l && !l.startsWith('(no file'));
+    this.send(avatar.clientId, 'monitors.index', {
+      cameras: this.cctv.cameras.map((c) => ({
+        id: c.id,
+        shots: this.cctv.recording(c.id).slice(-MONITOR_SHOTS).map((s) => ({ id: s.id, time: s.time, count: s.people.length })),
+      })),
+      badges: lines('/var/log/badge/access.log', 40),
+      motion: lines('/var/log/cctv/motion.log', 25),
+    });
+  }
+
+  /** One recorded picture (the latest at or before `time`), for someone at the monitors. */
+  private monitorsFrame(avatar: Avatar, data: Record<string, unknown>): void {
+    if (!this.atMonitors(avatar)) return;
+    const camera = this.cctv.cameras.find((c) => c.id === data.camera);
+    if (!camera) return;
+    const time = typeof data.time === 'number' && Number.isFinite(data.time) ? Math.min(data.time, this.world.time) : this.world.time;
+    const shot = this.cctv.at(camera.id, time);
+    this.send(avatar.clientId, 'monitors.frame', {
+      camera: camera.id,
+      id: shot?.id ?? '',
+      time: shot?.time ?? time,
+      // Exactly what the camera recorded, field by field (no player ids: a picture shows faces, not accounts).
+      people: (shot?.people ?? []).map((p) => ({ name: p.name, x: p.x, y: p.y, facing: p.facing, seatedAt: p.seatedAt, activity: p.activity })),
+    });
   }
 
   // ───────────────────────────── Winning and alerts (Phase 4, part F) ─────────────────────────────

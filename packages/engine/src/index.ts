@@ -25,6 +25,8 @@ export type { RoleId, RoleInfo } from './core/roles';
 export type { WorldOptions } from './core/world';
 export { ALL_WEAKNESSES, briefing, chooseWeaknesses, setHacker, submitFlag } from './mission/mission';
 export { watchedFile } from './security/alerts';
+export { collect as siemCollect, siemQuery } from './security/siem';
+export type { SiemRecord, SiemResult } from './security/siem';
 export type { Severity } from './security/alerts';
 export { TOOLS, toolByName, toolAt } from './tools/toolkit';
 export { USB_COOLDOWN_MS, glimpse, plugUsb, shoulderSurf, usbCooldown } from './tools/physical';

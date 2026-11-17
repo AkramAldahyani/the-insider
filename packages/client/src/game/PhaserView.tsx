@@ -111,6 +111,9 @@ export function PhaserView() {
       } else if (event.code === 'KeyE' && ui.nearDoor) {
         // Hold the badge against the reader. The server decides; the answer comes back as a notice.
         store.send('tap', { door: ui.nearDoor });
+      } else if (event.code === 'KeyE' && ui.nearMonitors) {
+        if (ui.monitors) store.set({ monitors: null, monitorFrame: null });
+        else store.send('monitors.open', {});
       } else if (event.code === 'KeyC') store.set({ cardOpen: !ui.cardOpen });
       else if (event.code === 'KeyT') store.set({ tasksOpen: !ui.tasksOpen });
       else if (event.code === 'KeyM' && ui.briefing) store.set({ briefingOpen: !ui.briefingOpen });
@@ -119,7 +122,7 @@ export function PhaserView() {
         usb = true;
         store.send('item.start', { item: 'usb', hostname: ui.nearDesk });
       }
-      else if (event.code === 'Escape') store.set({ cardOpen: false });
+      else if (event.code === 'Escape') store.set({ cardOpen: false, monitors: null, monitorFrame: null });
       else if (event.code === 'Backquote' && ui.dev) store.set({ devOpen: !ui.devOpen });
     };
     const up = (event: KeyboardEvent) => {

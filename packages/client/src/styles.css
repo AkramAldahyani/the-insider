@@ -237,3 +237,20 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 /* ── The role's abilities on the onboarding card ── */
 .card-abilities { margin: 8px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.45; }
 .card-abilities li { margin: 2px 0; }
+
+/* ── Security-office monitors ── */
+.monitors {
+  position: absolute; left: 50%; top: 64px; transform: translateX(-50%); z-index: 9; width: min(600px, calc(100% - 32px));
+  padding: 12px 14px; border-radius: 10px; background: rgba(8, 18, 13, 0.97); border: 1px solid #2f7a52; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  font-size: 12.5px;
+}
+.monitors-head { display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: #8fe3b0; }
+.monitors-head button { background: none; border: 0; color: #8fe3b0; font-size: 18px; line-height: 1; }
+.monitors-tabs, .monitors-cams, .monitors-time { display: flex; gap: 6px; margin: 8px 0; align-items: center; flex-wrap: wrap; }
+.monitors button { padding: 3px 9px; border-radius: 5px; border: 1px solid #2f5f45; background: #0d2318; color: #b6ffcf; font-family: var(--mono); font-size: 11.5px; }
+.monitors button.on { background: #1f5a3b; border-color: #8fe3b0; }
+.monitors-time input { flex: 1; }
+.monitors-screen { display: block; width: 100%; height: auto; border: 1px solid #2f5f45; border-radius: 4px; background: #04100a; }
+.monitors-who { font-family: var(--mono); color: #b6ffcf; min-height: 1.4em; }
+.monitors-log { max-height: 300px; overflow: auto; margin: 6px 0; padding: 8px; background: #04100a; border: 1px solid #2f5f45; border-radius: 4px; color: #b6ffcf; font-family: var(--mono); font-size: 11.5px; white-space: pre; }
+.monitors-note { color: #6fa587; font-size: 11px; margin: 6px 0 0; }

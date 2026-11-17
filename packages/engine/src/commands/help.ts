@@ -50,6 +50,7 @@ const MANUAL: Record<string, [string, string, string]> = {
   crontab: ['show scheduled jobs', 'crontab -l [-u USER]', 'Lists the commands a user has scheduled to run automatically.'],
   ping: ['check that a machine answers', 'ping [-c COUNT] HOST', 'Sends COUNT (default 4) probes.'],
   curl: ['fetch a web page', 'curl [-I] [-s] URL', 'Prints the page (-I: only the response headers). Every request goes through the company web proxy, which logs it with your PC\'s IP address and your account in /var/log/squid/access.log on the proxy server. The name lookup is logged by the DNS server in /var/log/named/queries.log. The "internet" here is simulated.'],
+  siem: ['search the logs of every machine (SOC analyst)', 'siem QUERY | siem help', 'Only on the SOC analyst\'s PC. Example: `siem source=auth result=failure | count by user`. `siem help` lists the fields and steps.'],
   mail: ['read and send internal email', 'mail | mail NUMBER | mail -s "SUBJECT" USER "BODY"', '`mail` lists your inbox; `mail 2` shows message 2 with all its headers. The "Received:" header is written by the mail server and names the machine and IP the message really came from; "From:" is only what the sender wrote. The server keeps /var/log/mail.log.'],
   nslookup: ['look up a name or an IP address', 'nslookup NAME|IP', 'Name -> IP, or IP -> name (reverse lookup).'],
   loginctl: ['control login sessions', 'loginctl lock-session | loginctl list-sessions', '`loginctl lock-session` locks this PC\'s screen. Unlocking needs your password.'],

@@ -330,6 +330,27 @@ Start with `VULNS=plaintext-password` (PowerShell: `$env:VULNS='plaintext-passwo
 3. Join as the hacker (Omar): the card says *Employee* (his disguise); the briefing is separate.
 4. As Huda (new, `h.rahman` / `Sh1eld&Coffee-19`): sit at `SOC-WS-01` in the security office, unlock, `ssh ADMIN-SRV-01`, `tail /var/log/squid/access.log` works; `ssh SEC-SRV-01`, `tail /var/log/security/alerts.log` works; `id` shows no `sudo`.
 
+## Z. Phase 5, part B: the SIEM and the security monitors
+
+**SIEM.** As Huda (`h.rahman` / `Sh1eld&Coffee-19`), sit at `SOC-WS-01` and unlock.
+
+| Type | Expected |
+|---|---|
+| `siem` | The help: filters, steps, sources and their fields. |
+| `siem source=auth since=09:00` | Logins, sudo, locks across all machines since 09:00, one per line with named fields. |
+| `siem source=auth result=failure \| count by user` | A count per account of failed logins (the `\|` belongs to the SIEM, not the shell). |
+| `siem source=proxy \| where bytes > 50KB \| count by domain` | Web traffic by site. |
+| `siem source=dhcp client=FIN-LT-07 \| tail 3` | Which address Sara's PC had, and when. |
+| `siem source=badge door=SRV-ROOM \| fields time,user,result,dir` | Who badged at the server room. |
+| as Sara at her own PC: `siem source=auth` | `bash: siem: command not found` (it is installed only on the SOC PC). |
+
+**Monitors.** As Tariq, walk from your desk to the CCTV monitors at the bottom of the security office. The hint says *Press E to use the security monitors*.
+
+1. `E` opens the monitors. Pick a camera: a green picture of that room with a name over everybody in view. *Live* follows it; the slider and the arrows go back through the recording.
+2. **Badge log**: the latest taps, newest first. **Motion log**: the camera head counts.
+3. Walk away (or `Esc`): the monitors close. From anywhere else `E` does not open them.
+4. With a second tab as anyone else: they receive nothing from the monitors you are using.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -342,13 +363,13 @@ Start with `VULNS=plaintext-password` (PowerShell: `$env:VULNS='plaintext-passwo
 pnpm test
 ```
 
-Expected: `Test Files 26 passed (26)` and `Tests 308 passed (308)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
+Expected: `Test Files 28 passed (28)` and `Tests 321 passed (321)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
 
 ```bash
 pnpm e2e
 ```
 
-Expected: `7 passed`. Playwright starts its own game (ports 2577 and 5183, no bots, only the plaintext-password weakness), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes ten screenshots to `e2e/screenshots/`.
+Expected: `8 passed`. Playwright starts its own game (ports 2577 and 5183, no bots, only the plaintext-password weakness), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes ten screenshots to `e2e/screenshots/`.
 
 ---
 

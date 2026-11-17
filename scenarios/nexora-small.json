@@ -589,6 +589,10 @@
       "console": { "user": "h.rahman", "state": "locked", "loginMinutesAgo": 20 },
       "bashHistory": { "h.rahman": ["ssh SEC-SRV-01", "tail -n 20 /var/log/security/alerts.log"] },
       "files": [
+        { "path": "/etc/siem.conf", "ageMinutes": 9000, "content": [
+          "# Nexora SIEM collector - this machine runs the search console (command: siem).",
+          "collect = all hosts: auth.log kern.log syslog(dhcpd) mail.log squid named badge cctv security audit"
+        ] },
         { "path": "/home/h.rahman/notes/where-the-logs-are.txt", "ageMinutes": 9000, "content": [
           "SOC cheat sheet",
           "ADMIN-SRV-01 (10.0.1.10): /var/log/auth.log  /var/log/squid/access.log  /var/log/named/queries.log  /var/log/mail.log",

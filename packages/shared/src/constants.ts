@@ -17,6 +17,8 @@ export const PLAYER_RADIUS = 10;
 export const INTERACT_DISTANCE = 44;
 /** How close (pixels) a player must be to a doorway to tap a badge on its reader. */
 export const TAP_DISTANCE = 40;
+/** How many recorded pictures per camera the monitors list (the newest ones). */
+export const MONITOR_SHOTS = 400;
 /** At most one security-alert banner per this much game time, however many alerts fire. */
 export const ALERT_BANNER_GAP_MS = 60_000;
 /** How long the hacker must hold still at a PC to use the USB stick (real milliseconds). */

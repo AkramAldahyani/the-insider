@@ -379,3 +379,26 @@ test('the hacker reads a forgotten root password, gets the flag, hands it in, an
   await expect(other.getByTestId('match-over-hacker')).toHaveText('Omar Farouk');
   await other.close();
 });
+
+test('the guard uses the security monitors: camera pictures, badge log', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('employee-p10').click(); // Tariq, in the security office
+  await expect(page.getByTestId('card')).toBeVisible();
+  await page.keyboard.press('c');
+  await page.waitForFunction(() => window.__insider?.me() != null && window.__insider.map() != null);
+  const station = await page.evaluate(() => window.__insider!.monitors());
+  await walkTo(page, station.x, station.y);
+  await expect(page.getByTestId('hint')).toContainText('security monitors');
+  await page.keyboard.press('e');
+  await expect(page.getByTestId('monitors')).toBeVisible();
+  await page.getByTestId('camera-CAM-01').click();
+  await expect(page.getByTestId('monitors-who')).toContainText(/\d\d:\d\d:\d\d/);
+  await page.screenshot({ path: `${SHOTS}/14-security-monitors.png` });
+  await page.getByTestId('monitors-tab-badges').click();
+  await expect(page.getByTestId('monitors-badges')).toContainText('DOOR=MAIN-ENT BADGE=0119 USER=t.omar');
+  // Walking away switches them off.
+  await page.keyboard.down('ArrowUp');
+  await page.waitForTimeout(600);
+  await page.keyboard.up('ArrowUp');
+  await expect(page.getByTestId('monitors')).toBeHidden();
+});

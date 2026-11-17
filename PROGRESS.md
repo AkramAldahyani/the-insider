@@ -14,7 +14,7 @@ Update it at the end of every part.
 | 4 Hacker gameplay | done except parts D and E (deferred by the owner) |
 | 5 Investigation & social deduction | **in progress**: Part A done (see Phase 5 status) |
 
-## Phase 5 status: plan APPROVED by the owner (defaults 1-6 accepted); Part A DONE, Part B next
+## Phase 5 status: plan APPROVED by the owner (defaults 1-6 accepted); Parts A and B DONE, Part C next
 
 ### Part A: what exists now
 
@@ -30,6 +30,27 @@ Update it at the end of every part.
   REC-PC-01 10.0.2.180; FIN-LT-07 (.58) and MKT-LT-11 (.71) did not change.
 - Powers themselves are later parts: SIEM and viewers (B), detain, password reset, force-lock (E).
 - 308 Vitest tests, 7 Playwright.
+
+### Part B: what exists now
+
+- **SIEM** (`engine/src/security/siem.ts`): `collect(world)` reads the log FILES of every machine when a query runs
+  (auth.log, kern.log UFW/USB lines, dhcpd lines in syslog, mail.log, squid, named, badge, doors, cctv motion,
+  alerts, audit) and turns each line into a record { time, host, source, raw, fields }. No ground truth (no player
+  ids, no actor). `siemQuery(world, text)`: filters `field=value` (wildcards), `!=`, bare words, `since=`/`until=`;
+  steps `| where F OP V` (sizes like 1MB), `| count by F`, `| fields a,b`, `| sort -F`, `| head N`, `| tail N`.
+- **`siem` command** (`commands/siem.ts`): only on hosts with `/etc/siem.conf` (SOC-WS-01 in the scenario); anyone
+  sitting there can use it; each search is a `siem.query` master event. The shell passes the WHOLE rest of a
+  `siem` line as one argument (`shell/exec.ts` `siemLine`), so its `|` steps are not shell pipes.
+- **Security-office monitors**: furniture of kind `monitors` on the map. Server messages `monitors.open` ->
+  `monitors.index` { cameras[{id, shots[{id,time,count}] (last 400)}], badges (last 40 access.log lines),
+  motion (last 25) } and `monitors.frame { camera, time? }` -> the latest snapshot at or before that time, people
+  sent as { name, x, y, facing, seatedAt, activity } (no player ids). Only answered while the requester stands
+  within INTERACT_DISTANCE of the monitors (anyone, not only the guard: the badge door protects the room).
+- Client: `E` at the monitors opens `ui/MonitorsPanel.tsx` (Cameras with a canvas picture, time slider, Live;
+  Badge log; Motion log); walking away or Esc closes it. Test hook `window.__insider.monitors()`.
+- 321 Vitest tests (new: engine `siem.test.ts`, server `monitors.test.ts`), 8 Playwright.
+- Note: the owner's design test ("follows two clients") failed once with a 4.3 px step instead of > 5 under load,
+  then passed twice. Likely timing; keep an eye on it.
 
 ## Phase 5 plan (investigation & social deduction)
 
