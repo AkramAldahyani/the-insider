@@ -2,7 +2,7 @@
 
 A multiplayer social-deduction game that teaches real Linux forensics. The full design is in [DESIGN.md](DESIGN.md).
 
-**Current state: Phase 5 (in progress) — investigation.** Roles are in (each player's card shows their role and what it allows, and the office has a SOC analyst), the SOC analyst's PC has a SIEM search over every machine's logs (`siem`), the security office's monitors show the camera recordings and the badge log, findings can be pinned to a shared evidence board (`B`), the emergency button in the meeting room starts a meeting with chat, accusations backed by evidence, and a vote, the guard can detain someone caught in the act (`X`), and the helpdesk's PC has a console to lock any PC remotely and reset passwords (`helpdesk`). Bot employees check their own PCs, remember what they saw, tell meetings about it, and vote only on what they know. Phase 4 parts A-H are complete, including the simulated remote tools, phishing, log cleaner, and CLI hacker support. Phase 5 H adds parity, reputation loss, and anti-stall escalation. The bot hacker (Phase 5 F) remains skipped; Phase 5 I (debrief) is next.
+**Current state: Phase 5 (in progress) — investigation.** Roles are in (each player's card shows their role and what it allows, and the office has a SOC analyst), the SOC analyst's PC has a SIEM search over every machine's logs (`siem`), the security office's monitors show the camera recordings and the badge log, findings can be pinned to a shared evidence board (`B`), the emergency button in the meeting room starts a meeting with chat, accusations backed by evidence, and a vote, the guard can detain someone caught in the act (`X`), and the helpdesk's PC has a console to lock any PC remotely and reset passwords (`helpdesk`). Bot employees check their own PCs, remember what they saw, tell meetings about it, and vote only on what they know. Phase 4 parts A-H are complete, including the simulated remote tools, phishing, log cleaner, and CLI hacker support. Phase 5 H adds parity, reputation loss, and anti-stall escalation. Phase 5 F is complete: a simulated bot hacker now plays by default. Phase 5 I (debrief) is next.
 
 **A living office.** You walk around an office full of bot employees, sit at any PC and use its simulated Linux shell. Bots work, write mail, browse and take breaks, so evidence accumulates even while you stand still. The hacker has a private toolkit, a USB stick (hold `U` at an unlocked PC) and shoulder surfing. Reading the server's flag and submitting it from the briefing ends the match. See [visual upgrade notes](docs/design/visual-upgrade.md) for the current procedural art and [progress](PROGRESS.md) for each completed part.
 
@@ -91,9 +91,17 @@ Other commands:
 | `pnpm client` | only the web page |
 | `pnpm build` | production build of the web page (`packages/client/dist`) |
 | `BOTS=0 pnpm dev` | an empty office without bot employees (PowerShell: `$env:BOTS=0; pnpm dev`) |
+| `BOT_HACKER=0 pnpm dev` | ordinary employee bots without an automated hacker (PowerShell: `$env:BOT_HACKER=0; pnpm dev`) |
 | `pnpm map` | regenerate `maps/office-small.json` from `maps/build-office.ts` (overwrites edits made in Tiled) |
 
 Server settings are environment variables: `GAME_PORT` (2567), `SCENARIO` (`nexora-small`), `MAP` (`office-small`), `SEED` (1), `TIME_SPEED` (game seconds per real second, 1), `BOTS` (`0` = an empty office with no bot employees), `MEETING_SECONDS` (meeting discussion, voting and result lengths, `90,45,8`), `STALL_MINUTES` (anti-stall: every N game minutes one of the hacker's actions is flagged HIGH in the SIEM, `10`, `0` = off), `VULNS` (today's weaknesses: `random` by default, `none`, or a list such as `extra-sudo,tailgate`), and `NODE_ENV=production` to switch the developer tools off.
+
+With bots enabled, one employee is the hacker by default. It starts its mission after two game minutes of
+ordinary work following arrival and uses only the simulated tools and movement rules. Its actions leave logs
+and physical evidence; meetings interrupt it, and the guard or a vote can stop it. `BOT_HACKER=0` disables this
+controller while leaving employee bots active. Human hacker selection remains available: taking over the bot
+hacker's employee preserves that role, while explicitly choosing another hacker stops the previous controller.
+The bot can fail when routes are blocked; it never receives the flag or extra privileges automatically.
 
 ## Run the CLI
 
@@ -150,7 +158,7 @@ pnpm test
 pnpm typecheck
 ```
 
-421 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay), the server (movement, sitting, doors and badges, bots, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule), and CLI mission startup and completion.
+442 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay), the server (movement, sitting, doors and badges, bots, bot hacker matches and interruptions, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule), and CLI mission startup and completion.
 
 ```bash
 pnpm e2e

@@ -29,13 +29,14 @@
  * In a meeting a bot says its strongest findings in the chat, and votes only
  * on what it knows itself (see `ballot`).
  */
-import { commandNames, screenState, type Scenario, type TerminalResult, type World } from '@insider/engine';
+import { commandNames, screenState, setHacker, type Scenario, type TerminalResult, type World } from '@insider/engine';
 import { PLAYER_RADIUS, isFree, roomAt, type MapDoor, type Point } from '@insider/shared';
 import type { Avatar } from '../visibility';
 import { employeeTree, firstCheck, newMind, type BotSubject, type BrainWorld, type Mind, type Persona } from './brain';
 import { Mover, type MoverWorld } from './mover';
 import { Random } from './random';
 import type { TaskBoard } from '../tasks';
+import { HackerBrain, type HackerPlan } from './hacker';
 
 /** What the bots need from the game (kept small, so bots cannot reach into things they should not). */
 export interface BotHost extends Omit<MoverWorld, 'mayEnter'> {
@@ -52,11 +53,16 @@ export interface BotHost extends Omit<MoverWorld, 'mayEnter'> {
   type(avatar: Avatar, line: string): TerminalResult;
   cancel(avatar: Avatar): TerminalResult;
   switchUser(avatar: Avatar): TerminalResult;
+  usb(avatar: Avatar, hostname: string): void;
+  submit(avatar: Avatar, text: string): boolean;
+  finished(): boolean;
   /** Job tasks: hand a player their tasks, read the next step, give one up. */
   tasks: TaskBoard;
 }
 
 export interface BotOptions {
+  /** An unclaimed employee is the simulated hacker by default. False keeps an ordinary office. */
+  hacker?: boolean;
   /** Probability that a bot leaves its desk without locking the screen (default 0.25). */
   forgetLock?: number;
   /**
@@ -111,6 +117,7 @@ export interface Bot {
   findings: Finding[];
   /** Player id -> how the bot last saw them ("room|desk"), to record only changes. */
   lastSeen: Map<string, string>;
+  hacker: HackerBrain | null;
 }
 
 /** Bots arrive between these many game seconds after they are scheduled. */
@@ -139,6 +146,13 @@ export class BotManager {
   constructor(private readonly host: BotHost, seed: number, private readonly options: BotOptions = {}) {
     this.random = new Random(seed ^ 0x5eed_b075);
     for (const player of host.world.players) this.schedule(player.id);
+    if (options.hacker !== false && host.world.mission.flag && !host.world.mission.hacker) {
+      const employees = host.world.players.filter((p) => p.role === 'employee');
+      const pool = employees.length ? employees : host.world.players;
+      const selected = pool.find((p) => p.account === host.world.mission.extraSudoAccount)
+        ?? new Random(seed ^ 0x4ac4e2).pick(pool);
+      if (selected) setHacker(host.world, selected.id);
+    }
   }
 
   /** The key of a bot's body in the game's list of bodies. Human keys are network ids and never start with "bot:". */
@@ -152,7 +166,7 @@ export class BotManager {
     const delay = this.random.between(earliestInSeconds, Math.max(earliestInSeconds + 10, ARRIVE_MAX_S));
     // Every bot has its own generator, so removing one bot does not change what the others do.
     const random = new Random(Math.floor(this.random.next() * 2 ** 32));
-    this.bots.set(playerId, { playerId, arriveAt: this.host.world.time + delay * 1000, random, subject: null, observations: [], findings: [], lastSeen: new Map() });
+    this.bots.set(playerId, { playerId, arriveAt: this.host.world.time + delay * 1000, random, subject: null, observations: [], findings: [], lastSeen: new Map(), hacker: null });
   }
 
   /** A human took this employee: the bot disappears (its PC, if it was at one, stays as it is). */
@@ -193,6 +207,7 @@ export class BotManager {
     for (const bot of this.bots.values()) {
       const s = bot.subject;
       if (!s) continue;
+      bot.hacker?.interrupt();
       s.mover.stop();
       Object.assign(s.mind, { screen: null, breakSpot: null, breakRoom: '', atBreakSpot: false, breakUntil: 0, errand: '', errandMs: 0, leaving: 'undecided', loginSteps: 0, mailCommand: '' });
     }
@@ -277,6 +292,53 @@ export class BotManager {
   sees(playerId: string, screen: TerminalResult): void {
     const mind = this.bots.get(playerId)?.subject?.mind;
     if (mind) mind.screen = screen;
+  }
+
+  /** Observations and item notices supplied through the same physical checks as a human. */
+  glimpse(playerId: string, victim: string, pattern: string): void {
+    this.bots.get(playerId)?.hacker?.glimpse(victim, pattern);
+  }
+
+  itemResult(playerId: string, text: string): void {
+    this.bots.get(playerId)?.hacker?.itemResult(text);
+  }
+
+  /** Stop the previous bot controller immediately when a human takes the hacker role elsewhere. */
+  relinquishHacker(playerId: string): void {
+    const bot = this.bots.get(playerId);
+    if (!bot) return;
+    bot.hacker = null;
+    if (bot.subject) {
+      this.host.stand(bot.subject.body);
+      bot.subject.body.hold = null;
+      bot.subject.body.activity = '';
+      bot.subject.mover.stop();
+      bot.subject.mind.screen = null;
+    }
+  }
+
+  private hackerBrain(b: BotSubject): HackerBrain {
+    const { world, scenario, map } = this.host;
+    const admin = world.players.find((p) => p.role === 'sysadmin');
+    const desk = admin && map.desks.find((d) => d.hostname === admin.desk);
+    const backup = world.mission.weaknesses.includes('plaintext-password') ? scenario.mission?.plaintextPassword : undefined;
+    const plan: HackerPlan = {
+      flag: { ...world.mission.flag! },
+      backup: backup && backup.host === world.mission.flag!.host ? { host: backup.host, path: backup.path } : undefined,
+      ownSudo: world.mission.extraSudoAccount === b.persona.account || b.persona.role === 'sysadmin',
+      weakAdmin: world.mission.weaknesses.includes('weak-admin-password'),
+      admin: admin && desk ? { playerId: admin.id, account: admin.account, desk: admin.desk, chair: { x: desk.seatX, y: desk.seatY } } : undefined,
+    };
+    return new HackerBrain(plan, {
+      look: (hostname) => {
+        const at = map.desks.find((d) => d.hostname === hostname);
+        if (!at || roomAt(map, b.body.x, b.body.y) !== roomAt(map, at.seatX, at.seatY)
+          || Math.hypot(b.body.x - at.seatX, b.body.y - at.seatY) > SIGHT) return null;
+        return { unlocked: screenState(world, hostname).state === 'unlocked', occupied: this.host.bodies().some((a) => a.seatedAt === hostname) };
+      },
+      usb: (hostname) => this.host.usb(b.body, hostname),
+      submit: (text) => this.host.submit(b.body, text),
+    }, world.time + 120_000);
   }
 
   private mayEnter(avatar: Avatar, door: MapDoor): boolean {
@@ -394,7 +456,11 @@ export class BotManager {
         if (this.host.world.time >= bot.arriveAt) this.arrive(bot);
         continue;
       }
-      employeeTree(bot.subject); // decide
+      const isHacker = this.options.hacker !== false && this.host.world.mission.hacker === bot.playerId && this.host.world.mission.flag !== null;
+      if (isHacker && !bot.hacker) bot.hacker = this.hackerBrain(bot.subject);
+      if (!isHacker && bot.hacker) this.relinquishHacker(bot.playerId);
+      if (!isHacker || !bot.hacker!.tick(bot.subject)) employeeTree(bot.subject); // decide
+      if (this.host.finished()) return;
       bot.subject.mover.update(realMs); // walk
     }
     // Looking around once per game second is plenty.

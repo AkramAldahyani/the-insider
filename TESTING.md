@@ -1,5 +1,9 @@
 # TESTING
 
+Normal browser matches now include a simulated bot hacker. For the earlier office-only manual checks,
+set `BOT_HACKER=0` (PowerShell: `$env:BOT_HACKER=0`) before starting the server so it does not finish the
+match during unrelated checks. The Phase 5 F section below explicitly turns it back on. `BOTS=0` disables all bots.
+
 Manual checks for the current state of the game. Two parts:
 
 - **Phase 2 — the office in the browser** (about ten minutes)
@@ -410,6 +414,26 @@ Use three tabs: Tariq (the guard), Dana (helpdesk) and Rami.
 6. As Tariq, walk right up to Rami: *Caught Rami Mansour in the act? Press X to detain.* Press `X`: *Press X again...*. Press `X` again. With no hacker in the match, everybody sees *Tariq Omar detained Rami Mansour, who was not the hacker*. Pressing `X` twice again: *you cannot detain anyone any more*.
 7. If someone had joined as the hacker and Tariq detained them, the match would end: *Tariq Omar caught NAME in the act.*
 
+## Phase 5, part F: the simulated bot hacker
+
+1. Start a fresh room with `BOTS=1`, `BOT_HACKER=1`, `SEED=1`, `VULNS=plaintext-password`.
+   Join as a defender such as the SOC analyst. The lobby does not mark which employee is the hacker.
+2. The selected bot arrives normally, does office work for two game minutes, then pursues the mission.
+   In a development server, the Bots/Mission views show its identity and progress. Those views are unavailable
+   in production. Investigators use the ordinary SIEM, camera/badge records and evidence board instead.
+3. With no intervention, the bot must actually read the simulated flag and submit it before a hacker win is
+   announced to everyone. Inspect the server authentication and audit logs: the bot's actions leave evidence.
+4. A meeting pauses its movement/input; after an inconclusive meeting it can resume. Detaining it or voting
+   it out ends the match for defenders. After either outcome, the controller stops and new role selection is refused.
+5. Human takeover: choose the bot hacker's employee to inherit that role and its briefing, or explicitly choose
+   another human hacker to stop the previous controller. Disconnecting the human allows a bot to resume later.
+6. Restart with `BOT_HACKER=0`: employee bots still work, but none automatically pursues the flag. `BOTS=0`
+   removes both kinds of bot. A human can still choose the hacker role in either setting.
+
+Automated coverage: `packages/server/test/hacker.test.ts` completes direct and physical routes, checks deterministic
+replay and several default seeds, verifies private data stays out of public state/messages, and exercises meetings,
+helpdesk interruption, recorder removal, human handoff, detention and voting. Phase 5 I's debrief is still pending.
+
 ## AD. Phase 5, part G: bots in meetings
 
 Use `pnpm dev` with bots (the default) and short meetings: `MEETING_SECONDS=40,25,5`. One tab: Sara.
@@ -460,7 +484,9 @@ the outstanding manual check of password masking at a real interactive keyboard.
 pnpm test
 ```
 
-Expected: `Test Files 39 passed (39)` and `Tests 421 passed (421)`. This includes CLI mission coverage and a soak test that runs a full office of bots for three game hours.
+Expected: `Test Files 40 passed (40)` and `Tests 442 passed (442)`. This includes CLI missions, 21 bot hacker integration tests, and a soak test that runs a full office of bots for three game hours.
+
+On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent workers. This passed the complete suite during Phase 5F validation after three existing long-running tests timed out with unrestricted workers.
 
 ```bash
 pnpm e2e

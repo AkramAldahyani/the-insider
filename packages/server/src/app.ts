@@ -29,6 +29,8 @@ export interface AppOptions {
   dev?: boolean;
   /** Bot employees on? Default true. */
   bots?: boolean;
+  /** Simulated bot hacker on? Default true when bots are enabled. */
+  botHacker?: boolean;
   /** Today's weaknesses: "random" (default), "none", or a comma-separated list of weakness ids. */
   weaknesses?: string;
   /** Meeting lengths in seconds, "discussion,voting,result" (default 90,45,8). */
@@ -65,6 +67,7 @@ export function loadGameOptions(options: AppOptions = {}): OfficeGameOptions {
   return {
     scenario, map, mapName, dev,
     bots: options.bots ?? true,
+    botOptions: { hacker: options.botHacker ?? true },
     weaknesses: parseWeaknesses(options.weaknesses),
     meetingTimes: parseMeetingSeconds(options.meetingSeconds),
     escalationMinutes: options.stallMinutes,

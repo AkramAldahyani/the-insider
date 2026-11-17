@@ -12,16 +12,13 @@ Update it at the end of every part.
 | 3 Living office | done, pushed by the owner |
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
-| 5 Investigation & social deduction | **in progress**: Parts A-E, G and H done, F skipped (see Phase 5 status) |
+| 5 Investigation & social deduction | **in progress**: Parts A-H done; I (debrief) next, then J |
 
-## Phase 5 status: plan APPROVED by the owner (defaults 1-6 accepted); Parts A-E, G and H DONE; Part F SKIPPED by the owner; Part I next
+## Phase 5 status: plan APPROVED by the owner (defaults 1-6 accepted); Parts A-H DONE; Part I next
 
-**Part F (bot hacker) is SKIPPED for now, at the owner's request ("Skip F, start G").** A first attempt was stopped
-by the assistant's safety filter while writing the bot's attack logic; nothing of it was kept. Do not restart F unless
-the owner asks. Options the owner was offered for later: a SCRIPTED hacker (the scenario file lists the hacker's day
-as fixed content, which the game replays so the logs get the same evidence), or the owner writes the route and the
-code only types the given lines. Until then the hacker is a human who joins as the hacker; matches without one have
-no hacker at all.
+**Part F (bot hacker) is now DONE (2026-11-17), following the owner's request to complete it.** A normal browser
+match has a simulated bot hacker by default. `BOT_HACKER=0` disables that controller while retaining employee bots;
+`BOTS=0` disables all bots. Human hacker selection remains available. No Phase 5 part is currently marked skipped.
 
 ### Part A: what exists now
 
@@ -122,7 +119,39 @@ no hacker at all.
   Press X to detain" (`data-testid="detain-hint"`); first X arms for 3 s ("Press X again..."), second X sends.
   The store applies `card` updates.
 - 352 Vitest tests (new: engine `helpdesk.test.ts`, server `guard.test.ts`), 10 Playwright (new: detain in the browser).
-- Not yet: bot hacker (Part F, skipped); bots never accuse, vote or detain (Part G: they now speak and vote, see below).
+- Later parts add the bot hacker (F) and defender speech/voting (G), both now implemented below. Bots still do not call meetings, accuse or detain.
+
+### Part F: simulated bot hacker (completed 2026-11-17)
+
+- `bots/hacker.ts` is a bounded decision controller: it receives mission hints, its own credentials, visible
+  screen output and partial password observations. It has no filesystem, process, network, credential-store,
+  master-event-log or direct flag-content access. All commands run through the existing simulated terminal.
+- `BotManager` selects one seeded employee (preferring the employee affected by extra-sudo when applicable).
+  After arrival the bot follows its normal office routine for two game minutes before starting its mission.
+  It chooses a supported route from the enabled weaknesses, with an opportunistic physical fallback.
+- Implemented routes use the readable backup, the bot's own accidental sudo access, the fixed fictional-company
+  weak-password guess, or actual shoulder observations / an unattended-PC USB hold and simulated recorder.
+  New secrets are learned from visible output, and the ordinary flag-submission rule must succeed to win.
+  Failed access causes a pause and fallback; it does not grant privileges or force a win. Restricted doors,
+  occupied/locked screens, terminal permissions, cooldowns and evidence generation remain enforced.
+- Physical actions use the same proximity checks and hold duration as humans. Bots receive only the partial
+  glimpse a human would see, and only attribute an unlock or named sudo prompt to that account.
+- Meetings interrupt pending input; the bot can resume afterwards, including an existing recorder. Helpdesk
+  locks, deleted recorder files, detention and voting all affect it. A finished match stops ticks and rejects
+  new employee/role selection, so the bot cannot continue acting after either side wins.
+- Taking over the bot hacker's employee preserves that identity's hacker role and gives the human its briefing.
+  Explicitly choosing another employee as the human hacker stops the old bot controller. A disconnected human
+  hacker is taken over by a bot after the normal return delay when automated hackers are enabled.
+- `BOT_HACKER=0` is independent of `BOTS=0`. Existing office-only tests explicitly disable the hacker; the new
+  `server/test/hacker.test.ts` covers defaults, route completion, several random seeds, deterministic replay,
+  visible evidence, private data, human handoff, meetings, helpdesk locks, recorder removal and defender wins.
+- Scope: these are game-specific strategies for the current scenario conventions, not a general planner or
+  autonomous use of every toolkit item. Debrief remains Part I; final acceptance/balance work remains Part J.
+- Validation: **442 Vitest tests in 40 files passed** with `--maxWorkers=4`, including 21 new bot hacker
+  integration tests; **11 Playwright regression tests passed on their first attempt**; typecheck and production
+  build passed. The first unrestricted Vitest run had three timeouts in existing long-running office tests;
+  the complete bounded-worker rerun passed. The browser suite checks existing flows; the new bot behavior
+  is covered by the server integration tests.
 
 ### Part G: what exists now
 
@@ -199,7 +228,7 @@ Defaults (approved by the owner):
 2. Chat: meeting-only text chat in Phase 5; open chat and the hackers' private chat stay in Phase 6.
 3. Roles follow the scenario's jobs for now; the hacker is a bot by default, a human can still join as the
    hacker. Random secret roles for humans come with multiplayer lobbies (Phase 6).
-4. The bot hacker uses only existing tools. Remote tools and phishing were deferred when this plan was approved; Phase 4 D and E are now implemented. Phase 5 F remains skipped.
+4. The bot hacker uses only existing tools. Phase 4 D/E and Phase 5 F are now implemented; the bot's selected routes are described in Part F above.
 5. Detain: the guard may detain someone within 2 tiles; right = defenders win, wrong = the guard loses the power.
 6. No time limit; anti-stall as in DESIGN.md section 1 (every 10 game minutes the SIEM flags one real hacker event HIGH).
 

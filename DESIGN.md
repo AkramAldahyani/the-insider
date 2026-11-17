@@ -277,7 +277,19 @@ Decided in Phase 5 (part G):
 - **Bot defenders are witnesses.** A bot employee remembers what it saw with its own eyes and on its own screen: somebody standing right behind it while it typed its password, somebody at its PC while it was away or fiddling with it, somebody without an IT job in the server room. Every few minutes it also checks its own PC (`last`, `crontab -l`) and notices a login from another address or a scheduled line it never added.
 - **In a meeting** each bot says its strongest one or two findings in the chat (or that it saw nothing). It never accuses: accusations need evidence on the board, and the board is the investigators' work.
 - **Bots vote only on what they know.** A bot votes for an accused person if what it saw adds up to enough (being watched while typing a password is enough on its own; one sighting in the server room is not). It votes "skip" if it strongly suspects someone else, and otherwise does not vote at all, so bots never outvote the people who did the investigating.
-- **Part F (a bot hacker) is postponed** at the owner's request; until it exists the hacker is a human player.
+
+Decided in Phase 5 (part F, completed after G/H):
+
+- **A bot hacker by default.** With bots enabled, one seeded employee has the hacker role and starts pursuing
+  the mission after two game minutes of ordinary work following arrival. Its game-specific routes use existing
+  simulated commands and physical actions, obey their checks, and leave the same evidence as a human.
+- **Observed information.** The controller learns new secrets from its terminal output or physically observed
+  partial input. It cannot read the credential store, private files or the master log directly. Failed routes
+  pause and fall back; a blocked office does not grant an automatic win.
+- **Human handoff.** Taking over the bot hacker's employee preserves its role and supplies its private briefing.
+  Choosing a different human hacker stops the previous bot controller; disconnecting hands control back to a bot.
+- **Practice switch.** `BOT_HACKER=0` retains ordinary employee bots but disables automated hacking. `BOTS=0`
+  disables both. Meetings pause the controller, and the existing detention/voting/flag rules decide the winner.
 
 Decided in Phase 5 (part H):
 

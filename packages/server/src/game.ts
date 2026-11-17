@@ -13,7 +13,7 @@
  * actually happens.
  */
 import {
-  advanceTime, cancelInput, createWorld, dateStamp, leaveTerminal, openTerminal, parseDuration, refreshTerminal,
+  advanceTime, cancelInput, createWorld, dateStamp, leaveTerminal, openTerminal, parseDuration, refreshTerminal, screenState,
   awaitingSecret, currentPrompt, escalate, glimpse, plugUsb, submitFlag, sendInput, serializeWorld, setHacker, shoulderSurf, switchUser, usbCooldown, type FsNode, type OpenResult, type Scenario, type TerminalResult, type WeaknessChoice, type World,
 } from '@insider/engine';
 import {
@@ -171,6 +171,9 @@ export class OfficeGame {
           type: (a, line) => this.typeLine(a, line),
           cancel: (a) => cancelInput(this.world, a.terminalId),
           switchUser: (a) => switchUser(this.world, a.terminalId),
+          usb: (a, hostname) => this.startItem(a, { item: 'usb', hostname }),
+          submit: (a, text) => this.submitFlag(a, text),
+          finished: () => this.over !== null,
           tasks: this.tasks,
         }, options.seed ?? 1, options.botOptions);
   }
@@ -352,6 +355,7 @@ export class OfficeGame {
   }
 
   private choose(clientId: string, data: Record<string, unknown>): void {
+    if (this.over) return this.send(clientId, 'notice', { text: 'The match is over. Start a new match after everyone leaves.' });
     if (this.avatars.has(clientId)) return; // already playing
     const player = this.world.players.find((p) => p.id === data.playerId);
     if (!player) return this.send(clientId, 'notice', { text: 'That employee does not exist.' });
@@ -360,7 +364,8 @@ export class OfficeGame {
       return this.sendLobby(clientId);
     }
     // Joining as the hacker: one per match. (Roles are assigned properly in Phase 5; until then a player asks for it.)
-    const asHacker = data.hacker === true;
+    // Taking over the same employee preserves their secret role, just as their workstation persists.
+    const asHacker = data.hacker === true || (this.bots?.has(player.id) && this.world.mission.hacker === player.id);
     if (asHacker) {
       const current = this.world.mission.hacker;
       const taken = current !== null && current !== player.id && this.humans().some((a) => a.playerId === current);
@@ -369,6 +374,7 @@ export class OfficeGame {
         return this.sendLobby(clientId);
       }
       // The role moves with the player: a hacker who left is replaced by whoever asks next.
+      if (current && current !== player.id) this.bots?.relinquishHacker(current);
       this.world.mission.hacker = null;
       setHacker(this.world, player.id);
     }
@@ -457,7 +463,7 @@ export class OfficeGame {
 
   private watchPassword(typist: Avatar, password: string): void {
     const hackerId = this.world.mission.hacker;
-    const hacker = [...this.avatars.values()].find((a) => a.playerId === hackerId && this.clients.has(a.clientId));
+    const hacker = [...this.avatars.values()].find((a) => a.playerId === hackerId);
     const desk = this.map.desks.find((d) => d.hostname === typist.seatedAt);
     if (!hacker || hacker === typist || hacker.seatedAt || !desk || !password) return;
     // "Right behind": just below the chair (people sit facing their desk, which is above them).
@@ -466,6 +472,12 @@ export class OfficeGame {
     const prompt = currentPrompt(this.world, typist.terminalId);
     const pattern = glimpse(password, () => this.eyes.next());
     shoulderSurf(this.world, { hacker: hacker.playerId, victim: typist.playerId, host: desk.hostname, prompt, pattern });
+    // A generic "Password:" on an unlocked shell might be somebody else's su password.
+    // Only a visible unlock of the typist's account, or an explicitly named sudo prompt, is attributable.
+    const lock = screenState(this.world, desk.hostname);
+    if ((lock.state === 'locked' && lock.user === typist.account) || prompt === `[sudo] password for ${typist.account}: `) {
+      this.bots?.glimpse(hacker.playerId, typist.playerId, pattern);
+    }
     this.send(hacker.clientId, 'notice', { text: `You saw ${typist.name} type a password at ${desk.hostname} ("${prompt.trim()}"): ${pattern}  (saved in ~/.tools/loot/shoulder.txt)` });
     this.bots?.watchedBy(typist.playerId, hacker, roomAt(this.map, typist.x, typist.y), desk.hostname);
   }
@@ -503,6 +515,7 @@ export class OfficeGame {
   private endItem(avatar: Avatar, text: string): void {
     avatar.hold = null;
     avatar.activity = '';
+    this.bots?.itemResult(avatar.playerId, text);
     this.send(avatar.clientId, 'notice', { text });
   }
 
@@ -583,15 +596,17 @@ export class OfficeGame {
   // ───────────────────────────── Winning and alerts (Phase 4, part F) ─────────────────────────────
 
   /** The hacker hands in the flag. On success the match ends for everybody and the hacker is named. */
-  private submitFlag(avatar: Avatar, text: string): void {
+  private submitFlag(avatar: Avatar, text: string): boolean {
     const result = submitFlag(this.world, avatar.playerId, text);
-    if (!result.won) return this.send(avatar.clientId, 'notice', { text: result.text });
+    if (!result.won) { this.send(avatar.clientId, 'notice', { text: result.text }); return false; }
     this.endMatch('hacker', avatar.name, 'The hacker got the flag out.');
+    return true;
   }
 
   /** The end: everybody is told who won and who the hacker was. */
   private endMatch(winner: 'hacker' | 'defenders', hackerName: string, reason: string): void {
     this.over = { winner, at: this.world.time };
+    for (const a of this.avatars.values()) if (a.hold) this.endItem(a, 'The match is over.');
     for (const a of [...this.avatars.values()]) if (a.seatedAt) this.stand(a, 'The match is over.');
     for (const client of this.clients) this.send(client, 'match.over', { winner, hacker: hackerName, at: this.world.time, reason });
   }
@@ -857,6 +872,7 @@ export class OfficeGame {
 
   /** Advances the match by `realMs` of real time: the game clock, then the players. */
   tick(realMs: number): void {
+    if (this.over) return;
     const gameMs = realMs * this.speed + this.carryMs;
     const whole = Math.floor(gameMs);
     this.carryMs = gameMs - whole;
@@ -884,6 +900,7 @@ export class OfficeGame {
       avatar.facing = avatar.dx < 0 ? 'left' : avatar.dx > 0 ? 'right' : avatar.dy < 0 ? 'up' : 'down';
     }
     if (!frozen) this.bots?.tick(realMs);
+    if (this.over) return;
     // Anti-stall: the longer the match, the more of the hacker's trail the SIEM points at.
     if (!this.over && this.world.time >= this.nextEscalation) {
       escalate(this.world);
