@@ -24,6 +24,7 @@ import { BotManager, type BotOptions } from './bots/manager';
 import { Doors, type Walker } from './doors';
 import { Random } from './bots/random';
 import { Cctv } from './cctv';
+import { EvidenceBoard } from './evidence';
 import { checkMapAgainstScenario } from './mapCheck';
 import { TaskBoard } from './tasks';
 import { employeeChoices, missionBriefing, onboardingCard, publicDesk, publicDoor, publicPlayer, taskList, termScreen, type Avatar } from './visibility';
@@ -72,6 +73,8 @@ export class OfficeGame {
   readonly bots: BotManager | null;
   /** Everybody's job tasks. */
   readonly tasks: TaskBoard;
+  /** The shared evidence board. */
+  readonly board = new EvidenceBoard();
   /** The cameras' recordings (server only). */
   readonly cctv: Cctv;
   /** Random numbers for what a shoulder-surfer happens to catch (its own sequence: it never disturbs the bots). */
@@ -137,6 +140,15 @@ export class OfficeGame {
   private send<T extends ServerMessageType>(to: string, type: T, payload: ServerMessages[T]): void {
     if (!this.clients.has(to)) return; // a bot has no browser to send to
     this.outbox.push({ to, type, payload });
+    // Remember what this player was shown, so their evidence pins can be checked (evidence.ts).
+    if (type === 'term.open' || type === 'term.output') {
+      const screen = payload as ServerMessages['term.output'];
+      this.board.noteScreen(to, `${screen.output} ${screen.prompt}`);
+    } else if (type === 'monitors.frame') this.board.noteShot(to, (payload as ServerMessages['monitors.frame']).id);
+    else if (type === 'monitors.index') {
+      const index = payload as ServerMessages['monitors.index'];
+      this.board.noteLines(to, [...index.badges, ...index.motion]);
+    }
   }
 
   /** Hands over (and forgets) the messages produced since the last call. */
@@ -199,6 +211,7 @@ export class OfficeGame {
     if (avatar) this.throughEntrance(avatar, 'OUT');
     this.removeBody(clientId);
     this.clients.delete(clientId);
+    this.board.forget(clientId);
     // The employee is not left empty: a bot comes to work in their place a little later.
     if (avatar) this.bots?.schedule(avatar.playerId, 20);
     // People on the start screen see that employee become free again.
@@ -238,6 +251,8 @@ export class OfficeGame {
       }
       case 'term.line': {
         if (!avatar.seatedAt || typeof data.text !== 'string') return;
+        // What the player's own screen now shows (a password appears as stars).
+        this.board.noteTyped(clientId, awaitingSecret(this.world, avatar.terminalId) ? '*'.repeat(data.text.length) : data.text);
         this.screen(avatar, this.typeLine(avatar, data.text));
         return;
       }
@@ -250,6 +265,11 @@ export class OfficeGame {
         return this.monitorsOpen(avatar);
       case 'monitors.frame':
         return this.monitorsFrame(avatar, data);
+      case 'evidence.pin':
+        return this.pin(avatar, data);
+      case 'evidence.unpin':
+        if (typeof data.id === 'string' && this.board.remove(avatar.playerId, data.id)) this.sendBoard();
+        return;
       case 'flag.submit':
         if (typeof data.text === 'string') this.submitFlag(avatar, data.text.slice(0, 500));
         return;
@@ -304,6 +324,7 @@ export class OfficeGame {
     this.tasks.assign(player.id);
     this.tasks.takeChanged();
     this.send(clientId, 'tasks', taskList(this.tasks.view(player.id)));
+    this.send(clientId, 'board', { items: this.board.view(player.id) });
     for (const other of this.clients) if (!this.avatars.has(other)) this.sendLobby(other);
   }
 
@@ -415,6 +436,37 @@ export class OfficeGame {
     avatar.hold = null;
     avatar.activity = '';
     this.send(avatar.clientId, 'notice', { text });
+  }
+
+  // ───────────────────────────── The evidence board (Phase 5, part C) ─────────────────────────────
+
+  /** Pins something to the board, if this player's screen really showed it. */
+  private pin(avatar: Avatar, data: Record<string, unknown>): void {
+    const no = (text: string) => this.send(avatar.clientId, 'notice', { text });
+    const base = { time: this.world.time, pinnedBy: avatar.name, pinnedById: avatar.playerId };
+    let item = null;
+    if (data.kind === 'screen' && typeof data.text === 'string') {
+      if (!avatar.seatedAt) return no('Sit at a PC to pin something from its screen.');
+      if (!this.board.sawText(avatar.clientId, data.text)) return no('Only text your screen really showed can be pinned. Select it in the terminal.');
+      item = this.board.add({ ...base, kind: 'screen', title: `${avatar.seatedAt} screen`, text: data.text });
+    } else if (data.kind === 'snapshot' && typeof data.snapshot === 'string') {
+      const shot = this.cctv.find(data.snapshot);
+      if (!shot || !this.board.sawShot(avatar.clientId, data.snapshot)) return no('You can pin a camera picture you are looking at on the monitors.');
+      const people = shot.people.map((p) => ({ name: p.name, x: p.x, y: p.y, facing: p.facing, seatedAt: p.seatedAt, activity: p.activity }));
+      const who = people.length === 0 ? 'nobody in view' : people.map((p) => p.name + (p.seatedAt ? ` at ${p.seatedAt}` : '') + (p.activity === 'at-pc' ? ' (crouched at a PC)' : '')).join(', ');
+      item = this.board.add({ ...base, kind: 'snapshot', title: shot.camera, text: `${new Date(shot.time).toISOString().slice(11, 19)} ${who}`, frame: { camera: shot.camera, time: shot.time, people } });
+    } else if (data.kind === 'log' && typeof data.text === 'string' && (data.source === 'badges' || data.source === 'motion')) {
+      if (!this.board.sawLine(avatar.clientId, data.text)) return no('You can pin a line the monitors showed you.');
+      item = this.board.add({ ...base, kind: 'log', title: data.source === 'badges' ? 'Badge log' : 'Camera motion log', text: data.text.trim() });
+    } else return;
+    if (!item) return no('The board is full.');
+    no(`Pinned to the evidence board as ${item.id}.`);
+    this.sendBoard();
+  }
+
+  /** Sends the board to every player (each sees which pins are their own). */
+  private sendBoard(): void {
+    for (const a of this.humans()) this.send(a.clientId, 'board', { items: this.board.view(a.playerId) });
   }
 
   // ───────────────────────────── The security-office monitors (Phase 5, part B) ─────────────────────────────

@@ -23,6 +23,8 @@ export function TerminalOverlay({ hostname }: { hostname: string }) {
   const holder = useRef<HTMLDivElement>(null);
   const [screen, setScreen] = useState<TermScreen | null>(null);
   const focus = useRef<() => void>(() => undefined);
+  /** The text currently selected in the terminal (for "Pin selection"). */
+  const selection = useRef<() => string>(() => '');
 
   useEffect(() => {
     const term = new Terminal({
@@ -38,6 +40,7 @@ export function TerminalOverlay({ hostname }: { hostname: string }) {
     fit.fit();
     term.focus();
     focus.current = () => term.focus();
+    selection.current = () => term.getSelection();
 
     const editor = new LineEditor(term, {
       onLine: (text) => store.send('term.line', { text }),
@@ -73,6 +76,16 @@ export function TerminalOverlay({ hostname }: { hostname: string }) {
           {screen?.canSwitchUser && (
             <button type="button" onClick={() => store.send('term.switchUser', {})}>Switch user (F2)</button>
           )}
+          <button
+            type="button" data-testid="pin-selection"
+            // Keep the selection: pressing the button must not clear it first.
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              const text = selection.current().trim();
+              if (!text) store.notice('Select some text in the terminal first (drag with the mouse), then pin it.');
+              else store.send('evidence.pin', { kind: 'screen', text });
+            }}
+          >Pin selection</button>
           <button type="button" onClick={() => store.send('stand', {})}>Stand up (Esc)</button>
         </div>
         <div className="term-body" ref={holder} />

@@ -351,6 +351,14 @@ Start with `VULNS=plaintext-password` (PowerShell: `$env:VULNS='plaintext-passwo
 3. Walk away (or `Esc`): the monitors close. From anywhere else `E` does not open them.
 4. With a second tab as anyone else: they receive nothing from the monitors you are using.
 
+## AA. Phase 5, part C: the evidence board
+
+1. As Sara at her PC, run `last -n 5`. Select one line with the mouse (or double-click a word) and press **Pin selection** in the terminal's title bar. Notice: *Pinned to the evidence board as E1.* The bottom bar shows *B Evidence (1)*.
+2. Press **Pin selection** with nothing selected: *Select some text in the terminal first*.
+3. In a second tab (anyone), press `B`: the board shows E1, *FIN-LT-07 screen*, *pinned by Sara Alharbi*, without a **Take down** button. In Sara's tab the button is there and works.
+4. As Tariq at the security monitors: pick a camera, **Pin this picture** (the board shows the drawn picture and who was in it); on the Badge log tab, **Pin** next to a line.
+5. Made-up evidence is impossible from the page: the server only accepts text, pictures and lines it showed to that player (the automated tests try it).
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -363,7 +371,7 @@ Start with `VULNS=plaintext-password` (PowerShell: `$env:VULNS='plaintext-passwo
 pnpm test
 ```
 
-Expected: `Test Files 28 passed (28)` and `Tests 321 passed (321)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
+Expected: `Test Files 29 passed (29)` and `Tests 331 passed (331)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
 
 ```bash
 pnpm e2e

@@ -15,7 +15,7 @@
 import { Client, type Room } from 'colyseus.js';
 import {
   ROOM_NAME, SERVER_PORT, parseOfficeMap,
-  type ClientMessages, type EmployeeChoice, type MissionBriefing, type OfficeMap, type OnboardingCard, type PublicDesk, type PublicDoor, type PublicPlayer,
+  type ClientMessages, type EmployeeChoice, type EvidenceView, type MissionBriefing, type OfficeMap, type OnboardingCard, type PublicDesk, type PublicDoor, type PublicPlayer,
   type ServerMessages, type TaskView, type TermScreen, type TiledMap,
 } from '@insider/shared';
 
@@ -45,6 +45,9 @@ export interface UiState {
   /** Start screen: is the hacker role still free, and did this player tick "join as the hacker"? */
   hackerOpen: boolean;
   asHacker: boolean;
+  /** The shared evidence board, and whether it is shown (B). */
+  board: EvidenceView[];
+  boardOpen: boolean;
   /** Standing at the security-office monitors (for the "Press E" hint). */
   nearMonitors: boolean;
   /** What the monitors show (null = not using them), and the picture asked for last. */
@@ -91,7 +94,7 @@ export class Store {
   rawMap: TiledMap | null = null;
 
   private ui: UiState = {
-    phase: 'connecting', error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, nearMonitors: false, monitors: null, monitorFrame: null,
+    phase: 'connecting', error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
     clock: 0, speed: 1, roomName: '', nearDesk: '', nearDoor: '', nearDoorName: '', seatedAt: '', notice: '', tasks: [], tasksCompleted: 0, tasksOpen: true, devOpen: false, devLog: [],
   };
   private listeners = new Set<Listener>();
@@ -178,6 +181,7 @@ export class Store {
       });
       on('match.over', (over) => this.set({ matchOver: over }));
       on('monitors.index', (index) => this.set({ monitors: index }));
+      on('board', ({ items }) => this.set({ board: items }));
       on('monitors.frame', (frame) => this.set({ monitorFrame: frame })); 
       on('tasks', ({ tasks, completed }) => {
         if (completed > this.ui.tasksCompleted) this.notice('Task finished.');

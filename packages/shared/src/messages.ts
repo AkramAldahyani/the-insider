@@ -124,6 +124,25 @@ export interface MissionBriefing {
   rumours: string[];
 }
 
+/** One item on the shared evidence board, as one player sees it. */
+export interface EvidenceView {
+  /** "E12" */
+  id: string;
+  /** Text from a PC's screen, a camera picture, or a line of the badge / motion log. */
+  kind: 'screen' | 'snapshot' | 'log';
+  /** Where it came from: "FIN-LT-07 screen", "CAM-04", "Badge log". */
+  title: string;
+  text: string;
+  /** Game time it was pinned. */
+  time: number;
+  /** Name of who pinned it. */
+  pinnedBy: string;
+  /** True for the receiving player's own pins (only those can be taken down). */
+  mine: boolean;
+  /** Camera pictures only: the picture. */
+  frame?: { camera: string; time: number; people: MonitorPerson[] };
+}
+
 /** A person as a camera recorded them. */
 export interface MonitorPerson {
   name: string;
@@ -178,6 +197,8 @@ export interface ServerMessages {
   'monitors.index': { cameras: { id: string; shots: { id: string; time: number; count: number }[] }[]; badges: string[]; motion: string[] };
   /** One recorded picture of a camera: who stood where. `id` is "" when the camera has nothing for that time. */
   'monitors.frame': { camera: string; id: string; time: number; people: MonitorPerson[] };
+  /** The shared evidence board (sent to every player whenever it changes). */
+  board: { items: EvidenceView[] };
   /** A short note for the HUD ("Too far from the desk"). */
   notice: { text: string };
   /** Developer panel replies. Never sent by a production server. */
@@ -207,6 +228,15 @@ export interface ClientMessages {
   'monitors.open': Record<string, never>;
   /** Show a camera's picture at a time (game ms; omitted = the latest). */
   'monitors.frame': { camera: string; time?: number };
+  /**
+   * Pin something to the evidence board: text from the PC screen you sit at
+   * (`text`), a camera picture you are looking at (`camera` + `snapshot`), or a
+   * badge / motion log line from the monitors (`source` + `text`). The server
+   * checks it really appeared on your screen.
+   */
+  'evidence.pin': { kind: 'screen' | 'snapshot' | 'log'; text?: string; camera?: string; snapshot?: string; source?: 'badges' | 'motion' };
+  /** Take one of your own pins down. */
+  'evidence.unpin': { id: string };
   /** The hacker hands in the flag (the text of the flag file). */
   'flag.submit': { text: string };
   /** One finished line typed at the PC. */

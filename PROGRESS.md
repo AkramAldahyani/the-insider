@@ -14,7 +14,7 @@ Update it at the end of every part.
 | 4 Hacker gameplay | done except parts D and E (deferred by the owner) |
 | 5 Investigation & social deduction | **in progress**: Part A done (see Phase 5 status) |
 
-## Phase 5 status: plan APPROVED by the owner (defaults 1-6 accepted); Parts A and B DONE, Part C next
+## Phase 5 status: plan APPROVED by the owner (defaults 1-6 accepted); Parts A, B and C DONE, Part D next
 
 ### Part A: what exists now
 
@@ -51,6 +51,21 @@ Update it at the end of every part.
 - 321 Vitest tests (new: engine `siem.test.ts`, server `monitors.test.ts`), 8 Playwright.
 - Note: the owner's design test ("follows two clients") failed once with a 4.3 px step instead of > 5 under load,
   then passed twice. Likely timing; keep an eye on it.
+
+### Part C: what exists now
+
+- `packages/server/src/evidence.ts`: `EvidenceBoard` with items { id E1.., kind screen|snapshot|log, title, text,
+  time, pinnedBy, pinnedById (never sent), frame? }. Max 200 items, 30 lines / 1500 chars each.
+- **Pins are checked against what that player was shown.** `game.send` records, per client: screen text
+  (term.open / term.output: output + prompt), typed lines (`term.line`; masked input as stars), snapshot ids sent
+  in `monitors.frame`, and badge/motion lines sent in `monitors.index`. Screen text is compared with all
+  whitespace squeezed, so a multi-line selection matches.
+- Messages: `evidence.pin { kind, text?, camera?, snapshot?, source? }`, `evidence.unpin { id }` (own pins only),
+  `board { items }` to every playing human on change and on joining (`mine` per recipient).
+- Client: **Pin selection** button on the terminal (xterm selection), **Pin this picture** and per-line **Pin**
+  on the monitors, `ui/BoardPanel.tsx` on `B` (camera pictures drawn with `drawFrame`), HUD button "B Evidence (n)".
+- Part D will need: accusations reference board item ids; fired players must not pin.
+- 331 Vitest tests (new: server `evidence.test.ts`), 8 Playwright (the first smoke test now pins and opens the board).
 
 ## Phase 5 plan (investigation & social deduction)
 

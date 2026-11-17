@@ -177,10 +177,24 @@ test('walk to a desk, log in, then use someone else\'s unlocked PC', async ({ pa
   await expect.poll(() => terminalText(page)).toContain('^C');
   await page.screenshot({ path: `${SHOTS}/5-shell.png` });
 
+  // Pin evidence: double-click a word in the terminal to select it, then "Pin selection".
+  await page.locator('.xterm-rows').getByText('FIN-LT-07', { exact: true }).first().dblclick();
+  await page.getByTestId('pin-selection').click();
+  await expect(page.getByTestId('notice')).toContainText('Pinned to the evidence board as E1');
+  await expect(page.getByTestId('board-button')).toContainText('Evidence (1)');
+  await page.locator('.xterm-helper-textarea').focus();
+
   // 6. Esc stands up; the PC stays unlocked (standing must not lock).
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('terminal')).toBeHidden();
   expect((await page.evaluate(() => window.__insider!.desks())).find((d) => d.hostname === 'FIN-LT-07')!.screen).toBe('unlocked');
+  // The board (B) shows the pin.
+  await page.keyboard.press('b');
+  await expect(page.getByTestId('evidence-E1')).toContainText('FIN-LT-07 screen');
+  await expect(page.getByTestId('evidence-E1')).toContainText('pinned by Sara Alharbi');
+  await page.screenshot({ path: `${SHOTS}/15-evidence-board.png` });
+  await page.keyboard.press('b');
+  await expect(page.getByTestId('board')).toBeHidden();
 
   // 7. Walk to Lina's desk in HR, which she left unlocked. Two badge doors are on the way.
   await walkToDesk(page, 'HR-LT-03');

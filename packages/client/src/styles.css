@@ -254,3 +254,25 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .monitors-who { font-family: var(--mono); color: #b6ffcf; min-height: 1.4em; }
 .monitors-log { max-height: 300px; overflow: auto; margin: 6px 0; padding: 8px; background: #04100a; border: 1px solid #2f5f45; border-radius: 4px; color: #b6ffcf; font-family: var(--mono); font-size: 11.5px; white-space: pre; }
 .monitors-note { color: #6fa587; font-size: 11px; margin: 6px 0 0; }
+
+/* ── Evidence board and pin buttons ── */
+.board {
+  position: absolute; left: 50%; top: 64px; transform: translateX(-50%); z-index: 10; width: min(680px, calc(100% - 32px));
+  max-height: calc(100% - 140px); overflow: auto; padding: 12px 14px; border-radius: 10px;
+  background: rgba(20, 22, 30, 0.97); border: 1px solid #c9a24a; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6); font-size: 12.5px;
+}
+.board-head { display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: #f0cf7a; }
+.board-head button { background: none; border: 0; color: #f0cf7a; font-size: 18px; line-height: 1; }
+.board-empty { color: var(--muted); }
+.board-items { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.board-item { padding: 8px 10px; border-radius: 6px; background: #f4ecd6; color: #1c2230; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3); }
+.board-meta { display: flex; gap: 8px; align-items: center; font-size: 11px; color: #5b6475; flex-wrap: wrap; }
+.board-id { font-family: var(--mono); font-weight: 700; color: #1c2230; }
+.board-kind { font-family: var(--mono); font-size: 10px; padding: 0 5px; border-radius: 3px; background: #1c2230; color: #f4ecd6; }
+.board-spacer { flex: 1; }
+.board-meta button { font-size: 11px; padding: 1px 7px; border-radius: 4px; border: 1px solid #9a8f75; background: transparent; color: #5b4a20; }
+.board-item pre { margin: 6px 0 0; font-family: var(--mono); font-size: 11.5px; white-space: pre-wrap; word-break: break-word; }
+.board-picture { display: block; width: 100%; max-width: 360px; margin-top: 6px; border-radius: 4px; }
+.monitors-pin { margin: 6px 0; }
+.monitors-line { display: flex; gap: 8px; align-items: baseline; white-space: pre; }
+.monitors-line button { padding: 0 6px; font-size: 10.5px; flex: none; }

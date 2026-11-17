@@ -252,6 +252,10 @@ Decided in Phase 5 (part B):
 - **The SIEM is a command, `siem`, on the SOC analyst's PC** (any machine with `/etc/siem.conf`). It searches the log files of every machine at once with a small query language: `field=value` filters (with `*`), words, `since=`/`until=`, then `| where`, `| count by`, `| fields`, `| sort`, `| head`, `| tail`. Example: `siem source=auth result=failure | count by user`. It reads the logs themselves, so it knows exactly what the logs say and nothing more. Whoever sits at that PC can use it, and every search is recorded for the debrief.
 - **The camera and badge viewers are the CCTV monitors in the security office.** Whoever stands at them can browse each camera's recording (a drawn picture of who stood where at any recorded moment), the badge log and the camera motion log. Being in the room is the only requirement: the security office's badge door is what keeps people out.
 
+Decided in Phase 5 (part C):
+
+- **The evidence board is shared and honest.** Anyone playing can pin text selected in a PC's terminal, a camera picture or a badge/motion log line from the security monitors, and everybody sees the board (`B`). The server accepts a pin only if that exact text or picture really appeared on that player's own screen, so evidence cannot be invented. Each item shows who pinned it and when; only they can take it down.
+
 ### Lobby scaling
 | Players | Hackers |
 |---|---|

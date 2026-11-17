@@ -2,7 +2,7 @@
 
 A multiplayer social-deduction game that teaches real Linux forensics. The full design is in [DESIGN.md](DESIGN.md).
 
-**Current state: Phase 5 (in progress) — investigation.** Roles are in (each player's card shows their role and what it allows, and the office has a SOC analyst), the SOC analyst's PC has a SIEM search over every machine's logs (`siem`), and the security office's monitors show the camera recordings and the badge log. Phase 4 (hacker gameplay) is done except the deferred remote tools and phishing. Earlier:
+**Current state: Phase 5 (in progress) — investigation.** Roles are in (each player's card shows their role and what it allows, and the office has a SOC analyst), the SOC analyst's PC has a SIEM search over every machine's logs (`siem`), the security office's monitors show the camera recordings and the badge log, and findings can be pinned to a shared evidence board (`B`). Phase 4 (hacker gameplay) is done except the deferred remote tools and phishing. Earlier:
 
 **Phase 3 — a living office.** You walk around a top-down office full of bot employees, sit at any PC and use its simulated Linux shell. The bots come to work, badge through doors, log in, do job tasks, write each other email, browse, take breaks and sometimes forget to lock their screen, so badge, door, camera, mail, DNS, proxy and system logs fill up even while you stand still. Phase 4 (hacker gameplay) has started: you can join as the hacker, each match has random weaknesses, the toolkit mechanism works (`~/.tools/selftest`), and the physical tools work: the USB stick (hold `U` at an unlocked PC) and shoulder surfing. The hacker can win: read the flag on the server and hand it in from the briefing panel, which ends the match for everyone. Reading sensitive files is audited and security alerts are raised. The remote tools and phishing are deferred. There are no roles, meetings or log viewers yet. The client now has detailed procedural office art, original temporary directional pixel characters, and a dark HUD with a public employee directory. See [visual upgrade notes](docs/design/visual-upgrade.md) for assets, scope and reference differences. `PROGRESS.md` says what was built in which step.
 
@@ -59,6 +59,7 @@ This starts the game server (port 2567) and the web page. Open http://localhost:
 | `E` | at a door with a reader | tap your badge |
 | `C` | office | show / hide your onboarding card |
 | `T` | office | show / hide your task list |
+| `B` | office | show / hide the shared evidence board |
 | `M` | office | hacker only: show / hide the private briefing |
 | `U` (hold) | at a desk, standing | hacker only: plug in the USB stick (5 s) |
 | `` ` `` (backtick) | office | developer panel (development only) |
@@ -119,7 +120,7 @@ pnpm test
 pnpm typecheck
 ```
 
-321 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, bots, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule).
+331 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, bots, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule).
 
 ```bash
 pnpm e2e

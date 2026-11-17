@@ -98,6 +98,7 @@ export function Hud({ ui }: { ui: UiState }) {
         <span><kbd>E</kbd> <span className="key-caption">PC / badge</span></span>
         <button type="button" onClick={() => store.set({ cardOpen: !ui.cardOpen })}><kbd>C</kbd> My card</button>
         <button type="button" onClick={() => store.set({ tasksOpen: !ui.tasksOpen })}><kbd>T</kbd> Tasks</button>
+        <button type="button" data-testid="board-button" onClick={() => store.set({ boardOpen: !ui.boardOpen })}><kbd>B</kbd> Evidence ({ui.board.length})</button>
         {ui.dev && <span className="dev-shortcut"><kbd>`</kbd> Dev</span>}
       </div>
       <PlayerRoster ui={ui} />

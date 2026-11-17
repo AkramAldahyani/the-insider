@@ -37,7 +37,7 @@ function cameraView(map: OfficeMap, cameraId: string) {
   return { cam, covers, range, x0, y0, x1, y1, name: cam.name };
 }
 
-function drawFrame(canvas: HTMLCanvasElement, map: OfficeMap, cameraId: string, people: MonitorPerson[], time: number, live: boolean): void {
+export function drawFrame(canvas: HTMLCanvasElement, map: OfficeMap, cameraId: string, people: MonitorPerson[], time: number, live: boolean): void {
   const view = cameraView(map, cameraId);
   const ctx = canvas.getContext('2d');
   if (!view || !ctx) return;
@@ -159,6 +159,12 @@ export function MonitorsPanel({ ui }: { ui: UiState }) {
             <button type="button" onClick={() => step(1)} disabled={shots.length === 0} aria-label="Later picture">▶</button>
             <button type="button" className={pick < 0 ? 'on' : ''} onClick={() => setPick(-1)}>Live</button>
           </div>
+          <div className="monitors-pin">
+            <button
+              type="button" data-testid="pin-picture" disabled={!ui.monitorFrame?.id || ui.monitorFrame.camera !== camera}
+              onClick={() => ui.monitorFrame && store.send('evidence.pin', { kind: 'snapshot', camera, snapshot: ui.monitorFrame.id })}
+            >Pin this picture</button>
+          </div>
           <div className="monitors-who" data-testid="monitors-who">
             {ui.monitorFrame?.camera === camera
               ? `${clock(ui.monitorFrame.time)} · ${ui.monitorFrame.people.length === 0 ? 'nobody in view' : ui.monitorFrame.people.map((p) => p.name + (p.seatedAt ? ` at ${p.seatedAt}` : '')).join(', ')}`
@@ -166,8 +172,17 @@ export function MonitorsPanel({ ui }: { ui: UiState }) {
           </div>
         </>
       )}
-      {tab === 'badges' && <pre className="monitors-log" data-testid="monitors-badges">{index.badges.slice().reverse().join('\n') || 'No badge taps yet.'}</pre>}
-      {tab === 'motion' && <pre className="monitors-log" data-testid="monitors-motion">{index.motion.slice().reverse().join('\n') || 'No motion yet.'}</pre>}
+      {tab !== 'cameras' && (
+        <div className="monitors-log" data-testid={tab === 'badges' ? 'monitors-badges' : 'monitors-motion'}>
+          {(tab === 'badges' ? index.badges : index.motion).slice().reverse().map((line) => (
+            <div key={line} className="monitors-line">
+              <button type="button" onClick={() => store.send('evidence.pin', { kind: 'log', source: tab === 'badges' ? 'badges' : 'motion', text: line })} aria-label="Pin this line">Pin</button>
+              <span>{line}</span>
+            </div>
+          ))}
+          {(tab === 'badges' ? index.badges : index.motion).length === 0 && (tab === 'badges' ? 'No badge taps yet.' : 'No motion yet.')}
+        </div>
+      )}
       <p className="monitors-note">Newest lines first. Walking away switches the monitors off.</p>
     </div>
   );
