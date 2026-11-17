@@ -131,13 +131,13 @@ pnpm test
 pnpm typecheck
 ```
 
-383 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, bots, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule).
+398 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, bots, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule).
 
 ```bash
 pnpm e2e
 ```
 
-Ten Playwright tests drive real Chromium clients through the game (on their own server, ports 2577 and 5183, without bots, so they never share an office with a game you have open). They cover the existing interactions plus two-client movement, responsive HUD layout, and stable canvas/camera sizing after repeated task-panel toggles. Screenshots go to `e2e/screenshots/` and `test-results/design/`. The first time, download the browser with:
+Eleven Playwright tests drive real Chromium clients through the game (on their own server, ports 2577 and 5183, without bots, so they never share an office with a game you have open). They cover the existing interactions plus two-client movement, responsive HUD layout, and stable canvas/camera sizing after repeated task-panel toggles. Screenshots go to `e2e/screenshots/` and `test-results/design/`. The first time, download the browser with:
 
 ```bash
 pnpm exec playwright install chromium

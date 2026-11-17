@@ -431,13 +431,13 @@ Use `pnpm dev` with bots (the default) and short meetings: `MEETING_SECONDS=40,2
 pnpm test
 ```
 
-Expected: `Test Files 35 passed (35)` and `Tests 383 passed (383)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
+Expected: `Test Files 37 passed (37)` and `Tests 398 passed (398)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
 
 ```bash
 pnpm e2e
 ```
 
-Expected: `10 passed`. Playwright starts its own game (ports 2577 and 5183, no bots, only the plaintext-password weakness), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
+Expected: `11 passed`. Playwright starts its own game (ports 2577 and 5183, no bots, only the plaintext-password weakness), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
 
 ---
 
