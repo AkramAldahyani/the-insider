@@ -979,6 +979,7 @@ export class OfficeGame {
         const name = (id: string | null) => this.world.players.find((p) => p.id === id)?.name ?? '-';
         return [
           'Mission (match secrets)',
+          `bot hacker difficulty: ${this.bots?.hackerDifficulty ?? 'disabled (no bots)'}`,
           `hacker:      ${m.hacker ? `${m.hacker} ${name(m.hacker)}${this.humans().some((a) => a.playerId === m.hacker) ? '' : ' (not connected)'}` : 'nobody yet'}`,
           `flag:        ${m.flag ? `${m.flag.host}:${m.flag.path}` : '-'}`,
           `weaknesses:  ${m.weaknesses.join(', ') || 'none'}`,

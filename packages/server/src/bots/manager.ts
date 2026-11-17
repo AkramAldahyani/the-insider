@@ -37,6 +37,7 @@ import { Mover, type MoverWorld } from './mover';
 import { Random } from './random';
 import type { TaskBoard } from '../tasks';
 import { HackerBrain, type HackerPlan } from './hacker';
+import { hackerKnowledge, type HackerDifficulty, type HackerKnowledge } from './hacker-knowledge';
 
 /** What the bots need from the game (kept small, so bots cannot reach into things they should not). */
 export interface BotHost extends Omit<MoverWorld, 'mayEnter'> {
@@ -63,6 +64,7 @@ export interface BotHost extends Omit<MoverWorld, 'mayEnter'> {
 export interface BotOptions {
   /** An unclaimed employee is the simulated hacker by default. False keeps an ordinary office. */
   hacker?: boolean;
+  hackerDifficulty?: HackerDifficulty;
   /** Probability that a bot leaves its desk without locking the screen (default 0.25). */
   forgetLock?: number;
   /**
@@ -141,10 +143,15 @@ const IT_EXTRA = ['ps aux | head -n 8', 'ss -tlnp', 'tail -n 5 /var/log/syslog',
 export class BotManager {
   private readonly bots = new Map<string, Bot>();
   private readonly random: Random;
+  readonly hackerDifficulty: HackerDifficulty;
+  private readonly knowledge: HackerKnowledge;
   private lastLook = 0;
 
   constructor(private readonly host: BotHost, seed: number, private readonly options: BotOptions = {}) {
     this.random = new Random(seed ^ 0x5eed_b075);
+    this.hackerDifficulty = options.hackerDifficulty ?? 'normal';
+    this.knowledge = hackerKnowledge(this.hackerDifficulty, seed,
+      this.hackerDifficulty === 'easy' ? [] : host.world.mission.weaknesses);
     for (const player of host.world.players) this.schedule(player.id);
     if (options.hacker !== false && host.world.mission.flag && !host.world.mission.hacker) {
       const employees = host.world.players.filter((p) => p.role === 'employee');
@@ -321,12 +328,19 @@ export class BotManager {
     const { world, scenario, map } = this.host;
     const admin = world.players.find((p) => p.role === 'sysadmin');
     const desk = admin && map.desks.find((d) => d.hostname === admin.desk);
-    const backup = world.mission.weaknesses.includes('plaintext-password') ? scenario.mission?.plaintextPassword : undefined;
+    const { rumours, confirmed } = this.knowledge;
+    const possible = (id: keyof typeof confirmed) => rumours.includes(id) && confirmed[id] !== false;
+    // Only confirmed knowledge may consult the corresponding scenario fact.
+    const backup = confirmed['plaintext-password'] ? scenario.mission?.plaintextPassword : undefined;
+    const knownSudo = b.persona.role === 'sysadmin' || (confirmed['extra-sudo'] === true && world.mission.extraSudoAccount === b.persona.account);
     const plan: HackerPlan = {
       flag: { ...world.mission.flag! },
       backup: backup && backup.host === world.mission.flag!.host ? { host: backup.host, path: backup.path } : undefined,
-      ownSudo: world.mission.extraSudoAccount === b.persona.account || b.persona.role === 'sysadmin',
-      weakAdmin: world.mission.weaknesses.includes('weak-admin-password'),
+      discoverBackup: possible('plaintext-password') && !backup,
+      ownSudo: knownSudo || (possible('extra-sudo') && confirmed['extra-sudo'] === undefined),
+      weakAdmin: possible('weak-admin-password'),
+      preferred: [ ...(backup ? ['backup' as const] : []), ...(knownSudo ? ['sudo' as const] : []),
+        ...(confirmed['weak-admin-password'] ? ['weak-password' as const] : []) ],
       admin: admin && desk ? { playerId: admin.id, account: admin.account, desk: admin.desk, chair: { x: desk.seatX, y: desk.seatY } } : undefined,
     };
     return new HackerBrain(plan, {

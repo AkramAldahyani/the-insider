@@ -10,8 +10,11 @@ import type { BotSubject } from './brain';
 export interface HackerPlan {
   flag: { host: string; path: string };
   backup?: { host: string; path: string };
+  /** A rumour permits searching, but does not supply a private scenario path. */
+  discoverBackup: boolean;
   ownSudo: boolean;
   weakAdmin: boolean;
+  preferred: Route[];
   admin?: { playerId: string; account: string; desk: string; chair: Point };
 }
 
@@ -97,7 +100,7 @@ export class HackerBrain {
   }
 
   private captureFlag(s: Screen): boolean {
-    if (s.awaitingInput || !s.output.trim() || /(?:Permission denied|No such file|not allowed)/i.test(s.output)) return false;
+    if (s.awaitingInput || !s.output.trim() || /(?:Permission denied|No such file|not allowed|not in the sudoers)/i.test(s.output)) return false;
     this.flag = s.output.trim();
     return true;
   }
@@ -123,21 +126,39 @@ export class HackerBrain {
 
   private begin(b: BotSubject): void {
     const { plan } = this;
-    this.route = plan.backup && !this.tried.has('backup') ? 'backup'
-      : plan.ownSudo && !this.tried.has('sudo') ? 'sudo'
-      : plan.weakAdmin && plan.admin && !this.tried.has('weak-password') ? 'weak-password' : 'physical';
+    const possible: Route[] = [
+      ...(plan.backup || plan.discoverBackup ? ['backup' as const] : []),
+      ...(plan.ownSudo ? ['sudo' as const] : []),
+      ...(plan.weakAdmin && plan.admin ? ['weak-password' as const] : []),
+    ];
+    // Try confirmed opportunities first, then untested rumours. Exhausting rumours still leaves
+    // physical observation available; a failed guess never becomes a permanent terminal state.
+    this.route = [...plan.preferred, ...possible].find((route) => !this.tried.has(route)) ?? 'physical';
     const own = () => b.persona.password;
     const won = () => { this.mode = 'submit'; };
-    if (this.route === 'backup' && plan.backup?.host === plan.flag.host) {
+    if (this.route === 'backup') {
+      const readBackup = (path: string): Step => this.command(b.persona.account, plan.flag.host, `cat ${quote(path)}`, (s) => {
+        this.rootPassword = /^ROOT_PW='([^'\r\n]+)'$/m.exec(s.output)?.[1] ?? '';
+        if (this.rootPassword) {
+          this.queue = [
+            this.command(b.persona.account, plan.flag.host, 'su'),
+            this.answer('Password: ', () => this.rootPassword, (result) => shell(result, 'root', plan.flag.host)),
+            this.command('root', plan.flag.host, `cat ${quote(plan.flag.path)}`, (result) => this.captureFlag(result)),
+          ];
+          return true;
+        }
+        return this.queue.length > 0; // another discovered candidate, otherwise try a different route
+      });
       this.fromOwnDesk(b, [
         ...this.ssh(b, b.persona.account, own),
-        this.command(b.persona.account, plan.flag.host, `cat ${quote(plan.backup.path)}`, (s) => {
-          this.rootPassword = /^ROOT_PW='([^'\r\n]+)'$/m.exec(s.output)?.[1] ?? '';
-          return !!this.rootPassword;
-        }),
-        this.command(b.persona.account, plan.flag.host, 'su'),
-        this.answer('Password: ', () => this.rootPassword, (s) => shell(s, 'root', plan.flag.host)),
-        this.command('root', plan.flag.host, `cat ${quote(plan.flag.path)}`, (s) => this.captureFlag(s)),
+        plan.backup ? readBackup(plan.backup.path)
+          : this.command(b.persona.account, plan.flag.host, 'find / -type f', (s) => {
+            // Only paths printed by the ordinary permission-checked terminal may be read.
+            // Bound candidate work so irrelevant scripts cannot keep a false rumour alive forever.
+            const paths = s.output.split(/\r?\n/).filter((path) => path.startsWith('/') && /backup|\.sh$/i.test(path)).slice(0, 8);
+            this.queue.unshift(...paths.map(readBackup));
+            return paths.length > 0;
+          }),
       ], won);
     } else if (this.route === 'sudo') {
       this.fromOwnDesk(b, [...this.ssh(b, b.persona.account, own), this.sudoRead(b.persona.account, own)], won);

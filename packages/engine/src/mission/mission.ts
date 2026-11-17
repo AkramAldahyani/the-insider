@@ -25,6 +25,15 @@ import { getNode } from '../fs/vfs';
 
 export const ALL_WEAKNESSES: WeaknessId[] = ['weak-admin-password', 'extra-sudo', 'plaintext-password', 'careless-admin', 'tailgate'];
 
+/** Shared hints, not match secrets: human briefings and bot hypotheses use the same definitions. */
+export const HACKER_RUMOURS: Readonly<Record<WeaknessId, string>> = {
+  'weak-admin-password': 'Some offices have a system administrator with an easy password.',
+  'extra-sudo': 'Sometimes a regular employee was given sudo by mistake.',
+  'plaintext-password': 'Old scripts and backups may contain a password in plain text.',
+  'careless-admin': 'An administrator who forgets to lock his screen is a gift.',
+  'tailgate': 'Some server room doors let a second person slip in behind the first.',
+};
+
 /** What createWorld is told about weaknesses: none, a fixed list, or "random" (2-4 picked from the seed). */
 export type WeaknessChoice = 'random' | WeaknessId[];
 
@@ -152,11 +161,7 @@ export function briefing(world: World): { goal: string; toolsPath: string; rumou
     goal: `Read the file ${world.mission.flag?.path ?? '?'} on ${world.mission.flag?.host ?? '?'} and hand in what it says, without being identified.`,
     toolsPath: `/home/${player?.account ?? '?'}/.tools`,
     rumours: [
-      'Some offices have a system administrator with an easy password.',
-      'Sometimes a regular employee was given sudo by mistake.',
-      'Old scripts and backups may contain a password in plain text.',
-      'An administrator who forgets to lock his screen is a gift.',
-      'Some server room doors let a second person slip in behind the first.',
+      ...ALL_WEAKNESSES.map((id) => HACKER_RUMOURS[id]),
       'Not all of these are true today. Look before you leap: every attempt leaves traces.',
     ],
   };

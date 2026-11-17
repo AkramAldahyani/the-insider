@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { queryEvents, type WeaknessId } from '@insider/engine';
 import { loadGameOptions } from '../src/app';
+import type { HackerDifficulty } from '../src/bots/hacker-knowledge';
 import { clone, PW, Recorder, scenario } from './helpers';
 
 function match(weaknesses: WeaknessId[] = ['plaintext-password'], seed = 1): Recorder {
-  return new Recorder({ bots: true, botOptions: { hacker: true }, weaknesses, seed });
+  // Preserve Part F's fully informed route checks; difficulty coverage below exercises the new default.
+  return new Recorder({ bots: true, botOptions: { hacker: true, hackerDifficulty: 'hard' }, weaknesses, seed });
 }
 
 /** Real movement and normal paced input; avoid recording a snapshot on every tick. */
@@ -76,7 +78,7 @@ describe('Phase 5 F: automatic hacker', () => {
       // Separate tests above exercise the more common case where somebody else has it.
       const content = clone(scenario);
       content.mission!.extraSudo!.candidates = [r.game.world.players.find((p) => p.id === hackerId(r))!.account];
-      r = new Recorder({ scenario: content, bots: true, botOptions: { hacker: true }, weaknesses: [weakness] });
+      r = new Recorder({ scenario: content, bots: true, botOptions: { hacker: true, hackerDifficulty: 'hard' }, weaknesses: [weakness] });
     }
     const actor = hackerId(r);
     until(r, () => r.game.over !== null);
@@ -85,6 +87,8 @@ describe('Phase 5 F: automatic hacker', () => {
     expect(reads).toHaveLength(1);
     expect(queryEvents(r.game.world, { type: 'mission.won', actor })).toHaveLength(1);
     expect(hasEvent(r, 'ssh.accept')).toBe(true);
+    const commands = queryEvents(r.game.world, { type: 'command', actor }).map((e) => String(e.details.command));
+    expect(commands).not.toContain('find / -type f'); // Hard keeps Part F's direct, informed routes.
     expect(r.file('ADMIN-SRV-01', '/var/log/audit/audit.log')).toContain('flag-read');
     expect(r.file('ADMIN-SRV-01', '/var/log/auth.log')).toContain('Accepted password');
     const finished = JSON.stringify(r.game.world);
@@ -152,6 +156,53 @@ describe('Phase 5 F: automatic hacker', () => {
     expect(r.game.bots!.list().find((b) => b.playerId === previous)?.doing).not.toMatch(/^hacker:/);
     expect(r.game.world.events.slice(before).filter((e) => e.actor === previous && e.type === 'mission.won')).toEqual([]);
     expect(r.game.over).toBeNull();
+  });
+});
+
+describe('bot hacker difficulty in complete matches', () => {
+  const cases = (['easy', 'normal', 'hard'] as HackerDifficulty[]).flatMap((difficulty) =>
+    [1, 7, 19].map((seed) => ({ difficulty, seed })));
+
+  it.each(cases)('$difficulty finds a fallback after false rumours (seed $seed)', ({ difficulty, seed }) => {
+    // All three direct rumours are false. No plaintext password, mistaken sudo or weak password
+    // is available: success must come from the existing physical simulation and observed input.
+    const r = new Recorder({ bots: true, botOptions: { hacker: true, hackerDifficulty: difficulty }, weaknesses: [], seed });
+    until(r, () => r.game.over !== null, 3600);
+    expect(r.game.over?.winner).toBe('hacker');
+    expect(hasEvent(r, 'keylogger.capture') || hasEvent(r, 'shoulder.surf')).toBe(true);
+    if (difficulty !== 'hard') {
+      const log = r.file('ADMIN-SRV-01', '/var/log/auth.log');
+      const actor = r.game.world.players.find((p) => p.id === hackerId(r))!;
+      expect(log.replace(/\s+/g, ' ')).toContain(`sudo: ${actor.account} : user NOT in sudoers`);
+      expect(log).toContain('Failed password for k.nasser');
+      const commands = queryEvents(r.game.world, { type: 'command', actor: actor.id }).map((e) => e.details.command);
+      expect(commands).toContain('find / -type f');
+    }
+  });
+
+  it('Easy discovers a changed backup path through its terminal, not scenario metadata', () => {
+    const content = clone(scenario);
+    content.mission!.plaintextPassword!.path = '/srv/shared/old/maintenance.sh';
+    const r = new Recorder({ scenario: content, bots: true, botOptions: { hacker: true, hackerDifficulty: 'easy' }, weaknesses: ['plaintext-password'] });
+    until(r, () => r.game.over !== null);
+    const commands = queryEvents(r.game.world, { type: 'command', actor: hackerId(r) }).map((e) => String(e.details.command));
+    const find = commands.indexOf('find / -type f');
+    const read = commands.findIndex((line) => line.includes('cat') && line.includes('/srv/shared/old/maintenance.sh'));
+    expect(find).toBeGreaterThanOrEqual(0);
+    expect(read).toBeGreaterThan(find);
+    expect(commands.join('\n')).not.toContain('backup-2025');
+    expect(r.game.over?.winner).toBe('hacker');
+  });
+
+  it('Normal replays both knowledge-driven route choices and evidence exactly', () => {
+    const options = { bots: true, botOptions: { hacker: true, hackerDifficulty: 'normal' as const }, weaknesses: 'random' as const, seed: 7 };
+    const a = new Recorder(options);
+    const b = new Recorder(options);
+    until(a, () => a.game.over !== null, 3600);
+    until(b, () => b.game.over !== null, 3600);
+    expect(hackerId(a)).toBe(hackerId(b));
+    expect(a.game.over).toEqual(b.game.over);
+    expect(a.game.world.events).toEqual(b.game.world.events);
   });
 });
 
