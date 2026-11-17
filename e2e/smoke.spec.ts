@@ -445,3 +445,31 @@ test('an emergency meeting: the button, the meeting chat, and nobody voted out w
   await expect(page.getByTestId('meeting')).toBeHidden({ timeout: 10_000 });
   await other.close();
 });
+
+test('the guard detains someone: X asks, X again does it; an innocent person costs the power', async ({ page, browser }) => {
+  const other = await (await browser.newContext()).newPage();
+  await other.goto('/');
+  await other.getByTestId('employee-p9').click(); // Maha, at reception (no hacker in this match)
+  await expect(other.getByTestId('card')).toBeVisible();
+  await other.keyboard.press('c');
+  await other.waitForFunction(() => window.__insider?.me() != null);
+  const maha = await other.evaluate(() => window.__insider!.me()!);
+
+  await page.goto('/');
+  await page.getByTestId('employee-p10').click(); // Tariq, the guard
+  await expect(page.getByTestId('card')).toBeVisible();
+  await page.keyboard.press('c');
+  await page.waitForFunction(() => window.__insider?.me() != null && window.__insider.map() != null);
+  await walkTo(page, maha.x, maha.y);
+  await expect(page.getByTestId('detain-hint')).toContainText('Press X to detain');
+  await expect(page.getByTestId('detain-hint')).toContainText('Maha Yousef');
+  await page.keyboard.press('x');
+  await expect(page.getByTestId('detain-hint')).toContainText('Press X again to detain Maha Yousef');
+  await page.screenshot({ path: `${SHOTS}/17-detain.png` });
+  await page.keyboard.press('x');
+  await expect(other.getByTestId('notice')).toContainText('Tariq Omar detained Maha Yousef, who was not the hacker');
+  await page.keyboard.press('x');
+  await page.keyboard.press('x');
+  await expect(page.getByTestId('notice')).toContainText('you cannot detain anyone any more');
+  await other.close();
+});

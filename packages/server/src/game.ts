@@ -17,7 +17,7 @@ import {
   awaitingSecret, currentPrompt, glimpse, plugUsb, submitFlag, sendInput, serializeWorld, setHacker, shoulderSurf, switchUser, usbCooldown, type FsNode, type OpenResult, type Scenario, type TerminalResult, type WeaknessChoice, type World,
 } from '@insider/engine';
 import {
-  ALERT_BANNER_GAP_MS, BUTTON_DISTANCE, INTERACT_DISTANCE, MONITOR_SHOTS, PLAYER_RADIUS, REPUTATION_PER_FIRING, distanceToRect, isFree, PLAYER_SPEED, SURF_BEHIND, SURF_SIDE, USB_HOLD_MS, moveWithCollision, parseOfficeMap, roomAt,
+  ALERT_BANNER_GAP_MS, BUTTON_DISTANCE, DETAIN_DISTANCE, INTERACT_DISTANCE, MONITOR_SHOTS, PLAYER_RADIUS, REPUTATION_PER_FIRING, distanceToRect, isFree, PLAYER_SPEED, SURF_BEHIND, SURF_SIDE, USB_HOLD_MS, moveWithCollision, parseOfficeMap, roomAt,
   type ClientMessages, type Facing, type MeetingView, type OfficeMap, type PublicState, type ServerMessages, type ServerMessageType, type TiledMap,
 } from '@insider/shared';
 import { BotManager, type BotOptions } from './bots/manager';
@@ -88,6 +88,10 @@ export class OfficeGame {
   reputation = 100;
   /** Set when the match has ended. */
   over: { winner: 'hacker' | 'defenders'; at: number } | null = null;
+  /** Guards who detained an innocent person and lost the power. */
+  private readonly detainLost = new Set<string>();
+  /** Every detention (for the debrief). */
+  readonly detentions: { time: number; guardId: string; targetId: string; wasHacker: boolean }[] = [];
   /** Every chat line, for the debrief. */
   readonly chatLog: { time: number; channel: 'meeting' | 'fired'; from: string; text: string }[] = [];
   /** Where people stand during a meeting: the free tiles around the meeting table. */
@@ -300,6 +304,8 @@ export class OfficeGame {
         return;
       case 'meeting.call':
         return this.callMeeting(avatar);
+      case 'detain':
+        return this.detain(avatar, String(data.target ?? ''));
       case 'meeting.accuse': {
         const evidence = Array.isArray(data.evidence) ? data.evidence.filter((x): x is string => typeof x === 'string').slice(0, 20) : [];
         const error = this.meetings.accuse(avatar.playerId, String(data.suspect ?? ''), evidence, new Set(this.board.items.map((i) => i.id)), this.living());
@@ -572,6 +578,44 @@ export class OfficeGame {
     for (const client of this.clients) this.send(client, 'match.over', { winner, hacker: hackerName, at: this.world.time, reason });
   }
 
+  // ───────────────────────────── Guard and helpdesk (Phase 5, part E) ─────────────────────────────
+
+  /**
+   * The helpdesk gave an account a new password. The employee gets it (in
+   * the office the helpdesk would hand them a slip): a human sees it on their
+   * card, a bot simply knows it.
+   */
+  private passwordChanged(account: string): void {
+    const player = this.world.players.find((p) => p.account === account);
+    if (!player) return;
+    const human = this.humans().find((a) => a.playerId === player.id);
+    if (human) {
+      this.send(human.clientId, 'card', { card: onboardingCard(this.world, this.scenario, player.id) });
+      this.send(human.clientId, 'notice', { text: 'The helpdesk reset your password. Your new password is on your card (C).' });
+    }
+    this.bots?.passwordChanged(account, this.world.credentials[account]?.password ?? '');
+  }
+
+  /**
+   * The guard detains the person next to them. Right: the hacker is caught
+   * and the defenders win. Wrong: the person is let go, everybody hears about
+   * it, and this guard can never detain anyone again.
+   */
+  private detain(guard: Avatar, targetId: string): void {
+    const no = (text: string) => this.send(guard.clientId, 'notice', { text });
+    const role = this.world.players.find((p) => p.id === guard.playerId)?.role;
+    if (role !== 'guard') return no('Only the security guard can detain people.');
+    if (this.detainLost.has(guard.playerId)) return no('You detained an innocent person: you cannot detain anyone any more.');
+    const target = [...this.avatars.values()].find((a) => a.playerId === targetId);
+    if (!target || target === guard) return;
+    if (Math.hypot(target.x - guard.x, target.y - guard.y) > DETAIN_DISTANCE) return no(`You must stand next to ${target.name} to detain them.`);
+    const wasHacker = this.world.mission.hacker === target.playerId;
+    this.detentions.push({ time: this.world.time, guardId: guard.playerId, targetId: target.playerId, wasHacker });
+    if (wasHacker) return this.endMatch('defenders', target.name, `${guard.name} caught ${target.name} in the act.`);
+    this.detainLost.add(guard.playerId);
+    for (const a of this.humans()) this.send(a.clientId, 'notice', { text: `${guard.name} detained ${target.name}, who was not the hacker, and had to let them go. ${guard.name} can no longer detain anyone.` });
+  }
+
   // ───────────────────────────── Meetings (Phase 5, part D) ─────────────────────────────
 
   /** Player ids of everybody still at the company: bodies in the office, not fired. */
@@ -696,6 +740,7 @@ export class OfficeGame {
     for (; this.alertCursor < this.world.events.length; this.alertCursor++) {
       const e = this.world.events[this.alertCursor];
       if (e.type === 'security.alert' && e.details.severity !== 'low') fresh = true;
+      if (e.type === 'password.change') this.passwordChanged(e.user);
     }
     if (!fresh || this.world.time - this.lastBanner < ALERT_BANNER_GAP_MS) return;
     this.lastBanner = this.world.time;

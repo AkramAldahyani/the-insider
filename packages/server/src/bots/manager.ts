@@ -167,6 +167,11 @@ export class BotManager {
     }
   }
 
+  /** An account got a new password: its bot knows it from now on (the helpdesk handed it over). */
+  passwordChanged(account: string, password: string): void {
+    for (const bot of this.bots.values()) if (bot.subject?.persona.account === account) bot.subject.persona.password = password;
+  }
+
   /** A bot's memory (tests and the developer panel). */
   mind(playerId: string): Mind | undefined {
     return this.bots.get(playerId)?.subject?.mind;

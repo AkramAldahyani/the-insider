@@ -263,6 +263,12 @@ Decided in Phase 5 (part D):
 - **Results.** The hacker voted out: the defenders win and everybody is told. An innocent person voted out is fired: out of the game for good, and the company's reputation (shown to all, starting at 100%) drops by 25 points.
 - **Chat.** Players talk only during meetings in Phase 5 (open chat comes with multiplayer). Fired players read the meeting chat and talk only with each other.
 
+Decided in Phase 5 (part E):
+
+- **Detain.** The security guard can detain the person standing next to them (within about two tiles): press `X`, then `X` again within 3 seconds to confirm. If that person is the hacker, the defenders win at once. If not, they are let go, everybody is told, and the guard can never detain anyone again in that match. There is no other cost and no cooldown: one mistake is the price.
+- **Helpdesk console.** The helpdesk's PC has a `helpdesk` command, usable only by the helpdesk account: `status` shows every PC's screen (login, locked, UNLOCKED), `lock HOST` locks a PC remotely, `reset USER` gives an account a new password on every machine. Like everything else it is only as safe as the helpdesk's own screen: whoever finds Dana's PC unlocked can use it.
+- **Traces.** A remote lock writes a line on the locked PC naming the account that asked and its IP; a reset writes two lines on the admin server. The new password is shown on the helpdesk's screen and reaches its owner on their card (a bot simply learns it); nobody else is sent it. Open sessions stay open after a reset, as on real Linux.
+
 ### Lobby scaling
 | Players | Hackers |
 |---|---|

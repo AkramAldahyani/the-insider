@@ -110,6 +110,13 @@ export function Hud({ ui }: { ui: UiState }) {
           {ui.briefing && <> · hold <kbd>U</kbd> to plug in the USB stick</>}
         </div>
       )}
+      {ui.card?.role === 'Security guard' && ui.nearPerson && !ui.seatedAt && !ui.meeting?.active && !ui.nearDesk && (
+        <div className="hud-hint hud-hint-detain" data-testid="detain-hint">
+          {ui.detainArmed?.id === ui.nearPerson.id && Date.now() < ui.detainArmed.until
+            ? <>Press <kbd>X</kbd> again to detain {ui.nearPerson.name}. Wrong person = you lose this power.</>
+            : <>Caught {ui.nearPerson.name} in the act? Press <kbd>X</kbd> to detain.</>}
+        </div>
+      )}
       {ui.nearButton && !ui.seatedAt && !ui.meeting?.active && (
         <div className="hud-hint" data-testid="hint">
           Press <kbd>E</kbd> to call an emergency meeting ({ui.meeting?.usesLeft ?? 0} left)

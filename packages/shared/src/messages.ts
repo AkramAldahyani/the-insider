@@ -213,6 +213,8 @@ export interface ServerMessages {
   alert: { text: string };
   /** The match is over. Sent to everybody, including people on the start screen. */
   'match.over': { winner: 'hacker' | 'defenders'; hacker: string; at: number; reason: string };
+  /** Your onboarding card changed (the helpdesk gave you a new password). Only ever sent to its owner. */
+  card: { card: OnboardingCard };
   /** The current meeting (or none), as this player sees it. */
   meeting: MeetingView;
   /** A chat line: in a meeting (everybody), or between fired players. */
@@ -266,6 +268,8 @@ export interface ClientMessages {
   'evidence.pin': { kind: 'screen' | 'snapshot' | 'log'; text?: string; camera?: string; snapshot?: string; source?: 'badges' | 'motion' };
   /** Take one of your own pins down. */
   'evidence.unpin': { id: string };
+  /** The guard detains the person next to them (the server checks role, distance and that the power is still there). */
+  detain: { target: string };
   /** Press the emergency button (the server checks you stand at it). */
   'meeting.call': Record<string, never>;
   /** Accuse someone in a meeting, pointing at 3 or more evidence-board items. */

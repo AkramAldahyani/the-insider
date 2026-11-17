@@ -236,8 +236,8 @@ export function terminateSession(world: World, session: Session, hard: boolean):
 export interface LockRequest {
   /** The account that asked. */
   by: string;
-  /** "loginctl" (a typed command) or "scenario" (how the match starts). There is no auto-lock. */
-  via: 'loginctl' | 'scenario';
+  /** "loginctl" (a typed command), "helpdesk" (the helpdesk console) or "scenario" (how the match starts). There is no auto-lock. */
+  via: 'loginctl' | 'helpdesk' | 'scenario';
   /** Set when the command was typed in an ssh session: the address it came from. */
   sourceIp?: string | null;
   tty?: string;

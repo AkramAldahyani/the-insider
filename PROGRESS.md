@@ -12,9 +12,9 @@ Update it at the end of every part.
 | 3 Living office | done, pushed by the owner |
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | done except parts D and E (deferred by the owner) |
-| 5 Investigation & social deduction | **in progress**: Part A done (see Phase 5 status) |
+| 5 Investigation & social deduction | **in progress**: Parts A-E done (see Phase 5 status) |
 
-## Phase 5 status: plan APPROVED by the owner (defaults 1-6 accepted); Parts A, B, C and D DONE, Part E next
+## Phase 5 status: plan APPROVED by the owner (defaults 1-6 accepted); Parts A, B, C, D and E DONE, Part F next
 
 ### Part A: what exists now
 
@@ -88,9 +88,34 @@ Update it at the end of every part.
 - Client: `ui/MeetingPanel.tsx` (meeting screen: chat, accusations, accuse form with board checkboxes, vote
   buttons, result) and `FiredPanel` (ghost chat; arrow keys move the view). HUD shows "Reputation N%".
   Test hook `window.__insider.button()`.
-- Not yet: guard detain, helpdesk powers (Part E); bots never accuse or vote (Part G); reputation 0 and parity as
+- Not yet (at the time of Part D): guard detain, helpdesk powers (Part E, now done); bots never accuse or vote (Part G); reputation 0 and parity as
   win conditions (Part H).
 - 342 Vitest tests (new: server `meetings.test.ts`), 9 Playwright (new: an emergency meeting).
+
+### Part E: what exists now
+
+- Engine `commands/helpdesk.ts`: `helpdesk status | lock HOST | reset USER`. Installed only where
+  `/etc/helpdesk.conf` exists (scenario: IT-WS-01, `allow = d.aziz`); other accounts get "not a helpdesk account"
+  (root is allowed). `status` lists every workstation's screen (login / locked / UNLOCKED) and user.
+  `lock` = `lockConsole(..., via: 'helpdesk')`: the target PC's auth.log gets
+  `helpdesk: REMOTE lock-session: ... locked by d.aziz from <IT-WS-01 ip> (helpdesk)`.
+  `reset` makes a deterministic password `Word-Word-NN` (hash of account + game time) and calls
+  `auth/passwords.ts` `changePassword()`: new `/etc/shadow` hash on every host with the account, `world.credentials`
+  updated (strength at least 60), event `password.change` on the DHCP/admin server, which writes two auth.log lines
+  (`pam_unix(passwd:chauthtok): password changed for USER`, `password of USER reset by BY from IP`).
+  Open sessions stay open. Root cannot be reset.
+- Server: `announceAlerts()` also watches `password.change` events. The owner, if human, gets a new `card` message
+  (only them) and a notice; a bot's persona learns the password (`BotManager.passwordChanged`).
+- Guard detain: client message `detain { target }`. Checks: sender's role is `guard`, has not lost the power, target is
+  another living body within `DETAIN_DISTANCE` (64 px, shared constant). Target is `world.mission.hacker` ->
+  `endMatch('defenders', name, "GUARD caught NAME in the act.")`. Otherwise every human gets a notice, and the guard
+  is in `detainLost` for the rest of the match. Every attempt is in `game.detentions` (for the debrief, Part I).
+  Not allowed during meetings or after the match (the existing message filter already drops it).
+- Client: the scene computes `nearPerson` (nearest other body within 60 px); a guard sees "Caught NAME in the act?
+  Press X to detain" (`data-testid="detain-hint"`); first X arms for 3 s ("Press X again..."), second X sends.
+  The store applies `card` updates.
+- 352 Vitest tests (new: engine `helpdesk.test.ts`, server `guard.test.ts`), 10 Playwright (new: detain in the browser).
+- Not yet: bot hacker (Part F); bots never accuse, vote or detain (Part G).
 
 ## Phase 5 plan (investigation & social deduction)
 

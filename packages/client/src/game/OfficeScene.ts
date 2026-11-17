@@ -19,7 +19,7 @@
  */
 import Phaser from 'phaser';
 import {
-  BUTTON_DISTANCE, INTERACT_DISTANCE, TAP_DISTANCE, distanceToRect, nearestDesk, nearestReaderDoor, roomAt,
+  BUTTON_DISTANCE, DETAIN_DISTANCE, INTERACT_DISTANCE, TAP_DISTANCE, distanceToRect, nearestDesk, nearestReaderDoor, roomAt,
   type MapDesk, type MapDoor, type OfficeMap, type PublicDesk, type PublicDoor, type PublicPlayer,
 } from '@insider/shared';
 import { playSound } from './sound';
@@ -275,6 +275,21 @@ export function createOfficeScene(store: Store): Phaser.Scene {
       // The CCTV monitors in the security office (furniture of kind "monitors").
       const station = map.furniture.find((f) => f.kind === 'monitors');
       const atMonitors = !me.seatedAt && !!station && distanceToRect(station, me.x, me.y) <= INTERACT_DISTANCE - 4;
+      // The nearest other person within detaining distance (the guard's X key).
+      let nearest: { id: string; name: string } | null = null;
+      let best = DETAIN_DISTANCE - 4;
+      state.players.forEach((p) => {
+        const d = Math.hypot(p.x - me.x, p.y - me.y);
+        if (p.id !== selfId && d <= best) {
+          best = d;
+          nearest = { id: p.id, name: p.name };
+        }
+      });
+      const keepNearest = (n: { id: string; name: string } | null) => {
+        const old = store.getUi().nearPerson;
+        return old && n && old.id === n.id ? old : n; // keep the same object, so the HUD does not redraw for nothing
+      };
+      nearest = keepNearest(nearest);
       const button = map.furniture.find((f) => f.kind === 'button');
       const atButton = !me.seatedAt && !!button && distanceToRect(button, me.x, me.y) <= BUTTON_DISTANCE - 4;
       // Walking away from the monitors switches them off.
@@ -282,6 +297,7 @@ export function createOfficeScene(store: Store): Phaser.Scene {
       store.set({
         nearMonitors: atMonitors,
         nearButton: atButton,
+        nearPerson: nearest,
         nearDoor: atDoor?.code ?? '',
         nearDoorName: atDoor?.name ?? '',
         clock: Math.floor(state.clock / 1000) * 1000,

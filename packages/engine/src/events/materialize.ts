@@ -236,7 +236,11 @@ export function materialize(world: World, e: GameEvent): void {
     //    on purpose so a remote lock/unlock can always be traced.
     case 'session.lock':
       logind(`Session ${str(d.logindId)} of user ${e.user} locked.`);
-      if (e.sourceIp) auth('loginctl', null, `REMOTE lock-session: session ${str(d.logindId)} of user ${e.user} locked by ${str(d.by)} from ${e.sourceIp} (${str(d.tty)})`);
+      if (e.sourceIp) auth(d.via === 'helpdesk' ? 'helpdesk' : 'loginctl', null, `REMOTE lock-session: session ${str(d.logindId)} of user ${e.user} locked by ${str(d.by)} from ${e.sourceIp} (${str(d.tty)})`);
+      break;
+    case 'password.change':
+      auth('passwd', pidOf(host, 'sshd') || 1, `pam_unix(passwd:chauthtok): password changed for ${e.user}`);
+      auth(str(d.via) || 'passwd', null, `password of ${e.user} reset by ${str(d.by)} from ${e.sourceIp ?? 'local'}`);
       break;
     case 'session.unlock':
       if (d.via === 'loginctl') {

@@ -464,6 +464,10 @@
         "d.aziz": ["cat ~/helpdesk/queue.txt", "ping -c 2 REC-PC-01", "ssh d.aziz@ADMIN-SRV-01"]
       },
       "files": [
+        { "path": "/etc/helpdesk.conf", "ageMinutes": 9000, "content": [
+          "# Nexora IT helpdesk console (command: helpdesk)",
+          "allow = d.aziz"
+        ] },
         { "path": "/home/d.aziz/helpdesk/queue.txt", "ageMinutes": 90, "content": [
           "#1042  HR-LT-03   printer driver keeps resetting   -> with Khalid",
           "#1048  REC-PC-01  visitor badge printer offline",

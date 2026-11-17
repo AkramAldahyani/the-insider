@@ -371,6 +371,18 @@ Shorter meetings make this quicker: start with `MEETING_SECONDS=30,20,5` (PowerS
 6. Maha's button now says *0 left*. A meeting with no accusation ends with *Nobody was voted out.*
 7. If Omar had joined as the hacker, the vote ends the match: *The hacker was caught.*
 
+## AC. Phase 5, part E: the guard and the helpdesk
+
+Use three tabs: Tariq (the guard), Dana (helpdesk) and Rami.
+
+1. As Rami, walk to FIN-LT-04, log in, and stand up without locking it.
+2. As Dana, sit at IT-WS-01 and log in. Type `helpdesk status`: FIN-LT-04 shows *UNLOCKED r.mansour*.
+3. `helpdesk lock FIN-LT-04` prints *screen of r.mansour locked*. Rami's PC label now says *LOCKED*. On FIN-LT-04, `sudo tail /var/log/auth.log` (or the SOC analyst's `siem`) shows *REMOTE lock-session ... locked by d.aziz from* Dana's IP.
+4. `helpdesk reset r.mansour` prints a new password like *Cedar-Orbit-42*. Rami's tab shows *The helpdesk reset your password*; his card (`C`) shows the new one. Unlocking FIN-LT-04 with the old password fails; the new one works. Sara's tab (if open) never sees it.
+5. As anyone but Dana, `helpdesk status` on another PC: *command not found*. Dana's PC, logged in as someone else (`su k.nasser`): *not a helpdesk account*.
+6. As Tariq, walk right up to Rami: *Caught Rami Mansour in the act? Press X to detain.* Press `X`: *Press X again...*. Press `X` again. With no hacker in the match, everybody sees *Tariq Omar detained Rami Mansour, who was not the hacker*. Pressing `X` twice again: *you cannot detain anyone any more*.
+7. If someone had joined as the hacker and Tariq detained them, the match would end: *Tariq Omar caught NAME in the act.*
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -383,13 +395,13 @@ Shorter meetings make this quicker: start with `MEETING_SECONDS=30,20,5` (PowerS
 pnpm test
 ```
 
-Expected: `Test Files 30 passed (30)` and `Tests 342 passed (342)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
+Expected: `Test Files 32 passed (32)` and `Tests 352 passed (352)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
 
 ```bash
 pnpm e2e
 ```
 
-Expected: `9 passed`. Playwright starts its own game (ports 2577 and 5183, no bots, only the plaintext-password weakness), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes ten screenshots to `e2e/screenshots/`.
+Expected: `10 passed`. Playwright starts its own game (ports 2577 and 5183, no bots, only the plaintext-password weakness), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
 
 ---
 

@@ -67,6 +67,10 @@ export interface UiState {
   fired: string;
   /** Standing at the emergency button. */
   nearButton: boolean;
+  /** The nearest other person within detaining distance (for the guard's hint). */
+  nearPerson: { id: string; name: string } | null;
+  /** The guard pressed X once: press again within 3 s to detain this person. */
+  detainArmed: { id: string; until: number } | null;
   /** Fired players move the view with the arrow keys: the direction held. */
   pan: { dx: number; dy: number };
   /** The hacker's private briefing (null for everybody else) and whether it is shown. */
@@ -106,7 +110,7 @@ export class Store {
   rawMap: TiledMap | null = null;
 
   private ui: UiState = {
-    phase: 'connecting', error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, meeting: null, meetingAt: 0, chat: [], fired: '', nearButton: false, pan: { dx: 0, dy: 0 }, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
+    phase: 'connecting', error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, meeting: null, meetingAt: 0, chat: [], fired: '', nearButton: false, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
     clock: 0, speed: 1, roomName: '', nearDesk: '', nearDoor: '', nearDoorName: '', seatedAt: '', notice: '', tasks: [], tasksCompleted: 0, tasksOpen: true, devOpen: false, devLog: [],
   };
   private listeners = new Set<Listener>();
@@ -201,6 +205,7 @@ export class Store {
       });
       on('chat', (line) => this.set({ chat: [...this.ui.chat.slice(-200), line] }));
       on('fired', ({ reason }) => this.set({ fired: reason, seatedAt: '' }));
+      on('card', ({ card }) => this.set({ card }));
       on('monitors.frame', (frame) => this.set({ monitorFrame: frame })); 
       on('tasks', ({ tasks, completed }) => {
         if (completed > this.ui.tasksCompleted) this.notice('Task finished.');

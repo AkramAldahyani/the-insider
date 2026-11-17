@@ -21,6 +21,8 @@ export const TAP_DISTANCE = 40;
 export const MONITOR_SHOTS = 400;
 /** The company's reputation drops by this much each time an innocent person is fired. */
 export const REPUTATION_PER_FIRING = 25;
+/** How close (pixels) the guard must be to someone to detain them (about 2 tiles). */
+export const DETAIN_DISTANCE = 64;
 /** How close (pixels) a player must be to the emergency button to press it. */
 export const BUTTON_DISTANCE = 44;
 /** At most one security-alert banner per this much game time, however many alerts fire. */

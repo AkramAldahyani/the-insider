@@ -113,6 +113,13 @@ export function PhaserView() {
       } else if (event.code === 'KeyE' && ui.nearDoor) {
         // Hold the badge against the reader. The server decides; the answer comes back as a notice.
         store.send('tap', { door: ui.nearDoor });
+      } else if (event.code === 'KeyX' && ui.card?.role === 'Security guard' && ui.nearPerson) {
+        // Detaining is final: the first press asks, the second (within 3 s) does it.
+        const armed = ui.detainArmed;
+        if (armed && armed.id === ui.nearPerson.id && Date.now() < armed.until) {
+          store.send('detain', { target: ui.nearPerson.id });
+          store.set({ detainArmed: null });
+        } else store.set({ detainArmed: { id: ui.nearPerson.id, until: Date.now() + 3000 } });
       } else if (event.code === 'KeyE' && ui.nearButton) {
         store.send('meeting.call', {});
       } else if (event.code === 'KeyE' && ui.nearMonitors) {

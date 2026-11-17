@@ -299,3 +299,6 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .meeting-verdict { font-size: 18px; font-weight: 700; margin: 8px 0; }
 .fired { position: absolute; right: 12px; bottom: 56px; z-index: 6; width: 320px; padding: 10px 12px; border-radius: 8px; background: rgba(20, 16, 24, 0.95); border: 1px solid #8b5cf6; font-size: 12.5px; }
 .fired .meeting-chat-lines { height: 140px; }
+
+/* The guard's detain hint sits above the other hints. */
+.hud-hint-detain { bottom: 74px; border-color: #e5484d; }
