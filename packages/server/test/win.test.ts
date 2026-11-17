@@ -47,7 +47,7 @@ describe('route 1: a password left in an old script', () => {
     r.send('h', 'flag.submit', { text: flag });
     for (const client of ['h', 'e', 'late']) expect(over(r, client), client).toMatchObject({ winner: 'hacker', hacker: 'Omar Farouk' });
     expect(r.game.world.mission.won).not.toBeNull();
-    expect(r.position('p4').seatedAt).toBe(''); // the hacker was stood up
+    expect(r.game.publicState().players.p4.seatedAt).toBe(''); // the hacker was stood up
 
     // Every step is traceable by defenders:
     const auth = r.file(SERVER, '/var/log/auth.log');
