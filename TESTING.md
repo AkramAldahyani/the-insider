@@ -435,13 +435,32 @@ Quicker with `STALL_MINUTES=1` and `TIME_SPEED=10` (PowerShell: `$env:STALL_MINU
 2. Your task list shows only your tasks.
 3. In a production build (step K of Phase 2) the developer panel does not open, so bots, snapshots and other people's files stay hidden.
 
+## Phase 4 H: CLI hacker support
+
+1. Run `pnpm cli --hacker p4 --seed 42`. Expect Omar's player ID, his desk in the suggested `:sit` command,
+   a hacker briefing, and the tools path. `:briefing` repeats the briefing; `:help` lists flag submission.
+2. For a repeatable practice office, run `pnpm cli --hacker o.farouk --vulns plaintext-password`.
+   Sit at the suggested desk, unlock it with the displayed scenario credential, and check `ls -a ~/.tools`.
+3. `:flag wrong` is refused. A correct flag copied from outside this match is also refused until the hacker
+   actually reads its file through the simulated terminal. After reading it, `:flag <text>` prints `You win.`.
+4. Before winning, `:as p1` followed by `:briefing` or a flag submission is refused. `:as p4` restores control
+   of the same hacker; it does not reroll weaknesses or transfer the role.
+5. After winning, shell commands, `:sit`, `:as`, and `:time +5m` are refused. `:events` shows `mission.won`,
+   `:dump` can save the finished world, and `:quit` exits. Start a new process to play again.
+6. `--hacker nobody`, a missing `--hacker` value, and `--vulns unknown` each fail with a useful error.
+   Plain `pnpm cli` still starts as the first employee without a hacker or weaknesses.
+
+Automated coverage in `packages/cli/test/mission.test.ts` completes a simulated route, checks its actor/evidence,
+verifies post-win immutability, and drives the real CLI executable with piped input. This does not replace
+the outstanding manual check of password masking at a real interactive keyboard.
+
 ## Automated tests
 
 ```bash
 pnpm test
 ```
 
-Expected: `Test Files 38 passed (38)` and `Tests 406 passed (406)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
+Expected: `Test Files 39 passed (39)` and `Tests 421 passed (421)`. This includes CLI mission coverage and a soak test that runs a full office of bots for three game hours.
 
 ```bash
 pnpm e2e

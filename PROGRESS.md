@@ -11,7 +11,7 @@ Update it at the end of every part.
 | 2 Office in the browser | done |
 | 3 Living office | done, pushed by the owner |
 | 3+ Owner's changes after Phase 3 | done (section below) |
-| 4 Hacker gameplay | Parts A-G done (including D and E); H partly done: CLI hacker selection remains |
+| 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
 | 5 Investigation & social deduction | **in progress**: Parts A-E, G and H done, F skipped (see Phase 5 status) |
 
 ## Phase 5 status: plan APPROVED by the owner (defaults 1-6 accepted); Parts A-E, G and H DONE; Part F SKIPPED by the owner; Part I next
@@ -203,7 +203,7 @@ Defaults (approved by the owner):
 5. Detain: the guard may detain someone within 2 tiles; right = defenders win, wrong = the guard loses the power.
 6. No time limit; anti-stall as in DESIGN.md section 1 (every 10 game minutes the SIEM flags one real hacker event HIGH).
 
-## Phase 4 status: Parts A-G DONE; H partly done
+## Phase 4 status: Parts A-H DONE
 
 | Part | State |
 |---|---|
@@ -214,7 +214,7 @@ Defaults (approved by the owner):
 | E Phishing kit and log cleaner | **done** (owner requested completion, 2026-11-17; see below) |
 | F Flag, winning, audit log, security alerts | **done** |
 | G Route tests (2+ complete routes) | **done** (2 routes, see below) |
-| H Dev panel, browser test, CLI, docs | partly: dev panel and browser test done; CLI cannot join as the hacker yet |
+| H Dev panel, browser test, CLI, docs | **done** (CLI hacker support completed 2026-11-17; see below) |
 
 **Part D is DONE (2026-11-17).** The code appeared uncommitted in the working copy (not written in the assistant's
 session); the owner asked to "finish it and commit it". Finishing meant: one server test expected the alert banner
@@ -344,11 +344,27 @@ weaknesses are on; winning = submitting the flag (Part F decision); bots fall fo
 - Playwright server now runs with `VULNS=plaintext-password`; new browser test plays route 1 to the end screen.
 - 304 Vitest tests (new: engine `security.test.ts`, server `win.test.ts`), 7 Playwright.
 
-### What is left of Phase 4
+### Part H: CLI support completed (2026-11-17)
 
-- Parts D and E are complete; no deferred shell tools remain.
-- CLI: joining as the hacker (`setHacker`) is not exposed in the CLI.
-- No "match over" reset: a new match needs every client to leave (the room then closes) or a server restart.
+- The dev panel and browser test of a complete route were already implemented in earlier Phase 4 work.
+- `pnpm cli --hacker PLAYER` accepts a player ID or account, calls `setHacker`, installs the existing tools,
+  starts at the selected player, and shows the engine's briefing. Invalid players or mission-less scenarios fail clearly.
+- `--vulns random|none|ID,ID` configures the simulated weaknesses; hacker mode defaults to seeded random,
+  while ordinary CLI startup keeps its original no-hacker/no-weakness defaults.
+- `:briefing` is available while controlling the hacker. `:as` changes the controlled player, not the hacker role.
+- `:flag TEXT` uses the engine's submission checks, including evidence that this player read the flag in this match.
+  Winning closes the terminal and freezes gameplay/time while preserving inspection and dump commands.
+- Fifteen CLI tests cover startup settings/errors, role checks, a complete traceable route, post-win behavior,
+  and the actual CLI executable receiving piped input. README and TESTING describe startup and expected results.
+- The CLI remains an engine/debug sandbox with visible scenario credentials, not the browser server's bot/physical/social game.
+- Validation: **421 Vitest tests in 39 files passed**, **11 Playwright tests passed on their first attempt**,
+  typecheck passed, and production build passed. Interactive CLI password masking remains the previously
+  recorded manual verification item; the new executable tests use piped input.
+
+### Remaining lifecycle limitation (outside the Part H checklist)
+
+- No browser "match over" reset: a new match needs every client to leave (the room then closes) or a server restart.
+  A completed CLI match is restarted by quitting and running the CLI again.
 
 ### Notes for Part D onwards
 

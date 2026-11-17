@@ -4,6 +4,8 @@
  *   pnpm cli                          start with the only/first scenario
  *   pnpm cli --scenario nexora-small  pick a scenario by id (or give a .json path)
  *   pnpm cli --seed 42                use another random seed
+ *   pnpm cli --hacker p4              play the hacker with seeded random weaknesses
+ *   pnpm cli --hacker o.farouk --vulns plaintext-password  choose a practice setup
  *
  * This file only deals with the keyboard and the screen. The game logic is in
  * game.ts (CLI meta commands) and in @insider/engine (everything else).
@@ -15,6 +17,7 @@ import { Writable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import type { Scenario } from '@insider/engine';
 import { Game, type Screen } from './game';
+import { missionOptions } from './options';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const SCENARIO_DIR = join(ROOT, 'scenarios');
@@ -83,7 +86,7 @@ let game: Game | null = null;
 
 function start(scenario: Scenario): void {
   try {
-    game = new Game(scenario, seed, join(ROOT, 'dumps'));
+    game = new Game(scenario, seed, join(ROOT, 'dumps'), missionOptions(process.argv.slice(2)));
   } catch (e) {
     console.error((e as Error).message);
     process.exit(1);

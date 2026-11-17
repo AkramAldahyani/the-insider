@@ -2,7 +2,7 @@
 
 A multiplayer social-deduction game that teaches real Linux forensics. The full design is in [DESIGN.md](DESIGN.md).
 
-**Current state: Phase 5 (in progress) — investigation.** Roles are in (each player's card shows their role and what it allows, and the office has a SOC analyst), the SOC analyst's PC has a SIEM search over every machine's logs (`siem`), the security office's monitors show the camera recordings and the badge log, findings can be pinned to a shared evidence board (`B`), the emergency button in the meeting room starts a meeting with chat, accusations backed by evidence, and a vote, the guard can detain someone caught in the act (`X`), and the helpdesk's PC has a console to lock any PC remotely and reset passwords (`helpdesk`). Bot employees check their own PCs, remember what they saw, tell meetings about it, and vote only on what they know. Phase 4 parts A-G are complete, including the simulated remote tools, phishing and log cleaner. CLI hacker selection remains in Part H. The bot hacker (Phase 5 F) remains skipped; Phase 5 H is next.
+**Current state: Phase 5 (in progress) — investigation.** Roles are in (each player's card shows their role and what it allows, and the office has a SOC analyst), the SOC analyst's PC has a SIEM search over every machine's logs (`siem`), the security office's monitors show the camera recordings and the badge log, findings can be pinned to a shared evidence board (`B`), the emergency button in the meeting room starts a meeting with chat, accusations backed by evidence, and a vote, the guard can detain someone caught in the act (`X`), and the helpdesk's PC has a console to lock any PC remotely and reset passwords (`helpdesk`). Bot employees check their own PCs, remember what they saw, tell meetings about it, and vote only on what they know. Phase 4 parts A-H are complete, including the simulated remote tools, phishing, log cleaner, and CLI hacker support. Phase 5 H adds parity, reputation loss, and anti-stall escalation. The bot hacker (Phase 5 F) remains skipped; Phase 5 I (debrief) is next.
 
 **A living office.** You walk around an office full of bot employees, sit at any PC and use its simulated Linux shell. Bots work, write mail, browse and take breaks, so evidence accumulates even while you stand still. The hacker has a private toolkit, a USB stick (hold `U` at an unlocked PC) and shoulder surfing. Reading the server's flag and submitting it from the briefing ends the match. See [visual upgrade notes](docs/design/visual-upgrade.md) for the current procedural art and [progress](PROGRESS.md) for each completed part.
 
@@ -103,6 +103,20 @@ pnpm cli
 
 Options: `pnpm cli --seed 42` (another random seed) and `pnpm cli --scenario nexora-small` (a scenario id or a path to a `.json` file).
 
+To play as the hacker, choose a player ID or account:
+
+```bash
+pnpm cli --hacker p4 --seed 42
+pnpm cli --hacker o.farouk --vulns plaintext-password
+```
+
+`--hacker` selects that player, installs their simulated tools, and shows the mission briefing. Weaknesses are
+seeded random by default in hacker mode. `--vulns` accepts `random`, `none`, or a comma-separated list of
+`weak-admin-password`, `extra-sudo`, `plaintext-password`, `careless-admin`, and `tailgate` (only those supported
+by the scenario apply). Without either option, the original CLI starts with no hacker and no weaknesses.
+The CLI is a simulation/debug sandbox: it exposes scenario credentials and permits switching players. It runs
+the engine without the browser server's bots, movement, physical interactions or meetings.
+
 The CLI prints the players and their credentials, then waits for input. Lines starting with `:` are CLI commands; everything else is typed into the PC you are sitting at.
 
 | CLI command | What it does |
@@ -112,12 +126,17 @@ The CLI prints the players and their credentials, then waits for input. Lines st
 | `:switch` | On a lock screen: switch user (log in as someone else; the locked session stays). |
 | `:as <player>` | Become another player (`p1`…`p5`). This is who is *physically* at the keyboard. |
 | `:players` / `:hosts` | List players with credentials / machines with IP, MAC and screen state. |
+| `:briefing` | Show the mission while playing as the selected hacker. Switching players with `:as` does not transfer that role. |
+| `:flag <text>` | Submit the flag. The current player must be the hacker and must have read it in this match. |
 | `:time` / `:time +5m` | Show / advance game time (`s`, `m`, `h`, `d`, e.g. `+1h30m`). |
 | `:events [N]` | Debug view of the master event log (last N entries). |
 | `:dump [file]` | Save the whole world to JSON (default: `dumps/`). |
 | `:help` / `:quit` | Help / exit. |
 
 Passwords show as `*` while you type them. Game time also advances by the real time that passes between your inputs. A screen never locks itself: lock it with `loginctl lock-session`.
+
+After a successful flag submission, gameplay and game time stop. You can still use `:events`, `:dump`, `:hosts`,
+`:players`, `:time`, `:briefing` and `:help` to inspect the result. Use `:quit` and launch the CLI again for a new match.
 
 A step-by-step tour with expected results is in [TESTING.md](TESTING.md).
 
@@ -131,7 +150,7 @@ pnpm test
 pnpm typecheck
 ```
 
-406 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay) and the server (movement, sitting, doors and badges, bots, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule).
+421 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay), the server (movement, sitting, doors and badges, bots, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule), and CLI mission startup and completion.
 
 ```bash
 pnpm e2e

@@ -8,10 +8,11 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  advanceTime, createWorld, currentPrompt, dateStamp, leaveTerminal, openTerminal, parseDuration,
-  refreshTerminal, screenState, sendInput, serializeWorld, switchUser,
+  advanceTime, briefing, createWorld, currentPrompt, dateStamp, leaveTerminal, openTerminal, parseDuration,
+  refreshTerminal, screenState, sendInput, serializeWorld, setHacker, submitFlag, switchUser,
   type GameEvent, type Scenario, type TerminalResult, type World,
 } from '@insider/engine';
+import type { MissionOptions } from './options';
 
 export const META_HELP = `CLI commands (they start with a colon):
   :sit <hostname>   sit at a PC (login prompt, lock screen, or an open shell)
@@ -20,6 +21,8 @@ export const META_HELP = `CLI commands (they start with a colon):
   :as <player>      become another player (who is physically at the keyboard)
   :players          list players, desks and credentials
   :hosts            list machines with their current IP and MAC
+  :briefing         show the hacker's mission (while playing as the hacker)
+  :flag <text>      hand in the flag you read during this match
   :time             show the game time
   :time +5m         advance game time (units: s m h d, e.g. +90s, +1h30m)
   :events [N]       debug: show the last N entries of the master event log (default 15)
@@ -28,8 +31,9 @@ export const META_HELP = `CLI commands (they start with a colon):
   :quit             exit
 
 Anything else is typed into the PC you are sitting at. Type "help" there for shell commands.
-Game time also moves forward by the real time that passes between your inputs,
-so a screen you leave alone for a minute locks itself.`;
+Game time also moves forward by the real time that passes between your inputs.
+Lock a screen explicitly with loginctl lock-session.
+This CLI is a simulation/debug sandbox: :as, :players, :events and :dump expose game data.`;
 
 export interface Screen {
   /** Text to print. */
@@ -52,9 +56,17 @@ export class Game {
     private scenario: Scenario,
     seed: number,
     private dumpDir: string,
+    options: MissionOptions = {},
   ) {
-    this.world = createWorld(scenario, seed);
+    this.world = createWorld(scenario, seed, { weaknesses: options.weaknesses ?? (options.hacker ? 'random' : []) });
     this.playerId = this.world.players[0]?.id ?? 'p1';
+    if (options.hacker) {
+      const player = this.world.players.find((p) => p.id === options.hacker || p.account === options.hacker);
+      if (!player) throw new Error(`Unknown hacker player: ${options.hacker}. Use a player ID or account from this scenario.`);
+      if (!this.world.mission.flag) throw new Error('This scenario has no hacker mission.');
+      if (!setHacker(this.world, player.id)) throw new Error('Could not select the hacker.');
+      this.playerId = player.id;
+    }
   }
 
   /** The intro shown when the game starts. */
@@ -63,7 +75,8 @@ export class Game {
       `\nScenario: ${this.world.scenarioName}   (seed ${this.world.seed})\n` +
       `Game time: ${dateStamp(this.world.time)}\n\n` +
       this.playersTable() +
-      `\nYou are ${this.playerId}. Try:  :sit ${this.world.players[0]?.desk ?? ''}     (":help" lists CLI commands)\n`
+      `\nYou are ${this.playerId}. Try:  :sit ${this.world.players.find((p) => p.id === this.playerId)?.desk ?? ''}     (":help" lists CLI commands)\n` +
+      (this.world.mission.hacker === this.playerId ? this.missionBriefing() : '')
     );
   }
 
@@ -83,6 +96,10 @@ export class Game {
 
   /** Handles one line typed by the human. */
   handle(line: string): Screen {
+    // Keep the finished world's evidence available, but stop gameplay and its clock.
+    if (this.world.mission.won !== null && !/^:(?:help|quit|q|exit|players|hosts|events|dump|briefing)(?:\s|$)/.test(line.trim()) && line.trim() !== ':time') {
+      return this.screen('The match is over. Inspect it with :events or :dump, or :quit and start a new CLI session.\n');
+    }
     // Real time that passed since the last input also passes in the game.
     const now = Date.now();
     const elapsed = Math.max(1000, Math.round((now - this.lastInputAt) / 1000) * 1000);
@@ -116,6 +133,18 @@ export class Game {
         return this.screen(this.playersTable());
       case ':hosts':
         return this.screen(this.hostsTable());
+      case ':briefing':
+        return this.screen(this.missionBriefing());
+      case ':flag': {
+        if (!args.length) return this.screen('Usage: :flag <text>\n');
+        const result = submitFlag(this.world, this.playerId, args.join(' '));
+        if (result.won && this.terminalId) {
+          leaveTerminal(this.world, this.terminalId);
+          this.terminalId = null;
+          this.masked = false;
+        }
+        return this.screen(`${result.text}\n`);
+      }
 
       case ':as': {
         const player = this.world.players.find((p) => p.id === args[0] || p.account === args[0]);
@@ -190,6 +219,14 @@ export class Game {
       default:
         return this.screen(`Unknown CLI command ${cmd}. Type :help\n`);
     }
+  }
+
+  private missionBriefing(): string {
+    if (this.world.mission.hacker !== this.playerId) return 'Only the hacker can view the mission briefing.\n';
+    const mission = briefing(this.world);
+    return `You are the hacker.\n${mission.goal}\nTools: ${mission.toolsPath}\n` +
+      mission.rumours.map((rumour) => `- ${rumour}\n`).join('') +
+      'Use :flag <text> to hand in the flag after reading it.\n';
   }
 
   private playersTable(): string {
