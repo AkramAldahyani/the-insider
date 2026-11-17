@@ -5,6 +5,7 @@
  * when the hacker is voted out (meetings.test.ts) and when the guard detains
  * the hacker (guard.test.ts). This file adds parity (DESIGN.md section 1:
  * the hackers win when the defenders left are no more than the hackers left)
+ * the company's reputation reaching 0 % (the owner's rule: the hacker wins),
  * and the anti-stall escalation in the SIEM.
  */
 import { describe, expect, it } from 'vitest';
@@ -27,14 +28,66 @@ function withHacker(options: ConstructorParameters<typeof Recorder>[0] = {}): Re
   return r;
 }
 
+describe('reputation', () => {
+  it('the fourth wrong firing ruins the company: the hacker wins', () => {
+    const r = withHacker();
+    for (const id of ['p2', 'p3', 'p5']) fire(r, id);
+    r.tick();
+    expect(r.game.reputation).toBe(25);
+    expect(r.last('e', 'match.over')).toBeUndefined();
+    fire(r, 'p6');
+    r.tick();
+    expect(r.game.publicState().reputation).toBe(0);
+    for (const c of ['h', 'e']) {
+      expect(r.last(c, 'match.over')!.payload, c).toMatchObject({
+        winner: 'hacker', hacker: 'Omar Farouk',
+        reason: "The company's reputation hit 0 %: too many innocent people were fired. The hacker wins.",
+      });
+    }
+  });
+
+  it('through a real meeting: an innocent person voted out at 25 % ends the match', () => {
+    const r = withHacker({ meetingTimes: { discussionMs: 3000, votingMs: 3000, resultMs: 1000, cooldownMs: 0 } });
+    for (const id of ['p2', 'p3', 'p5']) fire(r, id);
+    r.connect('m', 'p9');
+    r.sitAt('e', 'p1', 'FIN-LT-07');
+    r.type('e', PW['s.alharbi']);
+    for (const cmd of ['hostname', 'whoami', 'pwd']) r.send('e', 'evidence.pin', { kind: 'screen', text: r.type('e', cmd).trim() });
+    r.send('e', 'stand');
+    const b = r.map.furniture.find((f) => f.kind === 'button')!;
+    expect(r.walkTo('m', 'p9', b.x + b.width / 2, b.y + b.height + 14)).toBe(true);
+    r.send('m', 'meeting.call');
+    r.send('e', 'meeting.accuse', { suspect: 'p9', evidence: r.game.board.items.map((i) => i.id) });
+    r.tick(Math.round(3.2 * TICK_RATE));
+    for (const c of ['e', 'h']) r.send(c, 'meeting.vote', { target: 'p9' });
+    r.tick(Math.round(3.5 * TICK_RATE));
+    expect(r.game.fired.has('p9')).toBe(true);
+    expect(r.last('e', 'match.over')!.payload).toMatchObject({ winner: 'hacker', hacker: 'Omar Farouk' });
+  });
+
+  it('without a hacker, a ruined reputation ends nothing', () => {
+    const r = new Recorder({ weaknesses: [] });
+    r.connect('e', 'p1');
+    for (const id of ['p2', 'p3', 'p5', 'p6', 'p7']) fire(r, id);
+    r.tick();
+    expect(r.game.reputation).toBe(0);
+    expect(r.last('e', 'match.over')).toBeUndefined();
+  });
+});
+
 describe('parity', () => {
   it('the hacker wins once the defenders left are no more than the hackers', () => {
     const r = withHacker();
     const innocents = ['p2', 'p3', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10', 'p11'];
-    for (const id of innocents.slice(0, 8)) fire(r, id);
+    // In this office reputation would end the match at the 4th firing; keep it up to reach parity.
+    const fireKeepingReputation = (id: string) => {
+      r.game.reputation = 100;
+      fire(r, id);
+    };
+    for (const id of innocents.slice(0, 8)) fireKeepingReputation(id);
     r.tick();
     expect(r.last('e', 'match.over')).toBeUndefined(); // Sara and Huda are left: 2 defenders against 1 hacker
-    fire(r, 'p11');
+    fireKeepingReputation('p11');
     r.tick();
     for (const c of ['h', 'e']) {
       expect(r.last(c, 'match.over')!.payload, c).toMatchObject({

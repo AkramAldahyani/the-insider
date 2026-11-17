@@ -419,7 +419,7 @@ Use `pnpm dev` with bots (the default) and short meetings: `MEETING_SECONDS=40,2
 3. Without board evidence nobody can be accused, so the meeting ends with *Nobody was voted out.* (With three pins you could accuse someone; bots then vote for that person only if they saw something themselves, otherwise they do not vote.)
 4. Developer panel (`` ` ``): bots show *checking own PC* now and then; their PCs' command history (after they log out) contains `last -n 10` or `crontab -l`.
 
-## AE. Phase 5, part H: anti-stall and parity
+## AE. Phase 5, part H: anti-stall, reputation and parity
 
 Quicker with `STALL_MINUTES=1` and `TIME_SPEED=10` (PowerShell: `$env:STALL_MINUTES='1'; $env:TIME_SPEED='10'; pnpm dev`). Two tabs: Omar joining **as the hacker**, and Huda (SOC analyst).
 
@@ -427,7 +427,7 @@ Quicker with `STALL_MINUTES=1` and `TIME_SPEED=10` (PowerShell: `$env:STALL_MINU
 2. Wait one game minute. Every tab shows the vague *SECURITY ALERT* banner.
 3. As Huda, at SOC-WS-01: `siem rule=threat-escalation`. One line: *earlier activity re-scored HIGH: ssh.accept on ADMIN-SRV-01 (account o.farouk from ...)*. It names an account and an address, never a player.
 4. Each further game minute flags the next of Omar's actions, oldest first; ordinary commands (`whoami`, `ls`) never appear. With nothing new to flag, nothing more comes.
-5. Parity needs nine wrong firings in an office of eleven, so it is checked by the automated tests (`endings.test.ts`), not by hand.
+5. Reputation: each innocent person voted out costs 25 % (step AB). The fourth one, with a hacker in the match, ends it: *The company's reputation hit 0 %: too many innocent people were fired. The hacker wins.* Parity (nine wrong firings in an office of eleven) is checked by the automated tests (`endings.test.ts`).
 
 ## T. What you must NOT be able to see
 
@@ -441,7 +441,7 @@ Quicker with `STALL_MINUTES=1` and `TIME_SPEED=10` (PowerShell: `$env:STALL_MINU
 pnpm test
 ```
 
-Expected: `Test Files 38 passed (38)` and `Tests 403 passed (403)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
+Expected: `Test Files 38 passed (38)` and `Tests 406 passed (406)`. This includes a soak test that runs a full office of bots for three game hours in a few seconds.
 
 ```bash
 pnpm e2e

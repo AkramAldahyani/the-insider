@@ -18,7 +18,8 @@ This document is the single source of truth for the game's design. Read it fully
 ### Win conditions
 - **Hackers win** if:
   - the flag is submitted, OR
-  - the number of remaining defenders becomes less than or equal to the number of remaining hackers.
+  - the number of remaining defenders becomes less than or equal to the number of remaining hackers, OR
+  - the company's reputation reaches 0 % (too many innocent people fired; see §9 and Phase 5 part H).
 - **Defenders win** if all hackers are voted out or detained.
 
 ### Match length
@@ -280,7 +281,8 @@ Decided in Phase 5 (part G):
 
 Decided in Phase 5 (part H):
 
-- **Parity counts the whole staff.** "Remaining defenders" are all employees on the company's list who were not fired, whether they are in the building right now or not; the hacker wins when that number is no more than the number of hackers left. With one hacker in an office of eleven that takes nine wrong firings. A falling reputation alone does not end a match.
+- **Parity counts the whole staff.** "Remaining defenders" are all employees on the company's list who were not fired, whether they are in the building right now or not; the hacker wins when that number is no more than the number of hackers left.
+- **A ruined company loses.** Every innocent person fired costs the company 25 points of reputation; at 0 % (the fourth wrong firing) the hacker wins (owner's decision). In an office of eleven this always comes before parity, which would take nine wrong firings; parity matters for small offices.
 - **Anti-stall.** Every 10 game minutes the oldest action of the hacker that left a log line (a login, su or sudo, a failed password, the USB stick, a tool, a scan, a cleared log, a watched file read...) and was not flagged yet is raised again as a HIGH alert, with the machine, account, source address and time from its log line. It never names a player. So the longer a match runs, the more of the hacker's trail the SIEM points at, from its beginning. Ordinary actions (typing commands, logging in at one's own desk) are never picked.
 
 ### Lobby scaling

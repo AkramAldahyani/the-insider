@@ -154,10 +154,14 @@ How a match ends (all in `server/src/game.ts`, all through `endMatch(winner, hac
 - Defenders win: the hacker voted out (Part D), or detained by the guard (Part E).
 - Hacker wins: the flag handed in (Phase 4 F), or PARITY (new, `checkParity()`, run after every firing): the
   defenders left (the whole staff list minus the hacker minus the fired, present or not) are no more than the
-  hackers left (1). With 11 employees that is after nine wrong firings. Reason text:
+  hackers left (1). With 11 employees that would be after nine wrong firings. Reason text:
   "Only 1 defender is left, as many as hackers: the hacker took over the company."
-- No parity and no escalation in a match without a hacker. Reputation reaching 0 is NOT a win condition (DESIGN
-  does not list it; it is only shown). Open question for the owner if they want it.
+- REPUTATION (owner's decision after Part H: "Yes, hacker wins at 0%"): every wrong firing costs 25 points
+  (`REPUTATION_PER_FIRING`); at 0 % the hacker wins ("The company's reputation hit 0 %: too many innocent people
+  were fired. The hacker wins."). Checked before parity in `checkHackerWins()`. With the defaults this is the 4th
+  wrong firing, so in an 11-person office reputation always comes before parity (9 firings); parity stays for small
+  offices and future settings. Tests keep reputation at 100 to reach parity.
+- No parity, reputation loss or escalation in a match without a hacker.
 Anti-stall (DESIGN section 1, "Match length"):
 - Engine `security/alerts.ts` `escalate(world)`: picks the OLDEST action of the hacker (event `actor` = hacker,
   since the match started) that is on `ESCALATION_TYPES` (ssh/su/sudo/login failures and successes, USB, backdoor,
@@ -169,7 +173,7 @@ Anti-stall (DESIGN section 1, "Match length"):
   game's start. A HIGH alert also gives every player the usual vague banner (once a minute at most).
 - The SIEM already reads `/var/log/security/alerts.log`, so `siem rule=threat-escalation` (or `severity=high`)
   finds them.
-- 403 Vitest tests (new: server `endings.test.ts`), 11 Playwright.
+- 406 Vitest tests (new: server `endings.test.ts`), 11 Playwright.
 
 ## Phase 5 plan (investigation & social deduction)
 
