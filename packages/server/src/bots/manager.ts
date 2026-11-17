@@ -149,8 +149,8 @@ export class BotManager {
     if (options.hacker !== false && host.world.mission.flag && !host.world.mission.hacker) {
       const employees = host.world.players.filter((p) => p.role === 'employee');
       const pool = employees.length ? employees : host.world.players;
-      const selected = pool.find((p) => p.account === host.world.mission.extraSudoAccount)
-        ?? new Random(seed ^ 0x4ac4e2).pick(pool);
+      // Use a separate match-seeded draw: neither weaknesses nor their recipients influence identity.
+      const selected = new Random(seed ^ 0x4ac4e2).pick(pool);
       if (selected) setHacker(host.world, selected.id);
     }
   }

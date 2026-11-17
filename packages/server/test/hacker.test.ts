@@ -21,6 +21,41 @@ function hackerId(r: Recorder): string { return r.game.world.mission.hacker!; }
 const hasEvent = (r: Recorder, type: string) => r.game.world.events.some((e) => e.type === type && e.actor === hackerId(r));
 
 describe('Phase 5 F: automatic hacker', () => {
+  it('selects employees uniformly without following mistaken sudo or enabled weaknesses', () => {
+    const counts = new Map<string, number>();
+    const seeds = 210;
+    let matchesSudo = 0;
+    for (let seed = 1; seed <= seeds; seed++) {
+      const r = match(['extra-sudo'], seed);
+      const selected = r.game.world.players.find((p) => p.id === hackerId(r))!;
+      expect(selected.role).toBe('employee');
+      counts.set(selected.id, (counts.get(selected.id) ?? 0) + 1);
+      if (selected.account === r.game.world.mission.extraSudoAccount) matchesSudo++;
+      if (seed <= 12) {
+        expect(hackerId(match([], seed))).toBe(selected.id);
+        const changed = clone(scenario);
+        changed.mission!.extraSudo!.candidates = [selected.account];
+        const other = new Recorder({ scenario: changed, bots: true, botOptions: { hacker: true }, weaknesses: ['extra-sudo'], seed });
+        expect(hackerId(other)).toBe(selected.id);
+      }
+    }
+    const n = scenario.players.filter((p) => p.role === 'employee').length;
+    const expected = seeds / n;
+    // Fixed seeds plus broad bounds catch selection bias without relying on a lucky sample.
+    expect(counts.size).toBe(n);
+    for (const count of counts.values()) expect(Math.abs(count - expected)).toBeLessThan(expected * 0.7);
+    expect(Math.abs(matchesSudo - expected)).toBeLessThan(expected * 0.7);
+  });
+
+  it.each([1, 7, 19])('can win without owning mistaken sudo (seed %i)', (seed) => {
+    const r = match(['extra-sudo'], seed);
+    const selected = r.game.world.players.find((p) => p.id === hackerId(r))!;
+    expect(selected.account).not.toBe(r.game.world.mission.extraSudoAccount);
+    until(r, () => r.game.over !== null, 3600);
+    expect(r.game.over?.winner).toBe('hacker');
+    expect(hasEvent(r, 'keylogger.capture') || hasEvent(r, 'shoulder.surf')).toBe(true);
+  });
+
   it('is enabled in normal server settings, seed-stable, and disabled independently of employee bots', () => {
     expect(loadGameOptions().botOptions?.hacker).toBe(true);
     expect(loadGameOptions({ botHacker: false }).botOptions?.hacker).toBe(false);
@@ -35,7 +70,14 @@ describe('Phase 5 F: automatic hacker', () => {
   });
 
   it.each(['plaintext-password', 'extra-sudo', 'weak-admin-password'] as WeaknessId[])('finishes a whole bot-only match using %s, with ordinary evidence and no direct flag grant', (weakness) => {
-    const r = match([weakness]);
+    let r = match([weakness]);
+    if (weakness === 'extra-sudo') {
+      // This route test deliberately grants sudo to the independently selected hacker.
+      // Separate tests above exercise the more common case where somebody else has it.
+      const content = clone(scenario);
+      content.mission!.extraSudo!.candidates = [r.game.world.players.find((p) => p.id === hackerId(r))!.account];
+      r = new Recorder({ scenario: content, bots: true, botOptions: { hacker: true }, weaknesses: [weakness] });
+    }
     const actor = hackerId(r);
     until(r, () => r.game.over !== null);
     expect(r.game.over?.winner).toBe('hacker');
