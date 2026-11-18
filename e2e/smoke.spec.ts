@@ -414,8 +414,10 @@ test('simulated reset mail leaves private loot and cleaning a log leaves a tampe
     };
     await walkToDesk(page, 'IT-WS-02');
     await page.keyboard.press('e');
-    await expect(page.getByTestId('terminal')).toBeVisible();
-    if (await page.getByTestId('terminal').getAttribute('data-screen') === 'locked') await run(page, password);
+    // The window mounts with data-screen="" before its effect delivers the queued term.open.
+    // Visibility alone can therefore skip the unlock branch. Wait for the actual initial screen.
+    await expect(page.getByTestId('terminal')).toHaveAttribute('data-screen', 'locked');
+    await run(page, password);
     await expect(page.getByTestId('terminal')).toHaveAttribute('data-screen', 'shell');
     await run(page, '~/.tools/phish l.haddad');
     await expect.poll(() => terminalText(page)).toContain('Reset message sent');
