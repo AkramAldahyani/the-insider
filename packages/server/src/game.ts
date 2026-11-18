@@ -290,6 +290,9 @@ export class OfficeGame {
         const sign = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.sign(v) : 0);
         avatar.dx = sign(data.dx);
         avatar.dy = sign(data.dy);
+        if (typeof data.sequence === 'number' && Number.isSafeInteger(data.sequence)) {
+          this.send(clientId, 'move.ack', { sequence: data.sequence, dx: avatar.dx, dy: avatar.dy, x: avatar.x, y: avatar.y });
+        }
         return;
       }
       case 'sit':

@@ -13,6 +13,7 @@
  * sends messages to the server.
  */
 import { Client, type Room } from 'colyseus.js';
+import { Movement } from './movement';
 import {
   ROOM_NAME, SERVER_PORT, parseOfficeMap,
   type ClientMessages, type EmployeeChoice, type EvidenceView, type MeetingView, type MissionBriefing, type OfficeMap, type OnboardingCard, type PublicDesk, type PublicDoor, type PublicPlayer,
@@ -104,6 +105,7 @@ export type TermEvent =
 type Listener = () => void;
 
 export class Store {
+  readonly movement = new Movement();
   room: Room<RoomState> | null = null;
   map: OfficeMap | null = null;
   /** The map file as Tiled wrote it (the scene reads the tile colours from it). */
@@ -164,6 +166,11 @@ export class Store {
 
   /** Sends one message to the server. The types make a wrong payload a compile error. */
   send<T extends keyof ClientMessages>(type: T, payload: ClientMessages[T]): void {
+    if (type === 'move') {
+      this.set({ nearDesk: '' }); // Clear the hint immediately, before any network round trip.
+      this.room?.send(type, { ...payload, sequence: this.movement.request() });
+      return;
+    }
     this.room?.send(type, payload);
   }
 
@@ -181,14 +188,21 @@ export class Store {
         this.map = parseOfficeMap(file[1]);
         this.set({ scenarioName: lobby.scenarioName, employees: lobby.employees, dev: lobby.dev, hackerOpen: lobby.hackerOpen, asHacker: this.ui.asHacker && lobby.hackerOpen, phase: this.ui.phase === 'playing' ? 'playing' : 'lobby' });
       });
-      on('welcome', ({ playerId, card, mission }) => this.set({ phase: 'playing', playerId, card, cardOpen: true, briefing: mission, briefingOpen: mission !== null }));
+      on('welcome', ({ playerId, card, mission }) => {
+        this.set({ phase: 'playing', playerId, card, cardOpen: true, briefing: mission, briefingOpen: mission !== null });
+        this.send('move', { dx: 0, dy: 0 });
+      });
+      on('move.ack', (reply) => this.movement.acknowledge(reply));
       on('term.open', ({ hostname, ...screen }) => {
         this.termBacklog = [];
         this.term({ kind: 'open', hostname, screen });
         this.set({ seatedAt: hostname, cardOpen: false });
       });
       on('term.output', (screen) => this.term({ kind: 'output', screen }));
-      on('term.close', () => this.set({ seatedAt: '' }));
+      on('term.close', () => {
+        this.set({ seatedAt: '' });
+        this.send('move', { dx: 0, dy: 0 });
+      });
       on('notice', ({ text }) => this.notice(text));
       on('alert', ({ text }) => {
         this.set({ alert: text });

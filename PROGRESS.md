@@ -3,6 +3,19 @@
 This file says where the work stands, so a new session can continue from it alone.
 Update it at the end of every part.
 
+## Browser walk/sit follow-up (2026-11-18)
+
+- Task 2: reproduced the moving desk-hint race. The HUD refreshed every 120 ms and used a
+  40 px radius, while one 50 ms server tick moves 8.5 px and sitting accepts 44 px.
+  A hint could therefore remain visible outside sitting range. Refusals already produce a notice.
+- Movement inputs now carry a sequence number; the server acknowledges the player's own direction
+  and position. Desk hints require the latest confirmed stop and matching public position, and use
+  the exact server distance rule. Starting movement clears the hint immediately. Old acknowledgements
+  cannot revive it. Positions remain server-authoritative; there is no movement prediction.
+- Two regression tests reproduce the stale-hint refusal and cover confirmed stops, delayed replies,
+  rounded public positions, the distance boundary, successful sitting and acknowledgement privacy.
+  Targeted tests and typecheck passed; browser validation follows with the shared walking helper.
+
 ## Phases
 
 | Phase | State |

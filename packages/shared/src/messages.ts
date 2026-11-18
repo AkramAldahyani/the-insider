@@ -193,6 +193,8 @@ export interface TermScreen {
 }
 
 export interface ServerMessages {
+  /** Acknowledges this player's movement input and its authoritative position. */
+  'move.ack': { sequence: number; dx: number; dy: number; x: number; y: number };
   /** Sent on connect: who can be played. */
   lobby: { scenarioName: string; mapName: string; employees: EmployeeChoice[]; dev: boolean; hackerOpen: boolean };
   /** Sent after choosing an employee. */
@@ -242,7 +244,7 @@ export interface ClientMessages {
   /** Pick an employee on the start screen. */
   choose: { playerId: string; hacker?: boolean };
   /** Which way the player wants to walk: each of dx, dy is -1, 0 or 1. The SERVER decides the position. */
-  move: { dx: number; dy: number };
+  move: { dx: number; dy: number; sequence?: number };
   /** Sit at a desk (the server checks the distance). */
   sit: { hostname: string };
   stand: Record<string, never>;

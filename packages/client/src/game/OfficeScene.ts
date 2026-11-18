@@ -19,7 +19,7 @@
  */
 import Phaser from 'phaser';
 import {
-  BUTTON_DISTANCE, DETAIN_DISTANCE, INTERACT_DISTANCE, TAP_DISTANCE, distanceToRect, nearestDesk, nearestReaderDoor, roomAt,
+  BUTTON_DISTANCE, DETAIN_DISTANCE, INTERACT_DISTANCE, TAP_DISTANCE, distanceToRect, nearestReaderDoor, roomAt,
   type MapDesk, type MapDoor, type OfficeMap, type PublicDesk, type PublicDoor, type PublicPlayer,
 } from '@insider/shared';
 import { playSound } from './sound';
@@ -269,7 +269,6 @@ export function createOfficeScene(store: Store): Phaser.Scene {
         }
         return;
       }
-      const near = nearestDesk(map, me.x, me.y);
       const door = nearestReaderDoor(map, me.x, me.y);
       const atDoor = !me.seatedAt && door && door.distance <= TAP_DISTANCE - 4 ? door.door : null;
       // The CCTV monitors in the security office (furniture of kind "monitors").
@@ -303,7 +302,9 @@ export function createOfficeScene(store: Store): Phaser.Scene {
         clock: Math.floor(state.clock / 1000) * 1000,
         speed: state.speed,
         roomName: roomAt(map, me.x, me.y),
-        nearDesk: !me.seatedAt && near && near.distance <= INTERACT_DISTANCE - 4 ? near.desk.hostname : '',
+        // A moving client's last patch can be behind the server by more than a tick.
+        // Only advertise a desk after the server acknowledged the latest stop.
+        nearDesk: !me.seatedAt && !ui.meeting?.active && !ui.matchOver ? store.movement.desk(map, me) : '',
       });
     }
   }

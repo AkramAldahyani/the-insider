@@ -68,7 +68,7 @@ Open http://localhost:5173. To start from a clean office at any time, stop `pnpm
 | Do | Expect |
 |---|---|
 | Stand far from any desk and press `E` | Nothing. |
-| Walk to the chair of FIN-LT-07 | "Press E to use FIN-LT-07" at the bottom. |
+| Walk to the chair of FIN-LT-07, release the movement keys | "Press E to use FIN-LT-07" appears after the server confirms you stopped. Starting to walk again hides the desk hint immediately. |
 | Press `E` | A terminal window opens: `*** FIN-LT-07: screen locked by s.alharbi ***` and `Password:`. You cannot walk while it is open. |
 | Type `wrong` then Enter | Stars while typing, then `Sorry, that password is incorrect.` |
 | Type `Riyadh2024!` then Enter | Prompt `s.alharbi@FIN-LT-07:~$`. The badge in the title bar says "shell". |

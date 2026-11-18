@@ -14,7 +14,7 @@ createRoot(document.getElementById('root')!).render(<App />);
 declare global {
   interface Window {
     __insider?: {
-      me(): { x: number; y: number; seatedAt: string; room: string; nearDesk: string; nearDoor: string } | null;
+      me(): { x: number; y: number; stopped: boolean; seatedAt: string; room: string; nearDesk: string; nearDoor: string } | null;
       doors(): { id: string; look: string; reader: boolean }[];
       /** Where to stand to use the security monitors (a point just in front of them). */
       monitors(): { x: number; y: number };
@@ -29,7 +29,7 @@ window.__insider = {
   me() {
     const ui = store.getUi();
     const p = store.room?.state.players?.get(ui.playerId);
-    return p ? { x: p.x, y: p.y, seatedAt: p.seatedAt, room: ui.roomName, nearDesk: ui.nearDesk, nearDoor: ui.nearDoor } : null;
+    return p ? { x: p.x, y: p.y, stopped: store.movement.isStopped(p), seatedAt: p.seatedAt, room: ui.roomName, nearDesk: ui.nearDesk, nearDoor: ui.nearDoor } : null;
   },
   desks() {
     return (store.map?.desks ?? []).map((d) => ({
