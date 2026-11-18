@@ -21,7 +21,10 @@ declare global {
       /** Where to stand to press the emergency button. */
       button(): { x: number; y: number };
       desks(): { hostname: string; seatX: number; seatY: number; screen: string }[];
-      map(): { tile: number; cols: number; rows: number; solid: boolean[][] } | null;
+      map(): {
+        tile: number; cols: number; rows: number; solid: boolean[][];
+        doors: { code: string; x: number; y: number; width: number; height: number; reader: boolean }[];
+      } | null;
     };
   }
 }
@@ -49,6 +52,9 @@ window.__insider = {
   },
   map() {
     const m = store.map;
-    return m ? { tile: m.tile, cols: m.cols, rows: m.rows, solid: m.solid } : null;
+    return m ? {
+      tile: m.tile, cols: m.cols, rows: m.rows, solid: m.solid,
+      doors: m.doors.map((d) => ({ code: d.code, x: d.x, y: d.y, width: d.width, height: d.height, reader: d.reader })),
+    } : null;
   },
 };

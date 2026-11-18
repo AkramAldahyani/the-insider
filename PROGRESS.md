@@ -14,10 +14,27 @@ Update it at the end of every part.
   cannot revive it. Positions remain server-authoritative; there is no movement prediction.
 - Two regression tests reproduce the stale-hint refusal and cover confirmed stops, delayed replies,
   rounded public positions, the distance boundary, successful sitting and acknowledgement privacy.
-  Targeted tests and typecheck passed; browser validation follows with the shared walking helper.
+  Targeted tests, typecheck, the full unit suite and browser validation passed.
 - Task 1: all seven browser PC-sitting steps now use `e2e/helpers/movement.ts`'s `walkAndSit`.
   It waits for the requested hostname's hint, a confirmed stop and the terminal's initial screen,
   and reports the hostname and last position on failure. The Part E test passed with retries disabled.
+- Task 3: traced the steering instability to automation round trips and overly precise waypoint
+  targets. Instrumentation showed a character crossing the same waypoint repeatedly (for example
+  x=566 to x=608 around x=592). On this Windows host, individual movement updates often covered
+  about 10.5 px; the old walker's temporary 1 px tolerance could not reliably catch those steps.
+  Its 600-iteration limit silently advanced even without arrival. Three instrumented Part E runs
+  took 27.6, 30.9 and 32.1 seconds overall; the short desk walks themselves took about 1.4-2.3 seconds.
+  The original reported 90-second run was not available as a trace, so its exact delay cannot be assigned.
+- Walking now releases the key inside the browser on a state update, then waits for the server's stop.
+  The helper follows one axis at a time, checks whole-body clearance before continuing past corners,
+  keeps moving through an automatic door's server-authoritative approach strip, and accepts safe interaction distances rather than exact floor pixels.
+  It has no fixed sleeps and fails explicitly on lack of progress. Walk timings and waypoint counts
+  are attached to Playwright results. Regression tests cover the two observed desk/corridor approaches;
+  no collision-physics defect was found or changed.
+- Browser retries now default to zero. `pnpm typecheck`, `pnpm test` (43 files, 467 tests) and
+  `pnpm e2e` (11 tests) passed. Ten more full `pnpm e2e --retries=0` runs passed with 11 expected,
+  zero skipped, zero unexpected and zero flaky tests each: 187.2, 195.4, 189.2, 187.2, 188.0,
+  187.8, 188.0, 186.3, 186.5 and 197.2 seconds.
 
 ## Phases
 
@@ -651,8 +668,7 @@ locally (never push), update this file.
 - Humans start at their desks WITHOUT an arrival line in today's badge log; bots walk in and (mostly) have one.
   Left as is for now; tell the owner in the Phase 3 summary (a later lobby/"match start" in Phase 6 can fix it).
 - Do NOT start coding Phase 4 until the owner approves the plan in "Phase 4 plan" below.
-- Known flake: the first Playwright test (keyboard-steered walk) got stuck about 1 run in 10. Cause not found;
-  the walker now re-centres when it stops moving and the config allows one retry. The server-side walk tests are stable.
+- The historical keyboard-walk flake is addressed by the browser walk/sit follow-up above; retries are now disabled.
 - The dev server (`pnpm dev`) restarts itself when server files change; Playwright reuses a running one.
 - Door timers and walking use real time; the game clock can run faster (dev panel). At speed 1 they agree.
 - Writing files from Bash heredocs breaks on apostrophes in this environment: use the Write tool or a script file.

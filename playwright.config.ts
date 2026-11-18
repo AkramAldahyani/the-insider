@@ -22,9 +22,8 @@ export default defineConfig({
   // Files share one office and the same employee choices.
   workers: 1,
   timeout: 120_000,
-  // The tests steer a character with real key presses and real timing. About one run in ten the walk
-  // in the first test gets stuck on a slow moment; one retry keeps that from failing the whole run.
-  retries: 1,
+  // Movement waits for authoritative state; a retry must not hide a broken walk.
+  retries: 0,
   reporter: [['list']],
   use: {
     baseURL: `http://localhost:${PAGE_PORT}`,

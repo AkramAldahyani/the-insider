@@ -490,7 +490,7 @@ the outstanding manual check of password masking at a real interactive keyboard.
 pnpm test
 ```
 
-Expected: `Test Files 41 passed (41)` and `Tests 462 passed (462)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, and a soak test that runs a full office of bots for three game hours.
+Expected: `Test Files 43 passed (43)` and `Tests 467 passed (467)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 2 desk-hint regression tests, 3 body-clearance walking regression tests, and a soak test that runs a full office of bots for three game hours.
 
 On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent workers. This passed the complete suite during Phase 5F validation after three existing long-running tests timed out with unrestricted workers.
 
@@ -501,6 +501,10 @@ pnpm e2e
 Expected: `11 passed`. Playwright starts its own game (ports 2577 and 5183, no bots, only the plaintext-password weakness), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
 
 For stability verification, run `pnpm e2e --retries=0` ten times consecutively; each must report 11 passes.
+Retries also default to zero. All PC-sitting steps share a helper that waits for the hostname's hint,
+the server-confirmed stop, and the initial terminal screen. Movement uses state changes rather than
+fixed sleeps, and holds the key through server-opened automatic doors; Playwright result attachments
+contain walk durations and waypoint diagnostics.
 The Part E reset-mail test waits for the initial `locked` terminal state before entering the password, then
 waits for `shell`. Window visibility alone can precede the first screen update.
 

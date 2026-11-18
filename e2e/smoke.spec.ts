@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Smoke test: one player plays through the heart of Phase 2 in a real browser.
  *
  *   open the game -> pick Sara -> walk to her desk -> unlock it -> `whoami`
@@ -387,7 +387,7 @@ test('an emergency meeting: the button, the meeting chat, and nobody voted out w
   await expect(other.getByTestId('card')).toBeVisible();
 
   const button = await page.evaluate(() => window.__insider!.button());
-  await walkTo(page, button.x, button.y);
+  await walkTo(page, button.x, button.y, 24); // Within the button's 40 px hint, not an exact floor pixel.
   await expect(page.getByTestId('hint')).toContainText('call an emergency meeting (1 left)');
   await page.keyboard.press('e');
   await expect(page.getByTestId('meeting')).toBeVisible();
@@ -418,7 +418,7 @@ test('the guard detains someone: X asks, X again does it; an innocent person cos
   await expect(page.getByTestId('card')).toBeVisible();
   await page.keyboard.press('c');
   await page.waitForFunction(() => window.__insider?.me() != null && window.__insider.map() != null);
-  await walkTo(page, maha.x, maha.y);
+  await walkTo(page, maha.x, maha.y, 28); // Safely within the guard's detaining distance.
   await expect(page.getByTestId('detain-hint')).toContainText('Press X to detain');
   await expect(page.getByTestId('detain-hint')).toContainText('Maha Yousef');
   await page.keyboard.press('x');
