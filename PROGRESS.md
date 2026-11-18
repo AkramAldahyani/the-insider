@@ -15,6 +15,9 @@ Update it at the end of every part.
 - Two regression tests reproduce the stale-hint refusal and cover confirmed stops, delayed replies,
   rounded public positions, the distance boundary, successful sitting and acknowledgement privacy.
   Targeted tests and typecheck passed; browser validation follows with the shared walking helper.
+- Task 1: all seven browser PC-sitting steps now use `e2e/helpers/movement.ts`'s `walkAndSit`.
+  It waits for the requested hostname's hint, a confirmed stop and the terminal's initial screen,
+  and reports the hostname and last position on failure. The Part E test passed with retries disabled.
 
 ## Phases
 
