@@ -126,7 +126,7 @@ match has a simulated bot hacker by default. `BOT_HACKER=0` disables that contro
 - `bots/hacker.ts` is a bounded decision controller: it receives mission hints, its own credentials, visible
   screen output and partial password observations. It has no filesystem, process, network, credential-store,
   master-event-log or direct flag-content access. All commands run through the existing simulated terminal.
-- `BotManager` selects one seeded employee (preferring the employee affected by extra-sudo when applicable).
+- Originally `BotManager` preferred the employee affected by extra-sudo; the fairness follow-up below removes that preference.
   After arrival the bot follows its normal office routine for two game minutes before starting its mission.
   It chooses a supported route from the enabled weaknesses, with an opportunistic physical fallback.
 - Implemented routes use the readable backup, the bot's own accidental sudo access, the fixed fictional-company
@@ -152,6 +152,35 @@ match has a simulated bot hacker by default. `BOT_HACKER=0` disables that contro
   build passed. The first unrestricted Vitest run had three timeouts in existing long-running office tests;
   the complete bounded-worker rerun passed. The browser suite checks existing flows; the new bot behavior
   is covered by the server integration tests.
+
+### Phase 5 F follow-up: fairness, knowledge difficulty, browser synchronization (completed 2026-11-18)
+
+- Task 1 (`1c420ba`): hacker identity is a uniform draw among eligible employees from its own match-seeded
+  sequence. It does not depend on weaknesses or their recipients. Tests sample 210 fixed seeds with tolerant
+  distribution bounds, vary weakness/recipient data, and complete three matches without the hacker owning
+  mistaken sudo. The old direct-sudo route fixture now explicitly grants sudo to the independently chosen hacker.
+- Task 2 (`c8834bf`): `BOT_HACKER_DIFFICULTY=easy|normal|hard`, default Normal. Shared rumour definitions
+  supply both human briefings and bot hypotheses. Easy gets no match confirmations or private backup path;
+  it learns paths and secrets through normal terminal output. Normal gets a seeded subset of enabled facts
+  (half rounded down; a lone fact has a seeded 50% chance). Hard retains Part F's full knowledge/priorities.
+  The existing development-only Mission view displays the configured difficulty; invalid values fail startup.
+- False direct rumours cause ordinary failures and evidence, then other routes, including physical observation.
+  Nine full matches (seeds 1, 7, 19 at all three levels) reach the flag with every direct rumour false.
+  Easy/Normal assertions verify denied-sudo and failed-login evidence before the physical fallback succeeds.
+  Additional tests cover changed backup locations, information boundaries, Normal replay and configuration.
+- Task 3 (`f5b6be6`): the Part E reset-mail browser test checked a visible terminal before its initial `term.open` was
+  applied. `TerminalOverlay` initially renders `data-screen=""`; the immediate conditional could skip entering
+  the password, after which the screen became `locked`. The test now waits explicitly for `locked`, enters the
+  password, then waits for `shell`. This fixes test synchronization; no client behavior change was needed.
+- Validation, in order: typecheck passed, then **462 Vitest tests in 41 files passed** with four workers,
+  then **10 consecutive full Playwright suites passed with `--retries=0`** (11 tests each, 110 passes total,
+  zero failures or retries). Each browser run started its own server with bots disabled and took 3.1–3.2 minutes.
+  Per-run logs are in `%TEMP%/insider-5f-followup-e2e/run-1.log` through `run-10.log`.
+  The first Task 2 run had two test assertions fail on normal sudo-log account padding; corrected assertions
+  passed in the complete rerun. All requested automated checks are complete. The new difficulty walkthrough
+  in TESTING.md was not separately performed by hand; settings and the developer response are covered by tests.
+- Scope stays within the three requested fixes. Debrief (5 I), final acceptance/balance work (5 J), and the
+  pre-existing interactive CLI password-masking manual check are unchanged.
 
 ### Part G: what exists now
 

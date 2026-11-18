@@ -92,16 +92,24 @@ Other commands:
 | `pnpm build` | production build of the web page (`packages/client/dist`) |
 | `BOTS=0 pnpm dev` | an empty office without bot employees (PowerShell: `$env:BOTS=0; pnpm dev`) |
 | `BOT_HACKER=0 pnpm dev` | ordinary employee bots without an automated hacker (PowerShell: `$env:BOT_HACKER=0; pnpm dev`) |
+| `BOT_HACKER_DIFFICULTY=easy pnpm dev` | bot knowledge: `easy`, `normal` (default), or `hard` (PowerShell: `$env:BOT_HACKER_DIFFICULTY='easy'; pnpm dev`) |
 | `pnpm map` | regenerate `maps/office-small.json` from `maps/build-office.ts` (overwrites edits made in Tiled) |
 
 Server settings are environment variables: `GAME_PORT` (2567), `SCENARIO` (`nexora-small`), `MAP` (`office-small`), `SEED` (1), `TIME_SPEED` (game seconds per real second, 1), `BOTS` (`0` = an empty office with no bot employees), `MEETING_SECONDS` (meeting discussion, voting and result lengths, `90,45,8`), `STALL_MINUTES` (anti-stall: every N game minutes one of the hacker's actions is flagged HIGH in the SIEM, `10`, `0` = off), `VULNS` (today's weaknesses: `random` by default, `none`, or a list such as `extra-sudo,tailgate`), and `NODE_ENV=production` to switch the developer tools off.
 
-With bots enabled, one employee is the hacker by default. It starts its mission after two game minutes of
+With bots enabled, one eligible employee is chosen uniformly using the match seed, independently of weaknesses
+and who received mistaken sudo. It starts its mission after two game minutes of
 ordinary work following arrival and uses only the simulated tools and movement rules. Its actions leave logs
 and physical evidence; meetings interrupt it, and the guard or a vote can stop it. `BOT_HACKER=0` disables this
 controller while leaving employee bots active. Human hacker selection remains available: taking over the bot
 hacker's employee preserves that role, while explicitly choosing another hacker stops the previous controller.
 The bot can fail when routes are blocked; it never receives the flag or extra privileges automatically.
+
+`BOT_HACKER_DIFFICULTY` controls starting knowledge. **Easy** gets the human rumours and tests them through
+simulated terminals. **Normal** (default) knows a seeded subset of enabled weaknesses; **Hard** has full weakness
+knowledge. Normal confirms half, rounded down, or uses a seeded 50% confirmation chance when only one weakness
+is enabled. Failed attempts leave normal evidence and lead to other routes, including physical observation.
+The developer panel's **mission** view shows the setting. Restart the server to change it; invalid values fail startup.
 
 ## Run the CLI
 
@@ -158,7 +166,7 @@ pnpm test
 pnpm typecheck
 ```
 
-442 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay), the server (movement, sitting, doors and badges, bots, bot hacker matches and interruptions, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule), and CLI mission startup and completion.
+462 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay), the server (movement, sitting, doors and badges, bots, bot hacker fairness, difficulty, fallback matches and interruptions, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule), and CLI mission startup and completion.
 
 ```bash
 pnpm e2e

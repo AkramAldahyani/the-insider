@@ -41,6 +41,10 @@ The game has three modes that share the same engine, office, bots, tools and evi
 ### Investigation (solo defender)
 - The player picks or is given a defender role (regular employee, SOC analyst, security guard, sysadmin…).
 - One or more bot hackers attack using the same tools and randomized vulnerabilities as in multiplayer.
+- The current single bot hacker is chosen uniformly among eligible employees using the match seed,
+  independently of weaknesses and who received mistaken sudo. Human selection and takeover still work.
+- Bot knowledge has three levels: **Easy** (human rumours), **Normal** (default: rumours plus some seeded
+  confirmations), and **Hard** (full weakness knowledge). See §10 and §12.
 - Bot employees act as coworkers: they do tasks, share findings in chat, attend meetings and vote based on the evidence they have seen.
 - The player wins by getting the hacker voted out or detained with a valid evidence chain. They lose if the flag is stolen or the hackers reach parity.
 - Difficulty controls the bot hacker's stealth, how much bot coworkers help, and how many vulnerabilities are open.
@@ -341,7 +345,16 @@ Decided in Phase 3:
 ## 10. Bots
 
 - **Bot employees:** walk to desks, do tasks, sometimes forget to lock their PC (difficulty-based), run investigation commands, post findings in chat, vote based on the evidence they have seen.
-- **Bot hacker:** picks a randomized attack chain from the enabled vulnerabilities, chooses targets opportunistically (unlocked PCs, a nearby sysadmin), pivots to frame others; stealth vs speed depends on difficulty.
+- **Bot hacker:** identity is a uniform seeded draw among eligible employees, independent of weaknesses and
+  their recipients. Its own mistaken sudo is usable if available; otherwise it pursues another simulated route.
+- **Knowledge (Phase 5 F follow-up):** Easy receives the same rumours as the human briefing, without hidden
+  backup locations or true/false confirmations. It discovers facts through permission-checked terminal output
+  and physical observations. Normal receives a seeded subset of confirmed enabled weaknesses; Hard receives
+  full weakness knowledge and retains Part F's route priorities. Confirmed usable routes are tried first.
+- Failed hypotheses leave normal evidence and lead to other routes. Once direct rumours are exhausted, physical
+  observation remains available. No difficulty grants access or a win when opportunities are blocked.
+  Human hacker selection and takeover retain their existing behavior. Broader stealth, framing and speed
+  strategies remain design goals; this follow-up changes starting knowledge only.
 - **Background NPC traffic** always runs, so logs are never suspiciously clean.
 - Bot logic uses **behavior trees**. LLM-driven chat is an optional pluggable module behind an interface, **off by default**.
 
@@ -369,6 +382,20 @@ After each match, show a full timeline replay: every hacker action, the evidence
 
 - **Beginner:** clickable command buttons, explanations of output, hints.
 - **Realistic:** raw terminal, no hints.
+
+The separate bot-hacker knowledge setting is `BOT_HACKER_DIFFICULTY`:
+
+| Value | Starting knowledge |
+|---|---|
+| `easy` | Human rumours only; tests them through normal simulated terminals and observations. |
+| `normal` (default) | Rumours plus a seeded subset of confirmed enabled weaknesses; no negative confirmations. |
+| `hard` | Full enabled/disabled weakness knowledge, as in the original Phase 5 F controller. |
+
+Normal confirms half of the enabled weaknesses, rounded down. With exactly one enabled weakness, confirmation
+has a seeded 50% chance. With two or more, at least one remains unknown. A separate seeded sequence keeps
+knowledge stable across arrivals and human handoffs without changing hacker identity. Permissions, credentials,
+movement speed and evidence rules are unchanged. `BOT_HACKER=0` still disables automation, and `BOTS=0` disables
+all bots. The development-only Mission view displays difficulty; change it by restarting the server/match.
 
 ---
 
