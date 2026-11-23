@@ -26,6 +26,8 @@ export type { WorldOptions } from './core/world';
 export { ALL_WEAKNESSES, HACKER_RUMOURS, briefing, chooseWeaknesses, setHacker, submitFlag } from './mission/mission';
 export { escalate, watchedFile } from './security/alerts';
 export { changePassword } from './auth/passwords';
+export { debriefSteps, pinShows, shows, weaknessNotes } from './debrief/debrief';
+export type { DebriefEvidence, DebriefStep, Technique } from './debrief/debrief';
 export { lastStamp } from './core/time';
 export { collect as siemCollect, siemQuery } from './security/siem';
 export type { SiemRecord, SiemResult } from './security/siem';
@@ -61,5 +63,6 @@ export function deserializeWorld(json: string): World {
   // Saves from before Phase 4 D have no keyboard recorders yet.
   world.toolkit.keyloggers ??= [];
   world.toolkit.phishing ??= [];
+  world.mission.trail ??= [];
   return world;
 }

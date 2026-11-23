@@ -100,6 +100,7 @@ export function Hud({ ui }: { ui: UiState }) {
         <button type="button" onClick={() => store.set({ cardOpen: !ui.cardOpen })}><kbd>C</kbd> My card</button>
         <button type="button" onClick={() => store.set({ tasksOpen: !ui.tasksOpen })}><kbd>T</kbd> Tasks</button>
         <button type="button" data-testid="board-button" onClick={() => store.set({ boardOpen: !ui.boardOpen })}><kbd>B</kbd> Evidence ({ui.board.length})</button>
+        {ui.debrief && <button type="button" data-testid="hud-debrief" onClick={() => store.set({ debriefOpen: true })}>Debrief</button>}
         {ui.dev && <span className="dev-shortcut"><kbd>`</kbd> Dev</span>}
       </div>
       <PlayerRoster ui={ui} />
@@ -214,8 +215,10 @@ export function MatchOver({ ui }: { ui: UiState }) {
   if (!ui.matchOver) return null;
   const o = ui.matchOver;
   const iAmHacker = ui.briefing !== null;
+  // The hacker can also win without the flag (reputation, parity): the reason below says how.
+  const byFlag = o.reason === 'The hacker got the flag out.';
   const title = o.winner === 'hacker'
-    ? (iAmHacker ? 'You got the flag out. You win.' : 'The hacker got the flag out.')
+    ? (iAmHacker ? (byFlag ? 'You got the flag out. You win.' : 'You win.') : byFlag ? 'The hacker got the flag out.' : 'The hacker wins.')
     : (iAmHacker ? 'You were caught.' : 'The hacker was caught. The company is safe.');
   return (
     <div className="match-over" data-testid="match-over">
@@ -223,8 +226,11 @@ export function MatchOver({ ui }: { ui: UiState }) {
         <div className="eyebrow">MATCH OVER · {clockText(o.at)}</div>
         <h2>{title}</h2>
         <p>{o.reason} The hacker was <strong data-testid="match-over-hacker">{o.hacker}</strong>.</p>
-        <p className="start-note">Everything they did is still in the logs. The full debrief (timeline, evidence, what was missed) comes in a later version. Reload the page once everybody has left to start a new match.</p>
-        <button type="button" onClick={() => store.set({ matchOver: null })}>Look around the office</button>
+        <p className="start-note">The debrief shows everything they did, the evidence it left, and what was found or missed. Reload the page once everybody has left to start a new match.</p>
+        <div className="match-over-buttons">
+          {ui.debrief && <button type="button" data-testid="open-debrief" onClick={() => store.set({ debriefOpen: true })}>See the debrief</button>}
+          <button type="button" onClick={() => store.set({ matchOver: null })}>Look around the office</button>
+        </div>
       </div>
     </div>
   );

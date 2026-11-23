@@ -83,6 +83,7 @@ export function applyWeaknesses(scenario: Scenario, seed: number, choice: Weakne
     onePersonDoors: [],
     won: null,
     escalated: [],
+    trail: [],
   };
   if (!m) return { scenario: s, mission };
 

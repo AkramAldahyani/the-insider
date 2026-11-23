@@ -315,6 +315,20 @@ export function sysMkdir(host: Host, path: string, opts: SysOpts): FsNode {
   return node;
 }
 
+type AppendListener = (host: Host, path: string, text: string) => void;
+let appendListener: AppendListener | null = null;
+
+/** Runs `run` and reports every line the system appends to a file meanwhile (used to record which log lines an action wrote). */
+export function watchAppends<T>(listener: AppendListener, run: () => T): T {
+  const previous = appendListener;
+  appendListener = listener;
+  try {
+    return run();
+  } finally {
+    appendListener = previous;
+  }
+}
+
 /**
  * Writes a file without permission checks, creating parent directories.
  * When the file already exists only its content/mtime change (owner and mode
@@ -331,5 +345,6 @@ export function sysWrite(host: Host, path: string, content: string, opts: SysOpt
   }
   node.content = opts.append ? (node.content ?? '') + content : content;
   node.mtime = node.ctime = opts.time;
+  if (opts.append) appendListener?.(host, abs, content);
   return node;
 }

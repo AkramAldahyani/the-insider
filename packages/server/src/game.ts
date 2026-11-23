@@ -24,6 +24,7 @@ import { BotManager, type BotOptions } from './bots/manager';
 import { Doors, type Walker } from './doors';
 import { Random } from './bots/random';
 import { Cctv } from './cctv';
+import { Debrief } from './debrief';
 import { EvidenceBoard } from './evidence';
 import { DEFAULT_MEETING_TIMES, Meetings, type MeetingTimes } from './meeting';
 import { checkMapAgainstScenario } from './mapCheck';
@@ -83,6 +84,9 @@ export class OfficeGame {
   readonly tasks: TaskBoard;
   /** The shared evidence board. */
   readonly board = new EvidenceBoard();
+  /** Who saw which evidence; builds the debrief when the match is over. */
+  readonly debrief: Debrief;
+  private readonly startedAt: number;
   /** Emergency meetings, with the record of every one (for the debrief). */
   readonly meetings: Meetings;
   /** Players voted out (humans and bots). They are out of the game for good. */
@@ -143,6 +147,8 @@ export class OfficeGame {
     // Fail loudly, before anyone joins, if the map and the scenario disagree.
     checkMapAgainstScenario(this.map, options.scenario, options.mapName);
     this.world = createWorld(options.scenario, options.seed ?? 1, { weaknesses: options.weaknesses ?? 'random' });
+    this.debrief = new Debrief(this.world);
+    this.startedAt = this.world.time;
     this.collision = { ...this.map, solid: this.map.solid.map((row) => [...row]) };
     this.doors = new Doors(this.world, this.map, this.collision.solid, this.world.mission.onePersonDoors);
     this.speed = options.speed ?? 1;
@@ -184,14 +190,20 @@ export class OfficeGame {
   private send<T extends ServerMessageType>(to: string, type: T, payload: ServerMessages[T]): void {
     if (!this.clients.has(to)) return; // a bot has no browser to send to
     this.outbox.push({ to, type, payload });
-    // Remember what this player was shown, so their evidence pins can be checked (evidence.ts).
+    // Remember what this player was shown, so their evidence pins can be checked (evidence.ts) and for the debrief.
+    const viewer = this.avatars.get(to)?.playerId;
     if (type === 'term.open' || type === 'term.output') {
       const screen = payload as ServerMessages['term.output'];
       this.board.noteScreen(to, `${screen.output} ${screen.prompt}`);
-    } else if (type === 'monitors.frame') this.board.noteShot(to, (payload as ServerMessages['monitors.frame']).id);
-    else if (type === 'monitors.index') {
+      if (viewer) this.debrief.noteScreen(viewer, screen.output);
+    } else if (type === 'monitors.frame') {
+      const frame = payload as ServerMessages['monitors.frame'];
+      this.board.noteShot(to, frame.id);
+      if (viewer) this.debrief.notePicture(viewer, frame);
+    } else if (type === 'monitors.index') {
       const index = payload as ServerMessages['monitors.index'];
       this.board.noteLines(to, [...index.badges, ...index.motion]);
+      if (viewer) this.debrief.noteScreen(viewer, [...index.badges, ...index.motion].join('\n'));
     }
   }
 
@@ -612,6 +624,13 @@ export class OfficeGame {
     for (const a of this.avatars.values()) if (a.hold) this.endItem(a, 'The match is over.');
     for (const a of [...this.avatars.values()]) if (a.seatedAt) this.stand(a, 'The match is over.');
     for (const client of this.clients) this.send(client, 'match.over', { winner, hacker: hackerName, at: this.world.time, reason });
+    // The match is over: now, and only now, everybody learns what really happened.
+    const debrief = this.debrief.build({
+      winner, reason, at: this.world.time, startedAt: this.startedAt, cctv: this.cctv, board: this.board.items,
+      meetings: this.meetings.history, detentions: this.detentions, reputation: this.reputation,
+      findings: this.world.players.map((p) => ({ playerId: p.id, list: this.bots?.findings(p.id) ?? [] })),
+    });
+    for (const client of this.clients) this.send(client, 'debrief', { debrief });
   }
 
   // ───────────────────────────── Guard and helpdesk (Phase 5, part E) ─────────────────────────────

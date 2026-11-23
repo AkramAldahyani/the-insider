@@ -459,6 +459,17 @@ Quicker with `STALL_MINUTES=1` and `TIME_SPEED=10` (PowerShell: `$env:STALL_MINU
 4. Each further game minute flags the next of Omar's actions, oldest first; ordinary commands (`whoami`, `ls`) never appear. With nothing new to flag, nothing more comes.
 5. Reputation: each innocent person voted out costs 25 % (step AB). The fourth one, with a hacker in the match, ends it: *The company's reputation hit 0 %: too many innocent people were fired. The hacker wins.* Parity (nine wrong firings in an office of eleven) is checked by the automated tests (`endings.test.ts`).
 
+## AF. Phase 5, part I: the debrief
+
+Start with `BOT_HACKER=0` and `VULNS=plaintext-password` (PowerShell: `$env:BOT_HACKER='0'; $env:VULNS='plaintext-password'; pnpm dev`). Two tabs: Omar joining **as the hacker**, and Huda (SOC analyst).
+
+1. As Omar, log in at MKT-LT-11, `ssh ADMIN-SRV-01` with his password, `cat /srv/shared/old/backup-2025.sh`, then `su` with the password it contains.
+2. As Huda, at SOC-WS-01: `siem source=auth action=su`. Select the row about o.farouk and press **Pin selection**.
+3. As Omar, `cat /root/flag.txt`, stand up and hand the flag in. Both tabs show the end of the match: press **See the debrief**.
+4. *Became root on ADMIN-SRV-01 with su* is FOUND (green): open it to see the ATT&CK id T1078.003, the command, and *pinned by Huda Rahman*. *Read the flag* is MISSED (red). *Logged in ... with their own account* is ORDINARY (grey) and not counted.
+5. **Only what was not pinned** hides the found step. The same debrief is in both tabs, and no password appears anywhere in it.
+6. Close it, press *Look around the office*: the bottom bar has a **Debrief** button to open it again.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -490,7 +501,7 @@ the outstanding manual check of password masking at a real interactive keyboard.
 pnpm test
 ```
 
-Expected: `Test Files 43 passed (43)` and `Tests 471 passed (471)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, and a soak test that runs a full office of bots for three game hours.
+Expected: `Test Files 44 passed (44)` and `Tests 488 passed (488)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, and a soak test that runs a full office of bots for three game hours.
 
 On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent workers. This passed the complete suite during Phase 5F validation after three existing long-running tests timed out with unrestricted workers.
 

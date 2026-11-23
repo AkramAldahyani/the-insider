@@ -376,6 +376,13 @@ Decided in Phase 3 (bot employees; the bot hacker, chat and voting come in Phase
 
 After each match, show a full timeline replay: every hacker action, the evidence it produced, who found what, and which clues were missed — with short explanations of the real-world technique, referencing **MITRE ATT&CK** technique IDs.
 
+Decided in Phase 5 (part I):
+
+- **A list of steps, not an animation.** Each step shows the time, what was done, the ATT&CK id (if there is one), how to spot it, the command that started it, the alerts it raised, and the real log lines it wrote. An animated replay of the office may come with the polish phase.
+- **Found, seen or missed.** *Found*: pinned on the board by someone other than the hacker. *Seen*: it was on the screen of someone other than the hacker. *Missed*: neither. Things an honest employee also does (logging in to the server as oneself) are shown, but not counted.
+- **Everything is revealed, except credentials.** Who the hacker was, the weaknesses, the votes, what colleagues noticed. Passwords are replaced by stars, because the same scenario may be played again.
+- **Removed log lines are shown** and marked as removed, and so are traces no log has: PCs left open, camera pictures.
+
 ---
 
 ## 12. Difficulty modes

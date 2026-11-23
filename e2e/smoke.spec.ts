@@ -296,6 +296,19 @@ test('the hacker reads a forgotten root password, gets the flag, hands it in, an
   // The other player is told who it was.
   await expect(other.getByTestId('match-over')).toContainText('The hacker got the flag out.');
   await expect(other.getByTestId('match-over-hacker')).toHaveText('Omar Farouk');
+  // ...and can now see everything he did: the steps, the technique, and the evidence nobody looked at.
+  await other.getByTestId('open-debrief').click();
+  const debrief = other.getByTestId('debrief');
+  await expect(debrief).toContainText('What Omar Farouk did');
+  await expect(other.getByTestId('debrief-totals')).toContainText('missed');
+  const su = debrief.locator('li', { hasText: 'Became root on ADMIN-SRV-01 with su' });
+  await su.getByRole('button').click();
+  await expect(su).toContainText('MITRE ATT&CK T1078.003');
+  await expect(su).toContainText('/var/log/auth.log');
+  await expect(su).toContainText('nobody looked');
+  await other.screenshot({ path: `${SHOTS}/18-debrief.png` });
+  await other.getByRole('button', { name: 'Close debrief' }).click();
+  await expect(debrief).toBeHidden();
   await other.close();
 });
 

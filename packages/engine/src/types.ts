@@ -288,6 +288,23 @@ export interface Mission {
   won: number | null;
   /** Ids of the hacker's events the anti-stall rule has already re-scored HIGH (security/alerts.ts `escalate`). */
   escalated: number[];
+  /** The hacker's notable actions and the log lines each one wrote, for the debrief (events/trail.ts). Never sent during a match. */
+  trail: TrailEntry[];
+}
+
+/** One line an action wrote into a log file. */
+export interface TraceLine {
+  host: string;
+  path: string;
+  line: string;
+}
+
+export interface TrailEntry {
+  /** Id of the master event. */
+  event: number;
+  /** The player who was the hacker at that moment. */
+  by: string;
+  lines: TraceLine[];
 }
 
 // ───────────────────────────── Toolkit ─────────────────────────────

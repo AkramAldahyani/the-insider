@@ -34,6 +34,7 @@ const ALLOWED_FIELDS: Record<string, string[]> = {
   tasks: ['tasks', 'completed'],
   alert: ['text'],
   'match.over': ['winner', 'hacker', 'at', 'reason'],
+  debrief: ['debrief'],
   'monitors.index': ['cameras', 'badges', 'motion'],
   'monitors.frame': ['camera', 'id', 'time', 'people'],
   board: ['items'],

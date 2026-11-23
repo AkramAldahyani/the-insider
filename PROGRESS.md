@@ -74,7 +74,7 @@ Update it at the end of every part.
 | 3 Living office | done, pushed by the owner |
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
-| 5 Investigation & social deduction | **in progress**: Parts A-H done; I (debrief) next, then J |
+| 5 Investigation & social deduction | **in progress**: Parts A-I done; J (soak test, browser test, balance, docs) next |
 
 ## Phase 5 status: plan APPROVED by the owner (defaults 1-6 accepted); Parts A-H DONE; Part I next
 
@@ -294,6 +294,31 @@ Anti-stall (DESIGN section 1, "Match length"):
 - The SIEM already reads `/var/log/security/alerts.log`, so `siem rule=threat-escalation` (or `severity=high`)
   finds them.
 - 406 Vitest tests (new: server `endings.test.ts`), 11 Playwright.
+
+### Part I: what exists now (the debrief)
+
+- `engine/src/events/trail.ts`: while the match runs, `emit()` records for every NOTABLE event of the hacker the exact
+  lines it appended under /var/log and /var/mail (`watchAppends` in fs/vfs.ts) in `world.mission.trail`. The victim's
+  part of a phishing mail (page visit, submit) is on the trail too. Never sent to a browser.
+- `engine/src/debrief/debrief.ts`: `debriefSteps(world)` turns the trail into steps (title, MITRE ATT&CK id and name or
+  null, a lesson, the typed line, count of repeats within 2 minutes, alerts raised, anti-stall flag, evidence with
+  `gone` when the log cleaner removed it) and adds uses of PCs left unlocked (`world.unattended`). `suspicious: false`
+  marks what honest people do too (own-account ssh). `shows` / `pinShows` recognise a piece of evidence on a screen:
+  time + message, or a SIEM row (time, machine, source, and account/address/rule). `weaknessNotes(world)`.
+- `server/src/debrief.ts` (`game.debrief`): notes what non-hackers had on their terminals and monitors while the match
+  runs; `build()` at the end marks each piece of evidence pinned / seen / missed with names, adds camera pictures around
+  physical steps (last before, first after, 60 s), bot witnesses (findings against the hacker), meetings with votes,
+  detentions and weaknesses. Every password of the office is replaced by ******** in every text.
+- Message `debrief { debrief: DebriefView }` right after `match.over`, to every client; never before.
+- Client `ui/DebriefPanel.tsx`: opened from the match-over box or the HUD's Debrief button; steps open on click; filter
+  "Only what was not pinned"; ATT&CK links. The match-over title no longer claims the flag was taken when the hacker won
+  by reputation or parity.
+- Limits: bots' own checks count only as witness statements; evidence a person read but that scrolled in another format
+  (e.g. SIEM `| count` or `| fields`) may not be recognised as seen; ATT&CK has no entry for shoulder surfing or
+  tailgating (shown without an id); a client that connects after the end does not get the debrief.
+- FOR PART J (balance): in five bot-hacker matches (seeds 1, 2, 3, 5, 8; easy and hard) the hacker won every time after
+  3 to 7 game minutes. Measured: three game hours = 12,315 events, 6 ms to rebuild the steps.
+- 488 Vitest tests in 44 files (new: server `debrief.test.ts`), 11 Playwright (the hacker-wins test opens the debrief).
 
 ## Phase 5 plan (investigation & social deduction)
 

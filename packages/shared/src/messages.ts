@@ -80,6 +80,68 @@ export interface MeetingView {
   result: { fired: string; wasHacker: boolean; tally: { id: string; name: string; votes: number }[]; skips: number; abstained: number } | null;
 }
 
+// ───────────────────────────── The debrief (only after the match) ─────────────────────────────
+
+/** One piece of evidence a step left, and whether anybody found it. */
+export interface DebriefEvidenceView {
+  /** The machine it is on ("" for a camera picture). */
+  host: string;
+  /** The log file, or the command that shows it. */
+  where: string;
+  text: string;
+  /** The log cleaner removed it. */
+  gone: boolean;
+  found: 'pinned' | 'seen' | 'missed';
+  foundBy: string[];
+}
+
+/** One thing the hacker did. */
+export interface DebriefStepView {
+  time: number;
+  until: number;
+  count: number;
+  by: string;
+  host: string;
+  account: string;
+  title: string;
+  /** MITRE ATT&CK technique ("T1021.004"), or null when there is none. */
+  technique: { id: string; name: string } | null;
+  lesson: string;
+  typed: string;
+  /** False for things an honest employee does too. */
+  suspicious: boolean;
+  alerts: string[];
+  /** The anti-stall rule pointed at it. */
+  flagged: boolean;
+  evidence: DebriefEvidenceView[];
+  /** Further evidence not listed. */
+  more: number;
+  /** The best of its evidence; "none" = it left none. */
+  status: 'pinned' | 'seen' | 'missed' | 'none';
+}
+
+export interface DebriefView {
+  winner: 'hacker' | 'defenders';
+  reason: string;
+  hacker: string;
+  startedAt: number;
+  at: number;
+  reputation: number;
+  steps: DebriefStepView[];
+  /** Suspicious steps that left evidence, by what happened to it. */
+  totals: { steps: number; pinned: number; seen: number; missed: number };
+  weaknesses: string[];
+  /** What bot employees noticed about the hacker. */
+  witnesses: { time: number; name: string; text: string }[];
+  meetings: {
+    number: number; time: number; calledBy: string;
+    accusations: { accuser: string; suspect: string; right: boolean; evidence: string[] }[];
+    votes: { voter: string; target: string }[];
+    fired: string; wasHacker: boolean;
+  }[];
+  detentions: { time: number; guard: string; target: string; right: boolean }[];
+}
+
 export interface PublicState {
   /** Game time, milliseconds since 1970 (UTC). */
   clock: number;
@@ -215,6 +277,8 @@ export interface ServerMessages {
   alert: { text: string };
   /** The match is over. Sent to everybody, including people on the start screen. */
   'match.over': { winner: 'hacker' | 'defenders'; hacker: string; at: number; reason: string };
+  /** Right after match.over: everything the hacker did, and what was found or missed. Never sent during a match. */
+  debrief: { debrief: DebriefView };
   /** Your onboarding card changed (the helpdesk gave you a new password). Only ever sent to its owner. */
   card: { card: OnboardingCard };
   /** The current meeting (or none), as this player sees it. */

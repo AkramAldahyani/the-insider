@@ -59,6 +59,9 @@ export interface UiState {
   alert: string;
   /** Set when the match is over: who won and who the hacker was. */
   matchOver: ServerMessages['match.over'] | null;
+  /** What really happened; arrives only after the match. */
+  debrief: ServerMessages['debrief']['debrief'] | null;
+  debriefOpen: boolean;
   /** The meeting as the server last described it, and when that message arrived (for the countdown). */
   meeting: MeetingView | null;
   meetingAt: number;
@@ -112,7 +115,7 @@ export class Store {
   rawMap: TiledMap | null = null;
 
   private ui: UiState = {
-    phase: 'connecting', error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, meeting: null, meetingAt: 0, chat: [], fired: '', nearButton: false, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
+    phase: 'connecting', error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, debrief: null, debriefOpen: false, meeting: null, meetingAt: 0, chat: [], fired: '', nearButton: false, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
     clock: 0, speed: 1, roomName: '', nearDesk: '', nearDoor: '', nearDoorName: '', seatedAt: '', notice: '', tasks: [], tasksCompleted: 0, tasksOpen: true, devOpen: false, devLog: [],
   };
   private listeners = new Set<Listener>();
@@ -210,6 +213,7 @@ export class Store {
         this.alertTimer = window.setTimeout(() => this.set({ alert: '' }), 8000);
       });
       on('match.over', (over) => this.set({ matchOver: over }));
+      on('debrief', ({ debrief }) => this.set({ debrief }));
       on('monitors.index', (index) => this.set({ monitors: index }));
       on('board', ({ items }) => this.set({ board: items }));
       on('meeting', (meeting) => {

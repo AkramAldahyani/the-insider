@@ -9,6 +9,7 @@
  */
 import type { GameEvent, World } from '../types';
 import { materialize } from './materialize';
+import { recordTrail } from './trail';
 import { checkAlerts } from '../security/alerts';
 
 /**
@@ -58,7 +59,7 @@ export function emit(world: World, input: EmitInput): GameEvent {
     origin: currentKeyboard === null ? 'system' : currentKeyboard === input.host ? 'physical' : 'remote',
   };
   world.events.push(event);
-  materialize(world, event);
+  recordTrail(world, event, () => materialize(world, event));
   checkAlerts(world, event); // security monitoring (security/alerts.ts)
   return event;
 }

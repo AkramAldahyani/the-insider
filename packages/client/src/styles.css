@@ -302,3 +302,36 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 
 /* The guard's detain hint sits above the other hints. */
 .hud-hint-detain { bottom: 114px; border-color: #e5484d; }
+
+/* ── The debrief after a match ── */
+.match-over-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.debrief { position: absolute; inset: 0; z-index: 25; display: grid; place-items: center; background: rgba(5, 6, 9, 0.8); }
+.debrief-box { width: min(920px, calc(100% - 32px)); max-height: calc(100% - 48px); overflow: auto; padding: 18px 20px; border-radius: 12px; background: #141a24; border: 1px solid var(--line); box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7); font-size: 13.5px; line-height: 1.5; }
+.debrief-bar { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.debrief-bar h2 { margin: 4px 0 6px; font-size: 20px; }
+.debrief h3 { margin: 16px 0 4px; font-size: 14px; }
+.debrief p { margin: 4px 0; }
+.debrief ul { margin: 4px 0; padding-left: 18px; }
+.debrief button { padding: 5px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: inherit; font: inherit; cursor: pointer; }
+.debrief button[aria-pressed='true'] { border-color: var(--green); }
+.debrief a { color: #8fe3cd; }
+.debrief code { font-family: var(--mono); font-size: 11.5px; word-break: break-word; }
+.debrief-muted { color: #8b93a3; }
+.debrief-filter { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.debrief .debrief-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.debrief-step { border-radius: 7px; border-left: 4px solid #59657a; background: #0f141d; }
+.debrief-step.debrief-pinned { border-left-color: #3fb68b; }
+.debrief-step.debrief-seen { border-left-color: #e0a53a; }
+.debrief-step.debrief-missed { border-left-color: #e5484d; }
+.debrief-step.debrief-ordinary { border-left-color: #59657a; opacity: 0.75; }
+.debrief .debrief-head { display: flex; gap: 10px; align-items: baseline; width: 100%; padding: 7px 10px; border: 0; background: transparent; text-align: left; }
+.debrief-time, .debrief-technique, .debrief-status { font-family: var(--mono); font-size: 11px; color: #9aa6b6; flex: none; }
+.debrief-title { flex: 1; min-width: 0; }
+.debrief-technique { color: #8fe3cd; }
+.debrief-body { padding: 0 12px 10px; }
+.debrief .debrief-body ul { list-style: none; padding: 0; display: grid; gap: 4px; }
+.debrief-evidence { padding: 5px 8px; border-radius: 5px; background: #1a2130; border-left: 3px solid #e5484d; }
+.debrief-evidence.debrief-seen { border-left-color: #e0a53a; }
+.debrief-evidence.debrief-pinned { border-left-color: #3fb68b; }
+.debrief-where { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; font-size: 12px; color: #b8c2d0; }
+@media (max-width: 760px) { .debrief .debrief-head { flex-wrap: wrap; } .debrief-title { flex-basis: 100%; order: 3; } }
