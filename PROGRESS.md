@@ -3,6 +3,19 @@
 This file says where the work stands, so a new session can continue from it alone.
 Update it at the end of every part.
 
+## Browser walk flake fixed (2026-11-24)
+
+- The detain browser test, repeated alone, failed 4 of 10 and then 8 of 30 ("No progress at waypoint"). Traced in
+  `e2e/helpers/movement.ts`: the key was released AT the target, the body coasts one more tick (about 10.5 px on this
+  machine, sometimes two ticks), and the Reception doorway leaves an 11.8 px window, so it bounced across it for ever
+  (198.7 > 219.6 > 198.7). A test helper problem; the game was not at fault and did not change.
+- Now `release()` in `e2e/helpers/navigation.ts` lets go early by the measured coast plus half a step, and taps the key
+  for one server tick when the target is closer than that.
+- Second, rarer case (2 of 30, seen once the first was gone): public positions are rounded to 0.1 px, so a body can clip
+  a corner (SEC-WS-01, x 470.0) that the path check calls clear. After a blocked step the helper now steps sideways.
+- A failed walk now lists every press as "from > released at > came to rest at".
+- Checked: the detain test 60 of 60 (retries 0), four full browser runs 11 of 11, 471 Vitest tests in 43 files.
+
 ## E key beside a desk (2026-11-23)
 
 - Found in review of the walk/sit follow-up below: the desk hint is blank while walking, so E fell through to the
@@ -16,10 +29,6 @@ Update it at the end of every part.
 - Also fixed (a Part E mistake that the browser test caught): the guard's detain hint and its warning were hidden beside
   a desk although X still worked there. The hint now shows there too; the detain browser test always stands beside a desk.
 - 469 Vitest tests in 43 files, 11 Playwright (retries 0).
-- KNOWN FLAKE (open): the detain browser test, repeated 10 times alone (`-g "guard detains" --repeat-each=10`), failed
-  4 of 10 both before and after this change: the walk stops making progress in the Reception doorway (about x 186-199,
-  y 546-552, waypoint 208,784; "No progress at waypoint" in `e2e/helpers/movement.ts`). Full runs passed 11 of 11.
-  Cause not found yet.
 - Left as it is: E at a desk does nothing while a movement key is held (stop first), and a standing player has no
   desk hint after a developer teleport until they move.
 

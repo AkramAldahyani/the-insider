@@ -1,4 +1,21 @@
-import { PLAYER_RADIUS } from '../../packages/shared/src/constants';
+import { PLAYER_RADIUS, PLAYER_SPEED, TICK_RATE } from '../../packages/shared/src/constants';
+
+/** How far a body moves in one server tick (px): the first guess for how far it coasts after a key is released. */
+export const TICK_STEP = PLAYER_SPEED / TICK_RATE;
+
+/**
+ * When to let go of a movement key. After the release a body still coasts (the
+ * key-up has to reach the server), by about one tick's step. Releasing AT the
+ * target therefore overshoots every time; in a narrow doorway it can bounce
+ * across the target for ever (198.7 > 219.6 > 198.7...). So:
+ *  - release early, by the coast measured so far plus half a step (positions
+ *    arrive one step apart), which lands within half a step of the target;
+ *  - if the target is already closer than that, only tap the key for one tick.
+ */
+export function release(remaining: number, coast: number, tolerance: number): { tap: boolean; at: number } {
+  const at = Math.max(tolerance, coast * 1.5);
+  return { tap: remaining <= at, at };
+}
 
 /** Same square-body clearance as the game; closed doors are handled by badge input. */
 export function clearPath(map: { tile: number; solid: boolean[][] }, from: { x: number; y: number }, to: { x: number; y: number }): boolean {

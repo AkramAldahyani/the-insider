@@ -1,10 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import { clearPath, steeringAxis } from './navigation';
-import { PLAYER_RADIUS } from '../../packages/shared/src/constants';
+import { TICK_STEP, clearPath, release, steeringAxis } from './navigation';
+import { PLAYER_RADIUS, TICK_RATE } from '../../packages/shared/src/constants';
 
 declare global {
   interface Window {
-    __walk?: { done: boolean; dispose(): void };
+    __walk?: { done: boolean; at?: number; blocked?: boolean; dispose(): void };
   }
 }
 /** Every PC interaction waits for that desk's hint and a server-confirmed stop. */
@@ -96,11 +96,14 @@ export async function walkTo(page: Page, x: number, y: number, arrivalRadius = 1
   // A 20 px body in a 32 px tile has 6 px clearance on either side. Keep a
   // small rounding margin, but not a 1-5 px target that an entire server tick skips.
   const tolerance = map.tile / 2 - PLAYER_RADIUS - 0.1;
+  let coast = TICK_STEP; // how far the body moves after a release, corrected by what is seen
   const waypoints: { target: { x: number; y: number }; ms: number; corrections: number }[] = [];
   try {
     for (const [index, point] of route.entries()) {
       const started = Date.now();
       let corrections = 0;
+      let stuckOn: 'x' | 'y' | null = null;
+      const steps: string[] = []; // where each key was pressed, released, and where the body came to rest
       for (;;) {
         const me = await page.evaluate(() => window.__insider!.me()!);
         // Desks can be used before reaching the exact chair centre.
@@ -114,26 +117,43 @@ export async function walkTo(page: Page, x: number, y: number, arrivalRadius = 1
         if (next && Math.hypot(dx, dy) <= 32 && clearPath(map, me, next)) break;
         if (++corrections > 20) {
           const doors = await page.evaluate(() => window.__insider!.doors());
-          throw new Error('No progress at waypoint ' + JSON.stringify({ point, me, doors }));
+          throw new Error('No progress at waypoint ' + JSON.stringify({ point, me, steps, doors }));
         }
         // Prefer the longer direction when that whole-body segment is clear. Requiring
         // exact sideways centring first can oscillate even in a wide, empty corridor.
-        const axis = steeringAxis(map, me, point, tolerance);
+        // Pushed against something the path check called clear: public positions are rounded to 0.1 px, so a
+        // body can clip a corner it seems to miss. Step sideways, towards the waypoint's line, and try again.
+        const sideways = stuckOn === 'x' ? 'y' : 'x';
+        const axis = stuckOn && Math.abs(point[sideways] - me[sideways]) > 0.5 ? sideways : steeringAxis(map, me, point, tolerance);
+        stuckOn = null;
         if (!axis) throw new Error('No clear approach to waypoint ' + JSON.stringify({ point, me }));
         const direction = Math.sign(point[axis] - me[axis]);
         held = axis === 'x' ? (direction > 0 ? 'ArrowRight' : 'ArrowLeft') : (direction > 0 ? 'ArrowDown' : 'ArrowUp');
+        const rule = release(Math.abs(point[axis] - me[axis]), coast, tolerance);
         // Stop in the page's state-update callback. Waiting for Node to observe a patch and
         // send key-up adds automation round trips; in measured runs that overshot by 20-40 px.
         // This still uses the ordinary keyboard handler, never a position or movement bypass.
-        await page.evaluate(async ({ axis, direction, point, key, tolerance, playerRadius }) => {
+        await page.evaluate(async ({ axis, direction, point, key, rule, tickMs, playerRadius }) => {
           const modulePath = '/src/game/store.ts';
           const { store } = await import(/* @vite-ignore */ modulePath);
           let armed = false;
           let previous = window.__insider!.me()!;
           let unchanged = 0;
-          const arm = (event: KeyboardEvent) => { if (event.code === key) armed = true; };
+          const letGo = (blocked: boolean) => {
+            window.__walk!.at = window.__insider!.me()![axis];
+            window.__walk!.blocked = blocked;
+            window.dispatchEvent(new KeyboardEvent('keyup', { key, code: key, bubbles: true }));
+            window.__walk!.done = true;
+            window.__walk!.dispose();
+          };
+          const arm = (event: KeyboardEvent) => {
+            if (event.code !== key || armed) return;
+            armed = true;
+            // Too close for a controlled walk: hold the key for one server tick, like a person tapping it.
+            if (rule.tap) setTimeout(() => { if (window.__walk && !window.__walk.done) letGo(false); }, tickMs);
+          };
           const check = () => {
-            if (!armed) return;
+            if (!armed || rule.tap) return;
             const api = window.__insider!, p = api.me()!;
             unchanged = p.x === previous.x && p.y === previous.y ? unchanged + 1 : 0;
             previous = p;
@@ -150,11 +170,8 @@ export async function walkTo(page: Page, x: number, y: number, arrivalRadius = 1
             // approach strip. The server opens it after the first blocked tick, and
             // stopping merely because that open event has not moved the body yet can
             // close the door again before the following tick carries the player through.
-            if (direction * (point[axis] - p[axis]) <= tolerance || (unchanged >= 3 && !automaticDoor)) {
-              window.dispatchEvent(new KeyboardEvent('keyup', { key, code: key, bubbles: true }));
-              window.__walk!.done = true;
-              window.__walk!.dispose();
-            }
+            const there = direction * (point[axis] - p[axis]) <= rule.at;
+            if (there || (unchanged >= 3 && !automaticDoor)) letGo(!there);
           };
           window.__walk = { done: false, dispose: () => {
             store.room.onStateChange.remove(check);
@@ -162,10 +179,15 @@ export async function walkTo(page: Page, x: number, y: number, arrivalRadius = 1
           } };
           window.addEventListener('keydown', arm);
           store.room.onStateChange(check);
-        }, { axis: axis as 'x' | 'y', direction, point, key: held, tolerance, playerRadius: PLAYER_RADIUS });
+        }, { axis: axis as 'x' | 'y', direction, point, key: held, rule, tickMs: 1000 / TICK_RATE, playerRadius: PLAYER_RADIUS });
         await page.keyboard.down(held);
         await page.waitForFunction(() => window.__walk?.done);
+        const { at: releasedAt, blocked } = await page.evaluate(() => ({ at: window.__walk!.at!, blocked: window.__walk!.blocked }));
         await stop();
+        const rest = await page.evaluate((axis) => window.__insider!.me()![axis], axis);
+        steps.push(axis + ' ' + me[axis].toFixed(1) + ' > ' + releasedAt.toFixed(1) + ' > ' + rest.toFixed(1) + (rule.tap ? ' tap' : blocked ? ' blocked' : ''));
+        // Learn from a free stop only (a wall says nothing about coasting). Averaged, and kept within 0.5-2.5 steps.
+        if (!rule.tap && !blocked) coast = Math.min(2.5 * TICK_STEP, Math.max(0.5 * TICK_STEP, (coast + Math.abs(rest - releasedAt)) / 2));
         const arrived = await page.evaluate(({ x, y, radius }) => {
           const p = window.__insider!.me()!;
           return Math.hypot(x - p.x, y - p.y) <= radius;
@@ -179,7 +201,7 @@ export async function walkTo(page: Page, x: number, y: number, arrivalRadius = 1
           await page.keyboard.press('e');
           await expect.poll(() => page.evaluate((id) => window.__insider!.doors().find((d) => d.id === id)?.look, door.id),
             { message: 'Badge did not open door ' + door.id }).toBe('open');
-        }
+        } else if (blocked) stuckOn = axis;
       }
       waypoints.push({ target: point, ms: Date.now() - started, corrections });
     }
