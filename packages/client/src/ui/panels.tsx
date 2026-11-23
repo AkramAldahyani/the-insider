@@ -110,7 +110,8 @@ export function Hud({ ui }: { ui: UiState }) {
           {ui.briefing && <> · hold <kbd>U</kbd> to plug in the USB stick</>}
         </div>
       )}
-      {ui.card?.role === 'Security guard' && ui.nearPerson && !ui.seatedAt && !ui.meeting?.active && !ui.nearDesk && (
+      {/* Also beside a desk (it sits above the E hint): X works there, and detaining must never happen without its warning. */}
+      {ui.card?.role === 'Security guard' && ui.nearPerson && !ui.seatedAt && !ui.meeting?.active && (
         <div className="hud-hint hud-hint-detain" data-testid="detain-hint">
           {ui.detainArmed?.id === ui.nearPerson.id && Date.now() < ui.detainArmed.until
             ? <>Press <kbd>X</kbd> again to detain {ui.nearPerson.name}. Wrong person = you lose this power.</>

@@ -301,4 +301,4 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .fired .meeting-chat-lines { height: 140px; }
 
 /* The guard's detain hint sits above the other hints. */
-.hud-hint-detain { bottom: 74px; border-color: #e5484d; }
+.hud-hint-detain { bottom: 114px; border-color: #e5484d; }

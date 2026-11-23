@@ -418,9 +418,14 @@ test('the guard detains someone: X asks, X again does it; an innocent person cos
   await expect(page.getByTestId('card')).toBeVisible();
   await page.keyboard.press('c');
   await page.waitForFunction(() => window.__insider?.me() != null && window.__insider.map() != null);
-  await walkTo(page, maha.x, maha.y, 28); // Safely within the guard's detaining distance.
+  // Between Maha and her chair: within detaining distance AND beside a desk, where the warning used to be hidden.
+  await walkTo(page, maha.x, maha.y - 40, 16); // 24 px from the chair (44 allowed), 40 px from her (60 allowed)
+  await expect(page.getByTestId('hint')).toContainText('to use REC-PC-01');
   await expect(page.getByTestId('detain-hint')).toContainText('Press X to detain');
   await expect(page.getByTestId('detain-hint')).toContainText('Maha Yousef');
+  const warning = (await page.getByTestId('detain-hint').boundingBox())!;
+  const deskHint = (await page.getByTestId('hint').boundingBox())!;
+  expect(warning.y + warning.height, 'the warning must not cover the desk hint').toBeLessThanOrEqual(deskHint.y);
   await page.keyboard.press('x');
   await expect(page.getByTestId('detain-hint')).toContainText('Press X again to detain Maha Yousef');
   await page.screenshot({ path: `${SHOTS}/17-detain.png` });
