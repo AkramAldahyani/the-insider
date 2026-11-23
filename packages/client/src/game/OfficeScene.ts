@@ -19,9 +19,10 @@
  */
 import Phaser from 'phaser';
 import {
-  BUTTON_DISTANCE, DETAIN_DISTANCE, INTERACT_DISTANCE, TAP_DISTANCE, distanceToRect, nearestReaderDoor, roomAt,
+  DETAIN_DISTANCE, INTERACT_DISTANCE, distanceToRect, roomAt,
   type MapDesk, type MapDoor, type OfficeMap, type PublicDesk, type PublicDoor, type PublicPlayer,
 } from '@insider/shared';
+import { besidesDesk } from './movement';
 import { playSound } from './sound';
 import type { Store } from './store';
 import { characterSheet, DIRECTIONS, FRAME_H, FRAME_W } from './characterArt';
@@ -269,8 +270,9 @@ export function createOfficeScene(store: Store): Phaser.Scene {
         }
         return;
       }
-      const door = nearestReaderDoor(map, me.x, me.y);
-      const atDoor = !me.seatedAt && door && door.distance <= TAP_DISTANCE - 4 ? door.door : null;
+      // What E would do here, apart from sitting down. Nothing while a desk is within reach.
+      const other = besidesDesk(map, me);
+      const atDoor = me.seatedAt ? null : other.door;
       // The CCTV monitors in the security office (furniture of kind "monitors").
       const station = map.furniture.find((f) => f.kind === 'monitors');
       const atMonitors = !me.seatedAt && !!station && distanceToRect(station, me.x, me.y) <= INTERACT_DISTANCE - 4;
@@ -289,13 +291,11 @@ export function createOfficeScene(store: Store): Phaser.Scene {
         return old && n && old.id === n.id ? old : n; // keep the same object, so the HUD does not redraw for nothing
       };
       nearest = keepNearest(nearest);
-      const button = map.furniture.find((f) => f.kind === 'button');
-      const atButton = !me.seatedAt && !!button && distanceToRect(button, me.x, me.y) <= BUTTON_DISTANCE - 4;
       // Walking away from the monitors switches them off.
       if (!atMonitors && store.getUi().monitors) store.set({ monitors: null, monitorFrame: null });
       store.set({
-        nearMonitors: atMonitors,
-        nearButton: atButton,
+        nearMonitors: !me.seatedAt && other.monitors,
+        nearButton: !me.seatedAt && other.button,
         nearPerson: nearest,
         nearDoor: atDoor?.code ?? '',
         nearDoorName: atDoor?.name ?? '',

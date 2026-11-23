@@ -490,7 +490,7 @@ the outstanding manual check of password masking at a real interactive keyboard.
 pnpm test
 ```
 
-Expected: `Test Files 43 passed (43)` and `Tests 467 passed (467)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 2 desk-hint regression tests, 3 body-clearance walking regression tests, and a soak test that runs a full office of bots for three game hours.
+Expected: `Test Files 43 passed (43)` and `Tests 469 passed (469)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 3 body-clearance walking regression tests, and a soak test that runs a full office of bots for three game hours.
 
 On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent workers. This passed the complete suite during Phase 5F validation after three existing long-running tests timed out with unrestricted workers.
 

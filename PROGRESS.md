@@ -3,6 +3,26 @@
 This file says where the work stands, so a new session can continue from it alone.
 Update it at the end of every part.
 
+## E key beside a desk (2026-11-23)
+
+- Found in review of the walk/sit follow-up below: the desk hint is blank while walking, so E fell through to the
+  next thing in range. Right of IT-WS-02 (x 1532-1548, y 132-176) that was the server room reader, which left a
+  badge line nobody meant (false evidence). The same overlap: ADMIN-SRV-01 with that door from inside, and
+  SOC-WS-01 with the security monitors.
+- Rule: while any desk is within sitting distance, E means only that desk (`besidesDesk()` in
+  `client/src/game/movement.ts`; used by OfficeScene for the door, monitors and button hints). The server is unchanged.
+- Tests (`server/test/desk-hint.test.ts`): the IT-WS-02 spot, and every free spot of the office; they also check that
+  each reader (the server room from both sides), the monitors and the button can still be used. Both fail without the rule.
+- Also fixed (a Part E mistake that the browser test caught): the guard's detain hint and its warning were hidden beside
+  a desk although X still worked there. The hint now shows there too; the detain browser test always stands beside a desk.
+- 469 Vitest tests in 43 files, 11 Playwright (retries 0).
+- KNOWN FLAKE (open): the detain browser test, repeated 10 times alone (`-g "guard detains" --repeat-each=10`), failed
+  4 of 10 both before and after this change: the walk stops making progress in the Reception doorway (about x 186-199,
+  y 546-552, waypoint 208,784; "No progress at waypoint" in `e2e/helpers/movement.ts`). Full runs passed 11 of 11.
+  Cause not found yet.
+- Left as it is: E at a desk does nothing while a movement key is held (stop first), and a standing player has no
+  desk hint after a developer teleport until they move.
+
 ## Browser walk/sit follow-up (2026-11-18)
 
 - Task 2: reproduced the moving desk-hint race. The HUD refreshed every 120 ms and used a

@@ -1,4 +1,30 @@
-import { INTERACT_DISTANCE, nearestDesk, type OfficeMap, type ServerMessages } from '@insider/shared';
+import {
+  BUTTON_DISTANCE, INTERACT_DISTANCE, TAP_DISTANCE, distanceToRect, nearestDesk, nearestReaderDoor,
+  type MapDoor, type OfficeMap, type ServerMessages,
+} from '@insider/shared';
+
+/**
+ * What else the E key could mean at this point: a badge reader, the security
+ * monitors or the emergency button. None of them while a desk is within reach.
+ *
+ * The desk's own hint is blank while walking (see Movement below), so without
+ * this rule E would "fall through" to the next thing. Next to IT-WS-02 that is
+ * the server room's badge reader, and a badge log line nobody meant to leave is
+ * false evidence against an innocent player.
+ */
+export function besidesDesk(map: OfficeMap, position: { x: number; y: number }): { door: MapDoor | null; monitors: boolean; button: boolean } {
+  const { x, y } = position;
+  const desk = nearestDesk(map, x, y);
+  if (desk && desk.distance <= INTERACT_DISTANCE) return { door: null, monitors: false, button: false };
+  const door = nearestReaderDoor(map, x, y);
+  const near = (kind: string, distance: number) => map.furniture.some((f) => f.kind === kind && distanceToRect(f, x, y) <= distance);
+  // A little less than the server allows, so a hint is never shown a step too early.
+  return {
+    door: door && door.distance <= TAP_DISTANCE - 4 ? door.door : null,
+    monitors: near('monitors', INTERACT_DISTANCE - 4),
+    button: near('button', BUTTON_DISTANCE - 4),
+  };
+}
 
 /** A stop is confirmed by the server, not inferred from two identical pictures. */
 export class Movement {

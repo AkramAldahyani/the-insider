@@ -1,7 +1,51 @@
 import { describe, expect, it } from 'vitest';
-import { INTERACT_DISTANCE, type ServerMessages } from '@insider/shared';
-import { Movement } from '../../client/src/game/movement';
+import { INTERACT_DISTANCE, PLAYER_RADIUS, TAP_DISTANCE, isFree, nearestDesk, nearestReaderDoor, roomAt, type ServerMessages } from '@insider/shared';
+import { Movement, besidesDesk } from '../../client/src/game/movement';
 import { Recorder } from './helpers';
+
+describe('E never falls through from a desk to something else', () => {
+  /** Every free spot of the office (2 px apart) within reach of some desk / of no desk. */
+  function spots(r: Recorder): { x: number; y: number; desk: string }[] {
+    const list = [];
+    for (let x = 0; x < r.map.width; x += 2) for (let y = 0; y < r.map.height; y += 2) {
+      if (!isFree(r.map, x, y, PLAYER_RADIUS)) continue;
+      const d = nearestDesk(r.map, x, y);
+      list.push({ x, y, desk: d && d.distance <= INTERACT_DISTANCE ? d.desk.hostname : '' });
+    }
+    return list;
+  }
+
+  it('beside IT-WS-02, where the server room reader is in range too, a walking player can only mean the desk', () => {
+    const r = new Recorder();
+    r.connect('a', 'p1'); // Sara: her badge does not open the server room
+    const spot = { x: 1542, y: 144 };
+    const reader = nearestReaderDoor(r.map, spot.x, spot.y)!;
+    expect(reader.door.code).toBe('SRV-ROOM');
+    expect(reader.distance).toBeLessThanOrEqual(TAP_DISTANCE - 4); // the reader alone would accept a tap here
+    const movement = new Movement();
+    movement.request(); // a key is held: the desk hint is blank...
+    expect(movement.desk(r.map, spot)).toBe('');
+    expect(besidesDesk(r.map, spot)).toEqual({ door: null, monitors: false, button: false }); // ...and E does not become a tap
+  });
+
+  it('holds everywhere in the office, and every reader, the monitors and the button can still be reached', () => {
+    const r = new Recorder();
+    const doors = new Set<string>();
+    let monitors = 0;
+    let button = 0;
+    for (const s of spots(r)) {
+      const other = besidesDesk(r.map, s);
+      if (s.desk) expect(other, `${s.desk} at ${s.x},${s.y}`).toEqual({ door: null, monitors: false, button: false });
+      if (other.door) doors.add(`${other.door.code} from ${roomAt(r.map, s.x, s.y)}`);
+      if (other.monitors) monitors++;
+      if (other.button) button++;
+    }
+    for (const side of ['SRV-ROOM from IT department', 'SRV-ROOM from Server room']) expect(doors).toContain(side); // in and out
+    for (const door of r.map.doors.filter((d) => d.reader)) expect([...doors].some((d) => d.startsWith(`${door.code} `)), door.code).toBe(true);
+    expect(monitors).toBeGreaterThan(0);
+    expect(button).toBeGreaterThan(0);
+  });
+});
 
 describe('desk hints and authoritative stops', () => {
   it('reproduces a stale moving hint, then waits for the stop before offering a desk', () => {

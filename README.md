@@ -166,7 +166,7 @@ pnpm test
 pnpm typecheck
 ```
 
-462 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay), the server (movement, sitting, doors and badges, bots, bot hacker fairness, difficulty, fallback matches and interruptions, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule), and CLI mission startup and completion.
+469 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay), the server (movement, sitting, doors and badges, bots, bot hacker fairness, difficulty, fallback matches and interruptions, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule), and CLI mission startup and completion.
 
 ```bash
 pnpm e2e
