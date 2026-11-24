@@ -265,6 +265,16 @@ Default for 15 players:
 | Regular employees | ~9 | Job tasks; can investigate their own machine and report findings |
 | Hacker | 1 | Disguised as a regular employee with a normal-looking job title |
 
+Decided in Phase 6 (the owner accepted these with the plan):
+
+- A match with friends starts in a **lobby** with a five-letter code. The host chooses the settings and starts; one room runs the lobby and then its match.
+- The hacker is drawn from the human players if there are at least four, otherwise bots can be drawn too; the host can change this.
+- A human hacker in multiplayer must also wait 3 game minutes between first reading the flag and handing it in.
+- With several hackers, voting out or detaining one removes that person and announces the role; the defenders win when all are gone.
+- Open chat is heard only in the same room. A lost connection holds the place for 60 seconds, then a bot plays until the player returns.
+- Bots in multiplayer vote only on what they saw and do not investigate on their own.
+- Bigger offices have one wide floor instead of two or three (changes section 2). Phase 6 runs on the owner's computer and home network; Internet hosting is Phase 8.
+
 Decided in Phase 5 (part A):
 
 - **Roles follow the scenario's jobs** for now (`players[].role`: employee, sysadmin, soc, guard, helpdesk). Each player's onboarding card shows their own role and what it allows; nobody is told anyone else's role (job titles on the start screen are public, as before). Random secret roles for humans come with multiplayer lobbies (Phase 6).

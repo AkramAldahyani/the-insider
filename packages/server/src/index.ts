@@ -8,8 +8,9 @@
  *   GAME_PORT=2567      port to listen on (not PORT: hosting tools often set PORT for the web page)
  *   SCENARIO=nexora-small
  *   MAP=office-small
- *   SEED=1              random seed of the simulated world (shared office: 1 unless set; solo matches: a new one each time unless set)
+ *   SEED=1              random seed of the simulated world (shared office: 1 unless set; solo matches and lobbies: a new one each time unless set)
  *   SOLO_LIMIT=20       how many solo matches may run at the same time
+ *   LOBBY_LIMIT=20      how many lobbies may exist at the same time
  *   TIME_SPEED=1        game seconds per real second
  *   BOTS=0              an empty office: no bot employees
  *   BOT_HACKER=0        keep employee bots but disable the automated hacker
@@ -36,6 +37,7 @@ const options: AppOptions = {
   weaknesses: process.env.VULNS,
   meetingSeconds: process.env.MEETING_SECONDS,
   soloLimit: process.env.SOLO_LIMIT ? Number(process.env.SOLO_LIMIT) : undefined,
+  lobbyLimit: process.env.LOBBY_LIMIT ? Number(process.env.LOBBY_LIMIT) : undefined,
   stallMinutes: process.env.STALL_MINUTES ? Number(process.env.STALL_MINUTES) : undefined,
 };
 const port = Number(process.env.GAME_PORT ?? SERVER_PORT);

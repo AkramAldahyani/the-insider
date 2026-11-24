@@ -568,6 +568,17 @@ No script replaces this. Play a few whole matches at the normal speed (no `TIME_
 Too easy or too hard? The numbers are in `packages/server/src/bots/hacker-pace.ts` (how long the bot hacker waits),
 `packages/server/src/solo.ts` (levels) and `packages/server/src/bots/investigation-pace.ts` (how fast bots investigate).
 
+## AP. Phase 6, part A: lobbies
+
+1. `pnpm dev`, open two browser windows (one of them private, so that they remember different names). *Play with friends* is the first card of the menu.
+2. Without a name both buttons are off. Type a name, **Create a lobby**: a code of five letters, a link, and you as the host. **Start the match** is off and says two people are needed.
+3. In the other window open the link (the code is filled in) or type the code in small letters, then **Join the lobby**. Both windows list both players. The same name twice becomes "Sam 2".
+4. As the host change the settings: the other window follows and cannot change them. The other player presses **I am ready**: now the host can start.
+5. Take the tick away from *More people may join*: a third window cannot join. **Remove** the second player: their window says so, and they cannot come back until the tick is there again.
+6. Leave as the host: the other one becomes the host.
+7. Start: both see the list of employees (the old start screen, until Part B) and then each other in the same office; the top bar shows the lobby code. A third window with the code is refused.
+8. A wrong code gives the same answer as a lobby that is full, closed or playing.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -599,7 +610,7 @@ the outstanding manual check of password masking at a real interactive keyboard.
 pnpm test
 ```
 
-Expected: `Test Files 53 passed (53)` and `Tests 661 passed (661)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
+Expected: `Test Files 54 passed (54)` and `Tests 677 passed (677)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
 
 On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent workers. This passed the complete suite during Phase 5F validation after three existing long-running tests timed out with unrestricted workers.
 
@@ -607,9 +618,9 @@ On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent
 pnpm e2e
 ```
 
-Expected: `14 passed` (8 to 11 minutes). Playwright starts its own games (ports 2577 and 5183: no bots, only the plaintext-password weakness; ports 2578 and 5184: solo matches at four times the speed), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
+Expected: `15 passed` (8 to 11 minutes). Playwright starts its own games (ports 2577 and 5183: no bots, only the plaintext-password weakness; ports 2578 and 5184: solo matches at four times the speed), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
 
-For stability verification, run `pnpm e2e --retries=0` ten times consecutively; each must report 14 passes.
+For stability verification, run `pnpm e2e --retries=0` ten times consecutively; each must report 15 passes.
 Retries also default to zero. All PC-sitting steps share a helper that waits for the hostname's hint,
 the server-confirmed stop, and the initial terminal screen. Movement uses state changes rather than
 fixed sleeps, and holds the key through server-opened automatic doors; Playwright result attachments

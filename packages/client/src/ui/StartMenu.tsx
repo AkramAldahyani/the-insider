@@ -6,6 +6,7 @@ import { LADDER, SOLO_DIFFICULTIES, SOLO_ROLES, type SoloChoice, type SoloDiffic
 import { useState } from 'react';
 import { isOpen, type LadderProgress } from '../game/ladderProgress';
 import { store } from '../game/store';
+import { FriendsCard } from './PartyScreen';
 
 export const MODE_TEXT: Record<SoloMode, { name: string }> = { investigation: { name: 'Investigation' }, infiltration: { name: 'Infiltration' } };
 
@@ -76,6 +77,7 @@ export function StartMenu({ progress }: { progress: LadderProgress }) {
         <h1>THE INSIDER</h1>
         <p className="start-intro">An ordinary office. An extraordinary amount of evidence.</p>
         <div className="menu-cards">
+          <FriendsCard />
           <form className="menu-card" onSubmit={(e) => { e.preventDefault(); void store.startSolo(choice); }}>
             <h2>Investigation</h2>
             <p>

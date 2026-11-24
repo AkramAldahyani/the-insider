@@ -1,5 +1,5 @@
 /**
- * The page: start menu -> connecting -> (choose an employee) -> the office.
+ * The page: start menu -> connecting -> (lobby) -> (choose an employee) -> the office.
  * All data comes from the store (game/store.ts); this file only chooses what to show.
  */
 import { Suspense, lazy, useSyncExternalStore } from 'react';
@@ -8,6 +8,7 @@ import { store } from './game/store';
 import { BoardPanel } from './ui/BoardPanel';
 import { DebriefPanel } from './ui/DebriefPanel';
 import { CasePanel } from './ui/CasePanel';
+import { PartyScreen } from './ui/PartyScreen';
 import { StartMenu } from './ui/StartMenu';
 import { FiredPanel, MeetingPanel } from './ui/MeetingPanel';
 import { MonitorsPanel } from './ui/MonitorsPanel';
@@ -35,6 +36,7 @@ export function App() {
       </div>
     );
   }
+  if (ui.phase === 'party' && ui.party) return <PartyScreen party={ui.party} />;
   if (ui.phase === 'lobby') return <StartScreen ui={ui} />;
 
   return (

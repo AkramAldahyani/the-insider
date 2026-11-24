@@ -75,7 +75,65 @@ Update it at the end of every part.
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
 | 5 Investigation & social deduction | **done**: Parts A-J |
-| 5a Solo modes | **done**: Parts A-H. Next is Phase 6 (multiplayer), after the owner's OK of a plan |
+| 5a Solo modes | **done**: Parts A-H |
+| 6 Multiplayer | **in progress**: Part A (lobbies) done; B (secret roles, back to the lobby) next |
+
+## Phase 6 plan (multiplayer): APPROVED by the owner on 2026-11-24, with all eight defaults
+
+Goal (DESIGN.md section 15): "Friends on different computers finish a match together." Same way of working: after each
+part all tests, this file, commit locally (never push), then wait for the owner's yes.
+
+| Part | What | State |
+|---|---|---|
+| A | Lobbies: create, join with a code, names, ready, host settings, close, remove, start | **done** |
+| B | Secret roles: jobs and hackers drawn at the start, private reveal; back to the same lobby after the match | next |
+| C | Several hackers (1-3) who know each other: win rules, briefing, detain, debrief, alerts | |
+| D | Chat: same room, meetings, hackers' private chat, fired players; mute and length limits | |
+| E | Fired and watching: free camera, affects nothing | |
+| F | Reconnecting: the place is kept, a bot covers, the host role moves on. **Friends can play a full match here** | |
+| G | Bots that fill up: difficulty and voting rules for mixed groups | |
+| H | Robustness: rate limits, message checks, load test with 30 players, one address for page and server, home network guide | |
+| I | Bigger offices for 15, 20-25 and 30 people (can be postponed) | |
+| J | Whole matches with several browsers, long test, balance, docs | |
+
+Defaults (accepted):
+1. The hacker is drawn from the human players if there are at least four, otherwise bots can be drawn too. The host can change this.
+2. Hand-in wait of 3 game minutes after first reading the flag, for human hackers in multiplayer too (measured in 5a: without it a burst always wins).
+3. Several hackers: voting out or detaining one removes that person; the defenders win when all are gone. The role of a detained or fired hacker is announced.
+4. Open chat is heard only in the same room; meetings are heard by everyone.
+5. Bots in multiplayer vote only on what they saw (as decided in Phase 5 G) and never investigate on their own.
+6. A place is held for 60 seconds after a lost connection, then a bot plays until the player returns.
+7. Runs on the owner's computer and home network. Internet server, accounts and chat reporting stay in Phase 8.
+8. Bigger offices have one wide floor instead of two or three. Department meetings for 20+ players belong to Part I.
+
+Also accepted: bot hackers with partners use only their existing behaviour; no new attack behaviour is written.
+
+### Part A: what exists now (lobbies)
+
+- WORDS: in the code a lobby is a "party" (the message `lobby` already means the list of employees of a match).
+- `shared/src/party.ts`: PartyView, PartySettings (bots, difficulty, meetings), and the checks of everything a browser
+  sends: `parseCode` (5 consonants), `cleanName` (letters of any language, at most 20), `changeSettings` (fixed lists).
+- `server/src/party.ts`: the rules, without network (`Party`), and `partyGameOptions`. `server/src/PartyRoom.ts`: the Colyseus
+  room `party`. One room = lobby, then the match in the SAME room. The room id IS the code; the room is private, so
+  `joinOrCreate` never finds it. At most LOBBY_LIMIT (20).
+- `OfficeRoom` changed: `game` may be null (before the start), `open()` connects messages and clock, `begin(options)` builds
+  the match, `received()` gets each message. The shared office and solo rooms call begin, then open.
+- Rules: the first one is the host; if the host leaves, whoever has been here longest is. At least 2 people; everybody but
+  the host must be ready. The host can close the lobby (the answer to a removed player coming back: there are no accounts,
+  so they cannot be recognised), remove people, and change settings. As many people as the scenario has employees (11).
+- No network id is sent to other members (they have numbers like "m3" that are never reused). During a match the lobby is
+  locked and its settings cannot change. The page shows one text for a wrong code and for a full, closed or playing lobby (the server itself does tell them apart; guessing codes is for the rate limits of Part H).
+- The match has a new random seed (unless SEED is set) and the operator's weaknesses. `difficulty` sets only what the bot
+  hacker knows and its pace so far (Part G: more). Meetings: short 45/30 s, normal = the server's, long 150/60.
+- Client: `ui/PartyScreen.tsx` (menu card and lobby), `game/playerName.ts` (name in localStorage, `?lobby=CODE` link), store
+  `createParty/joinParty`, phase `party`. No "Play again" button in a lobby's match (Part B).
+- UNTIL PART B: after the start everybody still picks their employee, and the hacker role, on the old start screen. The
+  names typed in the lobby are not used in the match yet. The hand-in wait (default 2) is not switched on yet.
+- A settings checkbox changes when the server has answered, not at once (the server is the only truth).
+- Tests: `server/test/party.test.ts` (16, half of them over a real connection), `e2e/party.spec.ts` (three browsers).
+- 677 Vitest tests in 54 files, 15 Playwright (12 office, 3 match).
+- Not checked: two real computers on one network (Part H has the guide). With `pnpm dev` the developer panel also works in a
+  lobby's match, so playing seriously needs NODE_ENV=production (Part H).
 
 ## Phase 5a plan (solo modes): APPROVED by the owner on 2026-11-24, with all five defaults
 

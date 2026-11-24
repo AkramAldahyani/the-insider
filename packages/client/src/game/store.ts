@@ -16,8 +16,8 @@ import { Client, type Room } from 'colyseus.js';
 import { readLadder, saveWin, type LadderProgress } from './ladderProgress';
 import { Movement } from './movement';
 import {
-  ROOM_NAME, SERVER_PORT, SOLO_ROOM_NAME, ladderLevel, parseOfficeMap, withCameras,
-  type ClientMessages, type EmployeeChoice, type EvidenceView, type MeetingView, type MissionBriefing, type OfficeMap, type OnboardingCard, type PublicDesk, type PublicDoor, type PublicPlayer,
+  PARTY_REMOVED, PARTY_ROOM_NAME, ROOM_NAME, SERVER_PORT, SOLO_ROOM_NAME, ladderLevel, parseOfficeMap, withCameras,
+  type ClientMessages, type EmployeeChoice, type EvidenceView, type MeetingView, type MissionBriefing, type OfficeMap, type OnboardingCard, type PartyView, type PublicDesk, type PublicDoor, type PublicPlayer,
   type ServerMessages, type SoloChoice, type TaskView, type TermScreen, type TiledMap,
 } from '@insider/shared';
 
@@ -34,10 +34,19 @@ export interface RoomState {
   doors: { get(id: string): PublicDoor | undefined; forEach(cb: (door: PublicDoor, id: string) => void): void };
 }
 
+/** Which room to join: the shared office, a solo match, a new lobby, or a friend's lobby. */
+type Destination =
+  | { kind: 'office' }
+  | { kind: 'solo'; choice: SoloChoice }
+  | { kind: 'create'; name: string }
+  | { kind: 'join'; code: string; name: string };
+
 /** What React draws. Replaced by a new object on every change. */
 export interface UiState {
-  phase: 'menu' | 'connecting' | 'lobby' | 'playing' | 'error';
-  /** The solo match being played (null = the shared office). */
+  phase: 'menu' | 'connecting' | 'party' | 'lobby' | 'playing' | 'error';
+  /** The lobby this player is in, also while its match runs (null = not in one). */
+  party: PartyView | null;
+  /** The solo match being played (null = the shared office or a lobby's match). */
   solo: SoloChoice | null;
   /** Levels of the scenario ladder won in this browser. */
   ladder: LadderProgress;
@@ -114,7 +123,7 @@ type Listener = () => void;
 
 /** A page that has just been opened (or has just left a match). */
 const START: UiState = {
-  phase: 'menu', solo: null, ladder: {}, error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, debrief: null, debriefOpen: false, meeting: null, meetingAt: 0, chat: [], fired: '', nearButton: false, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
+  phase: 'menu', party: null, solo: null, ladder: {}, error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, debrief: null, debriefOpen: false, meeting: null, meetingAt: 0, chat: [], fired: '', nearButton: false, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
   clock: 0, speed: 1, roomName: '', nearDesk: '', nearDoor: '', nearDoorName: '', seatedAt: '', notice: '', tasks: [], tasksCompleted: 0, tasksOpen: true, devOpen: false, devLog: [],
 };
 
@@ -187,12 +196,22 @@ export class Store {
 
   /** Joins the shared office: everybody who opens it plays in the same match. */
   enterOffice(): Promise<void> {
-    return this.join(null);
+    return this.join({ kind: 'office' });
+  }
+
+  /** Opens a new lobby; this player is its host. */
+  createParty(name: string): Promise<void> {
+    return this.join({ kind: 'create', name });
+  }
+
+  /** Goes into a friend's lobby. */
+  joinParty(code: string, name: string): Promise<void> {
+    return this.join({ kind: 'join', code, name });
   }
 
   /** Starts a private match against bots. */
   startSolo(choice: SoloChoice): Promise<void> {
-    return this.join(choice);
+    return this.join({ kind: 'solo', choice });
   }
 
   /** Back to the start menu. Leaving a solo match ends it; in the shared office a bot takes over. */
@@ -209,7 +228,7 @@ export class Store {
     this.set({ phase: 'connecting', solo });
     // Leave first, so that the old match is gone before the new one starts.
     await room?.leave().catch(() => undefined);
-    await this.join(solo);
+    await this.join(solo ? { kind: 'solo', choice: solo } : { kind: 'office' });
   }
 
   /** Forgets everything about the last match. */
@@ -222,17 +241,27 @@ export class Store {
     this.set({ ...START, ladder: this.ui.ladder });
   }
 
-  private async join(solo: SoloChoice | null): Promise<void> {
+  private connect(client: Client, to: Destination): Promise<Room<RoomState>> {
+    switch (to.kind) {
+      case 'office': return client.joinOrCreate(ROOM_NAME);
+      case 'solo': return client.create(SOLO_ROOM_NAME, to.choice);
+      case 'create': return client.create(PARTY_ROOM_NAME, { name: to.name });
+      case 'join': return client.joinById(to.code, { name: to.name });
+    }
+  }
+
+  private async join(to: Destination): Promise<void> {
+    const solo = to.kind === 'solo' ? to.choice : null;
     this.set({ phase: 'connecting', error: '', solo });
     const url = (import.meta.env.VITE_SERVER_URL as string | undefined) ?? `ws://${window.location.hostname}:${SERVER_PORT}`;
     try {
-      const client = new Client(url);
-      const room = solo ? await client.create<RoomState>(SOLO_ROOM_NAME, solo) : await client.joinOrCreate<RoomState>(ROOM_NAME);
+      const room = await this.connect(new Client(url), to);
       this.room = room;
       /** Messages of a match this page has already left are ignored. */
       const on = <T extends keyof ServerMessages>(type: T, handler: (payload: ServerMessages[T]) => void) =>
         room.onMessage(type, (payload: ServerMessages[T]) => { if (this.room === room) handler(payload); });
 
+      on('party', (party) => this.set({ party, ...(party.playing ? {} : { phase: 'party' }) }));
       on('lobby', (lobby) => {
         const file = Object.entries(MAP_FILES).find(([path]) => path.endsWith(`/${lobby.mapName}.json`));
         if (!file) return this.set({ phase: 'error', error: `This page does not have the map "${lobby.mapName}".` });
@@ -284,9 +313,11 @@ export class Store {
       });
       on('dev.result', ({ text }) => this.set({ devLog: [...this.ui.devLog.slice(-30), text] }));
 
-      room.onLeave(() => { if (this.room === room) this.set({ phase: 'error', error: 'The connection to the game server was closed.' }); });
+      room.onLeave((code) => { if (this.room === room) this.set({ phase: 'error', error: code === PARTY_REMOVED ? 'The host removed you from the lobby.' : 'The connection to the game server was closed.' }); });
       room.onError((_code, message) => { if (this.room === room) this.set({ phase: 'error', error: message ?? 'Network error.' }); });
     } catch (error) {
+      // 4212: no room with this id, or one that takes nobody (full, closed, playing). The player cannot do anything different about it.
+      if (to.kind === 'join' && (error as { code?: unknown }).code === 4212) return this.set({ phase: 'error', error: `No open lobby has the code ${to.code}. It may be full, closed, already playing, or mistyped.` });
       // An answer with a code is the server saying no (full, unknown match); without one there was no answer.
       const refused = typeof (error as { code?: unknown }).code === 'number' && (error as Error).message;
       this.set({ phase: 'error', error: refused || `Cannot reach the game server at ${url}. Is it running? (${(error as Error).message})` });

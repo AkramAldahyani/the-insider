@@ -6,10 +6,13 @@
  * what its player could see by standing in the office:
  *   - public physical state (PublicState below, sent as automatic patches);
  *   - its own onboarding card (its own credentials only);
- *   - the text on the screen of the PC it is sitting at.
+ *   - the text on the screen of the PC it is sitting at;
+ *   - before the match: who is in its own lobby (no match exists yet).
  * The types in this file are that whole list. If something is not in here,
  * the client has no way to receive it.
  */
+
+import type { PartySettings, PartyView } from './party';
 
 // ───────────────────────────── State (sent as patches) ─────────────────────────────
 
@@ -265,6 +268,8 @@ export interface TermScreen {
 }
 
 export interface ServerMessages {
+  /** The lobby this browser is in (sent whenever something about it changes). */
+  party: PartyView;
   /** Acknowledges this player's movement input and its authoritative position. */
   'move.ack': { sequence: number; dx: number; dy: number; x: number; y: number };
   /** Sent on connect: who can be played. */
@@ -315,6 +320,13 @@ export interface ServerMessages {
 // ───────────────────────────── Client -> server messages ─────────────────────────────
 
 export interface ClientMessages {
+  /** In a lobby: "I am ready", or not any more. */
+  'party.ready': { ready: boolean };
+  /** The host of a lobby: change settings, close or open it, remove somebody, start the match. Ignored from others. */
+  'party.settings': Partial<PartySettings>;
+  'party.open': { open: boolean };
+  'party.remove': { id: string };
+  'party.start': Record<string, never>;
   /** Pick an employee on the start screen. */
   choose: { playerId: string; hacker?: boolean };
   /** Which way the player wants to walk: each of dx, dy is -1, 0 or 1. The SERVER decides the position. */

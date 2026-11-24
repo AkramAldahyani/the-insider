@@ -28,7 +28,7 @@ kbd {
 .error button { padding: 8px 14px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; }
 
 /* ── Start screen ── */
-.start { height: 100%; overflow: auto; display: grid; place-items: start center; padding: 48px 24px; background: radial-gradient(ellipse at 80% 0, #1d3545 0, transparent 55%), var(--bg); }
+.start { height: 100%; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr); place-items: start center; padding: 48px 24px; background: radial-gradient(ellipse at 80% 0, #1d3545 0, transparent 55%), var(--bg); }
 .start-box { width: min(880px, 100%); }
 .start h1 { letter-spacing: 0.03em; font-size: clamp(32px, 5vw, 52px); font-style: italic; font-weight: 850; margin: 12px 0 0; color: var(--text); }
 .start-sub { color: var(--muted); margin: 6px 0 26px; }
@@ -371,3 +371,28 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .ladder button { flex: none; }
 .ladder button:disabled { border-color: var(--line); cursor: not-allowed; }
 .mission-level { padding: 6px 8px; border-left: 3px solid var(--amber); background: rgba(255, 255, 255, 0.04); }
+
+/* ── Playing with friends: the menu card and the lobby ── */
+.friends { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 12px; }
+.friends label { display: grid; gap: 5px; font-size: 13px; color: var(--muted); }
+.friends input, .party-link, .party-settings select { padding: 9px 11px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-2); color: var(--text); font: inherit; font-size: 15px; }
+.friends input { width: 240px; max-width: 100%; }
+.friends-code { letter-spacing: 0.14em; text-transform: uppercase; }
+.friends input:focus-visible, .party-link:focus-visible, .party-settings select:focus-visible, .party-list button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.menu-go:disabled { border-color: var(--line); opacity: 0.55; cursor: not-allowed; }
+.menu-card p.friends-hint { margin: 0; font-size: 13px; color: var(--muted); }
+.start h1.party-code { letter-spacing: 0.16em; font-style: normal; }
+.party-link { width: min(440px, 100%); }
+.party-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-width: 560px; }
+.party-list li { display: flex; gap: 14px; align-items: center; min-height: 44px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+.party-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.party-name small { color: var(--muted); }
+.party-ready { color: var(--green); font-size: 13px; }
+.party-waiting { color: var(--amber); font-size: 13px; }
+.party-list button { padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-2); color: inherit; cursor: pointer; }
+.party-settings { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; max-width: 560px; }
+.party-settings label { display: flex; min-width: 0; flex-wrap: wrap; gap: 8px; align-items: center; }
+.party-settings label > span:first-child { min-width: 80px; color: var(--muted); }
+.party-settings select { flex: 1; min-width: 200px; max-width: 100%; }
+.party-buttons { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 26px; }
+.party-note { color: var(--muted); }

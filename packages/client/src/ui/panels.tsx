@@ -91,6 +91,7 @@ export function Hud({ ui }: { ui: UiState }) {
         <span className="hud-brand"><span className="brand-mark" />THE INSIDER</span>
         <span className="hud-clock" data-testid="clock">{clockText(ui.clock)}</span>
         {ui.speed !== 1 && <span className="hud-speed">×{ui.speed}</span>}
+        {ui.party && <span className="hud-mode" data-testid="party-hud">Lobby {ui.party.code}</span>}
         {ui.solo && <span className="hud-mode" data-testid="mode">{matchName(ui.solo)}</span>}
         <span className="hud-room" data-testid="room">{ui.roomName || '—'}</span>
         <span className="hud-reputation" data-testid="reputation" title="Company reputation: it drops each time an innocent person is fired">Reputation {store.room?.state.reputation ?? 100}%</span>
@@ -260,7 +261,8 @@ export function MatchOver({ ui }: { ui: UiState }) {
         <div className="match-over-buttons">
           {ui.debrief && <button type="button" className="match-over-main" data-testid="open-debrief" onClick={() => store.set({ debriefOpen: true })}>See the debrief</button>}
           {nextLevel && <button type="button" className="match-over-main" data-testid="next-level" onClick={() => void store.playAgain(levelChoice(nextLevel))}>Next: {LADDER[nextLevel - 1].name}</button>}
-          <button type="button" data-testid="play-again" onClick={() => void store.playAgain()}>Play again</button>
+          {/* The same lobby plays again from Phase 6, part B on; leaving it for another shared office would surprise its members. */}
+          {!ui.party && <button type="button" data-testid="play-again" onClick={() => void store.playAgain()}>Play again</button>}
           <button type="button" data-testid="to-menu" onClick={() => store.leave()}>Back to the menu</button>
           <button type="button" onClick={() => store.set({ matchOver: null })}>Look around the office</button>
         </div>
