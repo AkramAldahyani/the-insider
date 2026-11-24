@@ -50,3 +50,39 @@ export function rate(r: RatingInput): RatingView {
   lines.push(`${minutes} game ${minutes === 1 ? 'minute' : 'minutes'}, ${r.meetingsCalled} of ${r.meetingsAllowed} meetings called, ${r.ownPins} ${r.ownPins === 1 ? 'piece' : 'pieces'} of evidence pinned by you${r.otherPins > 0 ? ` and ${r.otherPins} by colleagues` : ''}.`);
   return { title, lines };
 }
+
+// ───────────────────────────── Infiltration: how quietly did the hacker work? ─────────────────────────────
+
+export interface InfiltrationInput {
+  winner: 'hacker' | 'defenders';
+  /** What the board says about the player at the end. */
+  verdict: Verdict;
+  /** Caught by the guard (otherwise by a vote). */
+  detained: boolean;
+  /** Innocent colleagues who were fired or detained in the player's place. */
+  blamed: string[];
+  meetings: number;
+  ms: number;
+  /** Suspicious steps that left evidence: all of them, found, and never looked at. */
+  steps: number;
+  pinned: number;
+  missed: number;
+}
+
+export function rateInfiltration(r: InfiltrationInput): RatingView {
+  const { pointing, convincing } = r.verdict;
+  const title = r.winner === 'hacker'
+    ? (convincing ? 'By a hair' : pointing.length > 0 ? 'Clean getaway' : 'Like a ghost')
+    : r.detained ? 'Detained' : 'Voted out';
+  const lines: string[] = [];
+  if (r.winner === 'hacker') {
+    lines.push(convincing
+      ? `The evidence already pointed at you (${list(pointing)}). A little longer, and they would have had you.`
+      : pointing.length > 0 ? `${list(pointing)} ${pointing.length === 1 ? 'says' : 'say'} something about you, but nobody would be convinced.`
+        : 'Nothing on the evidence board says anything about you.');
+  } else lines.push(pointing.length > 0 ? `What gave you away: ${list(pointing)} on the evidence board.` : 'What gave you away is what people saw with their own eyes.');
+  if (r.blamed.length > 0) lines.push(`Blamed in your place: ${list(r.blamed)}.`);
+  const minutes = Math.round(r.ms / 60_000);
+  lines.push(`${minutes} game ${minutes === 1 ? 'minute' : 'minutes'}, ${r.meetings} ${r.meetings === 1 ? 'meeting' : 'meetings'}. Of ${r.steps} suspicious ${r.steps === 1 ? 'action' : 'actions'} that left evidence, ${r.pinned} ended up on the board and nobody looked at ${r.missed}.`);
+  return { title, lines };
+}

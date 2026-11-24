@@ -21,6 +21,7 @@
 import { lastStamp, type TerminalResult } from '@insider/engine';
 import type { Point } from '@insider/shared';
 import type { Avatar } from '../visibility';
+import type { InvestigationPace } from './investigation-pace';
 import type { Analyst } from './investigators';
 import type { Mover } from './mover';
 import type { Random } from './random';
@@ -33,7 +34,6 @@ export const CHECK_MINUTES: readonly [number, number] = [8, 20];
 export const SELF_CHECKS = ['last -n 10', 'crontab -l', 'ps aux', 'ss -tnp', 'ss -tlnp', 'dmesg | tail -8'];
 /** The SOC analyst's job is the SIEM: it looks at the newest alerts much more often. */
 export const SOC_CHECK = 'siem source=alert | tail 5';
-const SOC_CHECK_EVERY: [number, number] = [60, 150];
 
 /** What the brain may do in the world. Supplied by the BotManager. */
 export interface BrainWorld {
@@ -96,6 +96,8 @@ export interface Persona {
   forgetLock: number;
   /** Game minutes between two rounds of checks of the own PC. */
   checkMinutes: readonly [number, number];
+  /** How fast this bot investigates (the SOC analyst). */
+  pace: InvestigationPace;
   /** Average game time between the starts of two job tasks (ms). */
   taskEveryMs: number;
 }
@@ -426,7 +428,7 @@ function work(b: BotSubject): Status {
       mind.screen = b.world.type(query);
       for (const clue of b.analyst.read(mind.screen.output)) b.world.report(clue);
       mind.doing = 'investigating';
-      mind.nextKeyAt = b.world.now() + b.checks.between(8, 20) * SECOND;
+      mind.nextKeyAt = b.world.now() + b.checks.between(...persona.pace.querySeconds) * SECOND;
       return 'running';
     }
   }
@@ -519,7 +521,7 @@ function checkOwnPc(b: BotSubject): Status {
   for (const finding of inspect(command, mind.screen.output, { account: persona.account, desk: persona.desk, ip: b.world.myIp(), today: today(b.world.now()) })) b.world.report(finding);
   if (command === SOC_CHECK && b.analyst) for (const clue of b.analyst.saw(mind.screen.output)) b.world.report(clue);
   if (mind.checkQueue.length === 0) {
-    const [from, to] = persona.role === 'soc' ? SOC_CHECK_EVERY : [persona.checkMinutes[0] * 60, persona.checkMinutes[1] * 60];
+    const [from, to] = persona.role === 'soc' ? persona.pace.alertSeconds : [persona.checkMinutes[0] * 60, persona.checkMinutes[1] * 60];
     mind.nextCheckAt = b.world.now() + b.checks.between(from, to) * SECOND;
   }
   mind.doing = 'checking own PC';

@@ -487,7 +487,7 @@ Start with `pnpm dev` (the defaults; about 15 minutes) or quicker with `TIME_SPE
 
 ## AH. Phase 5a, part A: the start menu and solo matches
 
-1. `pnpm dev`: the page shows the menu; *Infiltration* is greyed out. Choose *Security guard* and *Hard*, **Start the investigation**: you are Tariq, with the onboarding card open, and the top bar says *Investigation · Hard*. No list of employees appears.
+1. `pnpm dev`: the page shows the menu. Choose *Security guard* and *Hard*, **Start the investigation**: you are Tariq, with the onboarding card open, and the top bar says *Investigation · Hard*. No list of employees appears.
 2. Open a second tab and start an investigation there too: it is another match (the first tab does not see anybody appear).
 3. **Leave** in the bottom bar asks; click again within 3 seconds: the menu. Not clicking again: nothing happens.
 4. Start *Employee* a few times: not always the same person. The briefing for hackers never appears.
@@ -526,10 +526,20 @@ Shared office, two tabs: Omar joining **as the hacker**, and Sara. `BOT_HACKER=0
 
 ## AL. Phase 5a, part E: bots that investigate
 
-There is no menu entry for this yet (Infiltration, part F, will use it). The automated tests play it:
+Infiltration (section AM) uses this. The automated tests play it:
 `pnpm exec vitest run packages/server/test/investigators.test.ts`. They cover the analyst's queries, the guard's monitors, a careless
 hacker being traced and detained, a framed colleague being detained by mistake, weak evidence, and ordinary days.
 In the shared office and in Investigation nothing changed.
+
+## AM. Phase 5a, part F: Infiltration
+
+1. Menu, **Infiltration**, *Easy*, **Start the infiltration**: you get an ordinary card, then the private mission, which says how long the contact takes. Colleagues arrive within seconds.
+2. Find a way in (rumours in the mission; `ssh ADMIN-SRV-01`, `find / -name "*.sh" 2>/dev/null`...). When you read `/root/flag.txt` a notice says the contact comes in 2 minutes. Handing in earlier is refused with the time left.
+3. Wait without being caught, then hand it in: you win, and the rating says how quietly you worked.
+4. *Hard*, doing everything quickly from your own desk: within a few minutes pins appear on the board (`B`), somebody calls a meeting and accuses you with them, or the guard comes and detains you. *Voted out* or *Detained*.
+5. *Hard*, working from a colleague's unlocked PC while nobody is in the room: the evidence points at that colleague.
+6. Only doing your tasks: nobody bothers you.
+7. Accuse somebody else in a meeting: it does not win the match for you, however many are fired.
 
 ## T. What you must NOT be able to see
 
@@ -562,7 +572,7 @@ the outstanding manual check of password masking at a real interactive keyboard.
 pnpm test
 ```
 
-Expected: `Test Files 50 passed (50)` and `Tests 614 passed (614)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
+Expected: `Test Files 51 passed (51)` and `Tests 639 passed (639)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
 
 On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent workers. This passed the complete suite during Phase 5F validation after three existing long-running tests timed out with unrestricted workers.
 
@@ -570,9 +580,9 @@ On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent
 pnpm e2e
 ```
 
-Expected: `12 passed` (7 to 10 minutes). Playwright starts its own games (ports 2577 and 5183: no bots, only the plaintext-password weakness; ports 2578 and 5184: a solo match against the bot hacker at four times the speed), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
+Expected: `13 passed` (7 to 10 minutes). Playwright starts its own games (ports 2577 and 5183: no bots, only the plaintext-password weakness; ports 2578 and 5184: solo matches at four times the speed), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
 
-For stability verification, run `pnpm e2e --retries=0` ten times consecutively; each must report 12 passes.
+For stability verification, run `pnpm e2e --retries=0` ten times consecutively; each must report 13 passes.
 Retries also default to zero. All PC-sitting steps share a helper that waits for the hostname's hint,
 the server-confirmed stop, and the initial terminal screen. Movement uses state changes rather than
 fixed sleeps, and holds the key through server-opened automatic doors; Playwright result attachments

@@ -6,12 +6,18 @@ import { SOLO_DIFFICULTIES, SOLO_ROLES, type SoloChoice, type SoloDifficulty, ty
 import { useState } from 'react';
 import { store } from '../game/store';
 
-export const MODE_TEXT: Record<SoloMode, { name: string }> = { investigation: { name: 'Investigation' } };
+export const MODE_TEXT: Record<SoloMode, { name: string }> = { investigation: { name: 'Investigation' }, infiltration: { name: 'Infiltration' } };
 
 export const DIFFICULTY_TEXT: Record<SoloDifficulty, { name: string; about: string }> = {
   easy: { name: 'Easy', about: 'The hacker only knows rumours and takes its time. Colleagues pin some clues on the board.' },
   normal: { name: 'Normal', about: 'The hacker knows some of the weaknesses. Colleagues only speak in meetings.' },
   hard: { name: 'Hard', about: 'More weaknesses, and the hacker knows all of them. Many PCs are left open.' },
+};
+
+const INFILTRATION_TEXT: Record<SoloDifficulty, string> = {
+  easy: 'Many weaknesses, forgetful colleagues, and slow investigators.',
+  normal: 'Some weaknesses. Colleagues check their PCs, and the investigators take their time.',
+  hard: 'Few weaknesses, locked screens, and investigators who come quickly.',
 };
 
 const ROLE_TEXT: Record<SoloRole, { name: string; about: string }> = {
@@ -26,6 +32,7 @@ const ROLE_TEXT: Record<SoloRole, { name: string; about: string }> = {
 export function StartMenu() {
   const [role, setRole] = useState<SoloRole>('soc');
   const [difficulty, setDifficulty] = useState<SoloDifficulty>('normal');
+  const [risk, setRisk] = useState<SoloDifficulty>('normal');
   const choice: SoloChoice = { mode: 'investigation', role, difficulty };
   return (
     <div className="start" data-testid="menu">
@@ -62,10 +69,25 @@ export function StartMenu() {
             </div>
             <button type="submit" className="menu-go" data-testid="menu-investigation">Start the investigation</button>
           </form>
-          <div className="menu-card menu-card-off">
+          <form className="menu-card" onSubmit={(e) => { e.preventDefault(); void store.startSolo({ mode: 'infiltration', role: 'any', difficulty: risk }); }}>
             <h2>Infiltration</h2>
-            <p>You are the hacker, and the computer plays everybody who could catch you. This mode is not ready yet.</p>
-          </div>
+            <p>
+              You are the hacker, posing as an ordinary employee. Get the secret file off the admin server and hand it in. The
+              computer plays your colleagues: they check their PCs, follow your traces, call meetings and vote, and a guard walks around.
+            </p>
+            <div className="menu-options">
+              <fieldset>
+                <legend>Difficulty</legend>
+                {SOLO_DIFFICULTIES.map((d) => (
+                  <label key={d}>
+                    <input type="radio" name="risk" data-testid={`risk-${d}`} checked={risk === d} onChange={() => setRisk(d)} />
+                    <span>{DIFFICULTY_TEXT[d].name}<small>{INFILTRATION_TEXT[d]}</small></span>
+                  </label>
+                ))}
+              </fieldset>
+            </div>
+            <button type="submit" className="menu-go" data-testid="menu-infiltration">Start the infiltration</button>
+          </form>
           <div className="menu-card">
             <h2>Shared office</h2>
             <p>Everybody who opens it plays in the same office. Choose any employee; empty desks are filled by the computer.</p>

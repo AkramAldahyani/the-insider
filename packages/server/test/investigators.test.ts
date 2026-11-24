@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { queryEvents } from '@insider/engine';
+import { FAST_INVESTIGATION } from '../src/bots/investigation-pace';
 import { Analyst, refusedBadge, suspicious, type StaffEntry } from '../src/bots/investigators';
 import type { EvidenceItem } from '../src/evidence';
 import { strongCase, type Judge } from '../src/judge';
@@ -139,9 +140,12 @@ describe('when is the evidence strong?', () => {
 
 // ───────────────────────────── In the office ─────────────────────────────
 
+/** As fast as they can, but nobody calls a meeting (that is tested in infiltration.test.ts): here the guard is alone. */
+const GUARD_ONLY = { ...FAST_INVESTIGATION, meetingMinutes: [600, 600] as const };
+
 /** Omar is a human hacker; everybody else is a bot, and they investigate. */
 function office(options: { investigate?: boolean; seed?: number } = {}): Recorder {
-  const r = new Recorder({ bots: true, seed: options.seed ?? 3, weaknesses: ['plaintext-password'], botOptions: { hacker: false, investigate: options.investigate ?? true, pinClues: 30 } });
+  const r = new Recorder({ bots: true, seed: options.seed ?? 3, weaknesses: ['plaintext-password'], botOptions: { hacker: false, investigate: options.investigate ?? true, pinClues: 30, investigationPace: GUARD_ONLY } });
   r.connect('h');
   r.send('h', 'choose', { playerId: 'p4', hacker: true });
   for (let i = 0; i < 2600; i++) r.game.tick(100); // everybody has arrived

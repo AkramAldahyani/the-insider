@@ -14,8 +14,8 @@ export const SOLO_ROOM_NAME = 'solo';
 /** Emergency meetings the player of a solo match may call (the shared office allows one). */
 export const SOLO_MEETINGS = 2;
 
-/** Modes that can be played. Infiltration (solo hacker) joins this list when its part is built. */
-export const SOLO_MODES = ['investigation'] as const;
+/** Investigation: the player defends. Infiltration: the player is the hacker, posing as an ordinary employee. */
+export const SOLO_MODES = ['investigation', 'infiltration'] as const;
 export type SoloMode = (typeof SOLO_MODES)[number];
 
 /** Whose job to play; "any" lets the server pick a person. */
@@ -39,5 +39,8 @@ export function parseSoloChoice(value: unknown): SoloChoice | null {
   const m = one(SOLO_MODES, mode);
   const r = one(SOLO_ROLES, role);
   const d = one(SOLO_DIFFICULTIES, difficulty);
-  return m && r && d ? { mode: m, role: r, difficulty: d } : null;
+  if (!m || !r || !d) return null;
+  // The hacker is one of the ordinary employees, as in every match.
+  if (m === 'infiltration' && r !== 'any' && r !== 'employee') return null;
+  return { mode: m, role: r, difficulty: d };
 }

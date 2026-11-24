@@ -75,7 +75,7 @@ Update it at the end of every part.
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
 | 5 Investigation & social deduction | **done**: Parts A-J |
-| 5a Solo modes | **in progress**: Parts A-E done (Investigation is playable); F (Infiltration mode) next |
+| 5a Solo modes | **in progress**: Parts A-F done (both modes are playable); G (scenario ladder, optional) next |
 
 ## Phase 5a plan (solo modes): APPROVED by the owner on 2026-11-24, with all five defaults
 
@@ -89,8 +89,8 @@ with debrief." After each part: all tests, this file, commit locally (never push
 | C | Investigation mode: role choice, three difficulty levels, a rating in the debrief (proven case / lucky guess), browser test. Investigation playable | **done** |
 | D | Bots notice more: `ps aux`, `ss -tnp`, USB events, people at the wrong desk; they pin what they find | **done** |
 | E | Bot SOC analyst (reads the SIEM, follows addresses) and guard (cameras, patrols; detains only on strong evidence) | **done** |
-| F | Infiltration mode: bots call meetings, accuse with evidence and vote; the hacker's start and end screens. Infiltration playable | next |
-| G | Scenario ladder: five levels in the existing office, each with a briefing; progress kept in the browser | |
+| F | Infiltration mode: bots call meetings, accuse with evidence and vote; the hacker's start and end screens. Infiltration playable | **done** |
+| G | Scenario ladder: five levels in the existing office, each with a briefing; progress kept in the browser | next |
 | H | Balance, soak test of both modes, browser tests, docs | |
 
 Defaults (accepted):
@@ -216,6 +216,32 @@ Defaults (accepted):
   hacker's own login every 10 minutes.
 - Tests: `server/test/investigators.test.ts` (17).
 - 614 Vitest tests in 50 files, 12 Playwright.
+
+### Part F: what exists now (Infiltration is playable)
+
+- `infiltration` in SOLO_MODES; only role `any`/`employee` is accepted. `soloGameOptions` (server/src/solo.ts): the player is
+  a random ordinary employee and the hacker (`OfficeGameOptions.soloHacker`), no bot hacker, `investigate` on, up to 40
+  bot pins. Levels (`INFILTRATION`), easy / normal / hard: weaknesses 4 / 3 / 2 (one direct way always), forgotten screens
+  45 / 30 / 15 %, own-PC checks every 12-25 / 7-15 / 4-9 minutes, anti-stall every 20 / 15 / 10, hand-in wait 2 / 4 / 5.
+  Everybody is at work within 20 seconds (`botOptions.arriveSeconds`), or the empty office would be the perfect moment.
+- THE WAIT (added while building, not in the approved defaults): the flag can be handed in only some game minutes after it
+  was FIRST read (`handInMinutes`; notice and briefing say so). Measured without it: a hacker who does everything in one
+  burst was never caught at any level, because nobody can react within seconds. Set it to 0 in `INFILTRATION` to drop it.
+- `bots/investigation-pace.ts`: how fast bots look at alerts, query, think (guard) and call meetings, by level;
+  FAST_INVESTIGATION = part E. Elsewhere unchanged.
+- Meetings by bots (bots/manager.ts `consider` / `convene`): when the board would convince a meeting about somebody
+  (`convincingCase` in game.ts; anti-stall alerts do not count, so doing one's job is safe), the SOC analyst, or somebody who found a
+  part of it, walks to the button, calls, and accuses early in the discussion with the pieces that point. The same case is
+  raised once; more evidence is a new case. Bots vote as in part B; a wrong firing costs reputation but ends nothing.
+- Won only with the flag (`checkHackerWins` returns for soloHacker); lost when detained or voted out.
+- `rateInfiltration`: "Like a ghost", "Clean getaway", "By a hair"; "Detained", "Voted out"; who was blamed instead.
+- Client: menu card with its own difficulty, the briefing explains the risk and the wait.
+- Measured with the existing bot hacker in the player's place (own desk, own account, no tricks), 40 seeds each: it wins
+  40 of 40 on Easy, 8 to 13 on Normal, 0 on Hard; no innocent was ever fired or detained. Working from a colleague's PC
+  wins on Hard (tested). Doing only one's job for an hour on Hard: left alone (3 seeds).
+- Tests: `server/test/infiltration.test.ts` (25); browser `e2e/infiltration.spec.ts` (project `match`, 45 s).
+- For Part H: humans have not played it; phishing, log cleaning and the remote tools were not part of the measurements.
+- 639 Vitest tests in 51 files, 13 Playwright (11 office, 2 match).
 
 ## Phase 5 status: DONE (Parts A-J; plan approved by the owner, defaults 1-6 accepted)
 

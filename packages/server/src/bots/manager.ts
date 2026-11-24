@@ -36,6 +36,7 @@ import { commandNames, screenState, setHacker, type Scenario, type TerminalResul
 import { DETAIN_DISTANCE, PLAYER_RADIUS, isFree, roomAt, type MapDoor, type Point } from '@insider/shared';
 import type { Avatar } from '../visibility';
 import { CHECK_MINUTES, employeeTree, firstCheck, newMind, type BotSubject, type BrainWorld, type Mind, type Persona } from './brain';
+import { FAST_INVESTIGATION, type InvestigationPace } from './investigation-pace';
 import { Analyst, refusedBadge, suspicious, type StaffEntry } from './investigators';
 import { Mover, type MoverWorld } from './mover';
 import { Random } from './random';
@@ -78,7 +79,13 @@ export interface BotHost extends Omit<MoverWorld, 'mayEnter'> {
   mayDetain(avatar: Avatar): boolean;
   strongCase(guard: string, saw: { suspect: string; weight: number; caught: boolean }[]): string | null;
   detain(avatar: Avatar, target: string): void;
+  /** Somebody against whom the evidence on the board would convince a meeting, with a key that changes when there is more of it. */
+  convincingCase(not: (key: string) => boolean): { suspect: string; key: string; pinnedBy: string[] } | null;
+  /** Why this body may not call a meeting now ("" = it may), where the button is, and pressing it. */
+  whyNoMeeting(avatar: Avatar): string;
+  callMeeting(avatar: Avatar, suspect: string): void;
   finished(): boolean;
+  inMeeting(): boolean;
   /** Job tasks: hand a player their tasks, read the next step, give one up. */
   tasks: TaskBoard;
 }
@@ -93,8 +100,12 @@ export interface BotOptions {
   hackerPace?: HackerPace;
   /** Bots put the clues they find on the evidence board themselves: at most this many in a match (default 0). */
   pinClues?: number;
+  /** Everybody comes to work within this many game seconds of the start (default 240). */
+  arriveSeconds?: number;
   /** The bot SOC analyst follows addresses and the bot guard watches the monitors and detains (see investigators.ts). */
   investigate?: boolean;
+  /** How fast they do that (default: as fast as they can). */
+  investigationPace?: InvestigationPace;
   /** Game minutes between two rounds of checks a bot makes of its own PC (default 8 to 20). */
   checkMinutes?: readonly [number, number];
   /** Probability that a bot leaves its desk without locking the screen (default 0.25). */
@@ -158,6 +169,8 @@ export interface Bot {
   chase: { suspect: string; until: number; replanAt: number } | null;
   nextChaseAt: number;
   considered: string;
+  /** Whom the guard is thinking about, and when it will have made up its mind. */
+  suspected: { id: string; since: number } | null;
   watchedUntil: number;
   badgeLines: Set<string>;
 }
@@ -186,10 +199,17 @@ export class BotManager {
   readonly hackerDifficulty: HackerDifficulty;
   private readonly knowledge: HackerKnowledge;
   private lastLook = 0;
+  private readonly pace: InvestigationPace;
+  /** A meeting somebody is going to call: about whom, who, when, and until when they try. */
+  private convening: { suspect: string; key: string; caller: string; at: number; until: number; replanAt: number } | null = null;
+  private nextConsiderAt = 0;
+  /** Cases a meeting was called about already (more evidence = a new case). */
+  private readonly raised = new Set<string>();
   private pinned = 0;
 
   constructor(private readonly host: BotHost, seed: number, private readonly options: BotOptions = {}) {
     this.random = new Random(seed ^ 0x5eed_b075);
+    this.pace = options.investigationPace ?? FAST_INVESTIGATION;
     this.hackerDifficulty = options.hackerDifficulty ?? 'normal';
     this.knowledge = hackerKnowledge(this.hackerDifficulty, seed,
       this.hackerDifficulty === 'easy' ? [] : host.world.mission.weaknesses);
@@ -212,10 +232,10 @@ export class BotManager {
   /** Plans a bot's arrival at work. */
   schedule(playerId: string, earliestInSeconds = ARRIVE_MIN_S): void {
     if (this.bots.has(playerId)) return;
-    const delay = this.random.between(earliestInSeconds, Math.max(earliestInSeconds + 10, ARRIVE_MAX_S));
+    const delay = this.random.between(earliestInSeconds, Math.max(earliestInSeconds + 10, this.options.arriveSeconds ?? ARRIVE_MAX_S));
     // Every bot has its own generator, so removing one bot does not change what the others do.
     const random = new Random(Math.floor(this.random.next() * 2 ** 32));
-    this.bots.set(playerId, { playerId, arriveAt: this.host.world.time + delay * 1000, random, subject: null, observations: [], findings: [], lastSeen: new Map(), hacker: null, chase: null, nextChaseAt: 0, considered: '', watchedUntil: this.host.world.time, badgeLines: new Set() });
+    this.bots.set(playerId, { playerId, arriveAt: this.host.world.time + delay * 1000, random, subject: null, observations: [], findings: [], lastSeen: new Map(), hacker: null, chase: null, nextChaseAt: 0, considered: '', suspected: null, watchedUntil: this.host.world.time, badgeLines: new Set() });
   }
 
   /** A human took this employee: the bot disappears (its PC, if it was at one, stays as it is). */
@@ -253,6 +273,7 @@ export class BotManager {
    * screen, and its routine starts again from where it now stands.
    */
   interrupt(): void {
+    this.convening = null;
     for (const bot of this.bots.values()) {
       const s = bot.subject;
       if (!s) continue;
@@ -278,7 +299,7 @@ export class BotManager {
       if (s?.persona.role !== 'soc') continue;
       if (!s.body.seatedAt) s.mover.stop();
       Object.assign(s.mind, {
-        alarmed: true, nextCheckAt: now, nextBreakAt: Math.max(s.mind.nextBreakAt, now + 120_000),
+        alarmed: true, nextCheckAt: now + s.checks.between(...this.pace.alarmSeconds) * 1000, nextBreakAt: Math.max(s.mind.nextBreakAt, now + 120_000),
         breakSpot: null, breakRoom: '', atBreakSpot: false, breakUntil: 0, errand: '', errandMs: 0, leaving: 'undecided',
       });
     }
@@ -452,6 +473,7 @@ export class BotManager {
       commands: commands.length > 0 ? commands : ['ls'],
       // Today's match may have a sysadmin who is careless about locking (a weakness, see engine mission.ts).
       checkMinutes: this.options.checkMinutes ?? CHECK_MINUTES,
+      pace: this.pace,
       forgetLock: world.mission.carelessPlayer === playerId
         ? (scenario.mission?.carelessAdmin?.forgetLock ?? 0.8)
         : (this.options.forgetLock ?? 0.25),
@@ -595,7 +617,16 @@ export class BotManager {
       if (known === bot.considered) return false;
       bot.considered = known;
       const suspect = this.host.strongCase(bot.playerId, bot.findings.map((f) => ({ suspect: f.suspect, weight: f.weight, caught: f.caught ?? false })));
-      if (!suspect || suspect === bot.playerId) return false;
+      if (!suspect || suspect === bot.playerId) {
+        bot.suspected = null;
+        return false;
+      }
+      // Thinking it over first (the pace of the match).
+      if (bot.suspected?.id !== suspect) bot.suspected = { id: suspect, since: now + s.checks.between(...this.pace.guardMinutes) * 60_000 };
+      if (now < bot.suspected.since) {
+        bot.considered = ''; // still the same evidence: look again in a few seconds
+        return false;
+      }
       bot.chase = { suspect, until: now + 5 * 60_000, replanAt: 0 };
       if (s.body.seatedAt) this.host.stand(s.body);
       s.mover.stop();
@@ -625,6 +656,56 @@ export class BotManager {
     return true;
   }
 
+  /**
+   * Calling a meeting about a convincing case (Phase 5a, part F). One bot goes
+   * to the emergency button: the SOC analyst if it can, otherwise somebody who
+   * found a part of it. True while THIS bot is on its way.
+   */
+  private convene(bot: Bot): boolean {
+    const c = this.convening;
+    const now = this.host.world.time;
+    if (!c || c.caller !== bot.playerId || now < c.at) return false;
+    const s = bot.subject!;
+    const button = this.host.map.furniture.find((f) => f.kind === 'button');
+    if (!button || now > c.until || this.host.whyNoMeeting(s.body) !== '') {
+      this.convening = null;
+      s.mover.stop();
+      return false;
+    }
+    if (s.body.seatedAt) this.host.stand(s.body);
+    Object.assign(s.mind, { screen: null, breakSpot: null, breakRoom: '', atBreakSpot: false, breakUntil: 0, errand: '', errandMs: 0, leaving: 'undecided', loginSteps: 0, doing: 'going to call a meeting' });
+    const spot = { x: button.x + button.width / 2, y: button.y + button.height + 14 };
+    if (Math.hypot(s.body.x - spot.x, s.body.y - spot.y) <= 6) {
+      s.mover.stop();
+      this.convening = null;
+      // The case as it stands now: more may have been pinned since, or it fell apart.
+      const still = this.host.convincingCase((key) => this.raised.has(key));
+      if (!still) return false;
+      this.raised.add(c.key).add(still.key);
+      this.host.callMeeting(s.body, still.suspect);
+      return true;
+    }
+    if (s.mover.state !== 'walking' && now >= c.replanAt) {
+      c.replanAt = now + 2000;
+      s.mover.goTo(spot.x, spot.y);
+    }
+    return true;
+  }
+
+  /** Is there something to call a meeting about? */
+  private consider(): void {
+    const now = this.host.world.time;
+    if (this.convening || now < this.nextConsiderAt) return;
+    this.nextConsiderAt = now + 5000;
+    const found = this.host.convincingCase((key) => this.raised.has(key));
+    if (!found) return;
+    const callers = [...this.bots.values()].filter((b) => b.subject && b.playerId !== found.suspect && !b.chase && this.host.whyNoMeeting(b.subject.body) === '');
+    const caller = callers.find((b) => b.subject!.persona.role === 'soc') ?? callers.find((b) => found.pinnedBy.includes(b.playerId)) ?? callers[0];
+    if (!caller) return;
+    const at = now + caller.subject!.checks.between(...this.pace.meetingMinutes) * 60_000;
+    this.convening = { suspect: found.suspect, key: found.key, caller: caller.playerId, at, until: at + 4 * 60_000, replanAt: 0 };
+  }
+
   // ───────────────────────────── Every tick ─────────────────────────────
 
   /** Advances every bot by `realMs` of real time. */
@@ -637,14 +718,15 @@ export class BotManager {
       const isHacker = this.options.hacker !== false && this.host.world.mission.hacker === bot.playerId && this.host.world.mission.flag !== null;
       if (isHacker && !bot.hacker) bot.hacker = this.hackerBrain(bot.subject);
       if (!isHacker && bot.hacker) this.relinquishHacker(bot.playerId);
-      if ((!isHacker || !bot.hacker!.tick(bot.subject)) && !this.pursue(bot)) employeeTree(bot.subject); // decide
-      if (this.host.finished()) return;
+      if ((!isHacker || !bot.hacker!.tick(bot.subject)) && !this.pursue(bot) && !this.convene(bot)) employeeTree(bot.subject); // decide
+      if (this.host.finished() || this.host.inMeeting()) return; // it just ended the match, or called a meeting
       bot.subject.mover.update(realMs); // walk
     }
     // Looking around once per game second is plenty.
     if (this.host.world.time - this.lastLook >= 1000) {
       this.lastLook = this.host.world.time;
       this.look();
+      if (this.options.investigate) this.consider();
       if (this.options.investigate) for (const bot of this.bots.values()) if (bot.subject?.persona.role === 'guard' && this.host.atMonitors(bot.subject.body)) this.watch(bot);
     }
   }

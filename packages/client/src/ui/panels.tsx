@@ -207,6 +207,12 @@ export function MissionPanel({ ui }: { ui: UiState }) {
         {ui.briefing.rumours.map((r) => <li key={r}>{r}</li>)}
       </ul>
       <FlagForm />
+      {ui.solo && (
+        <p data-testid="mission-risk">
+          Everything you do leaves traces. Colleagues look at their own PCs, the SOC analyst follows addresses, the guard watches
+          the cameras, and they vote on the evidence they pin (<kbd>B</kbd> shows the board). You win only by handing in the flag{ui.briefing.handInMinutes ? <>, at the earliest <strong>{ui.briefing.handInMinutes} game {ui.briefing.handInMinutes === 1 ? 'minute' : 'minutes'} after you first read it</strong></> : null}.
+        </p>
+      )}
       <p className="mission-sub">Press <kbd>M</kbd> to show or hide this.</p>
     </div>
   );

@@ -14,7 +14,7 @@
  */
 import {
   advanceTime, cancelInput, createWorld, dateStamp, leaveTerminal, openTerminal, parseDuration, refreshTerminal, screenState,
-  awaitingSecret, currentPrompt, escalate, glimpse, plugUsb, submitFlag, sendInput, serializeWorld, setHacker, shoulderSurf, switchUser, usbCooldown, type FsNode, type OpenResult, type Scenario, type TerminalResult, type WeaknessChoice, type World,
+  awaitingSecret, currentPrompt, escalate, glimpse, plugUsb, submitFlag, sendInput, serializeWorld, setHacker, shoulderSurf, switchUser, usbCooldown, type FsNode, type GameEvent, type OpenResult, type Scenario, type TerminalResult, type WeaknessChoice, type World,
 } from '@insider/engine';
 import {
   ALERT_BANNER_GAP_MS, BUTTON_DISTANCE, DETAIN_DISTANCE, INTERACT_DISTANCE, MONITOR_SHOTS, PLAYER_RADIUS, REPUTATION_PER_FIRING, distanceToRect, isFree, PLAYER_SPEED, SURF_BEHIND, SURF_SIDE, USB_HOLD_MS, moveWithCollision, parseOfficeMap, roomAt,
@@ -27,7 +27,7 @@ import { Cctv, type Snapshot } from './cctv';
 import { Debrief } from './debrief';
 import { EvidenceBoard, type EvidenceItem } from './evidence';
 import { comment, judgeAccusation, strongCase, type Judge, type Testimony, type Verdict } from './judge';
-import { rate } from './rating';
+import { rate, rateInfiltration } from './rating';
 import { DEFAULT_MEETING_TIMES, Meetings, type MeetingTimes } from './meeting';
 import { checkMapAgainstScenario } from './mapCheck';
 import { TaskBoard } from './tasks';
@@ -62,6 +62,10 @@ export interface OfficeGameOptions {
    * as soon as they connect, and cannot choose anybody else or the hacker role.
    */
   soloPlayer?: string;
+  /** Infiltration: that human is the hacker, wins only with the flag, and the bots try to catch them. */
+  soloHacker?: boolean;
+  /** Infiltration: game minutes after first reading the flag before it can be handed in (default 0). */
+  handInMinutes?: number;
   /** Enables the developer messages (dev.*). MUST be false in production. */
   dev?: boolean;
   /** Dev only: saves a world dump and returns where it went. The game itself never touches the disk. */
@@ -115,7 +119,7 @@ export class OfficeGame {
    * What the bots do in the current meeting (Phase 5, part G): when each one
    * speaks and votes, in real milliseconds since the phase began.
    */
-  private botMeeting: { phase: string; elapsed: number; speak: { id: string; at: number; lines: { text: string; suspect: string }[]; about?: string }[]; vote: { id: string; at: number }[] } | null = null;
+  private botMeeting: { phase: string; elapsed: number; speak: { id: string; at: number; lines: { text: string; suspect: string }[]; about?: string }[]; vote: { id: string; at: number }[]; accuse?: { by: string; suspect: string; at: number } } | null = null;
   /** What bots told meetings about what they saw themselves (the judges remember it). */
   private readonly testimony: Testimony[] = [];
   /** Random numbers for when bots talk and what filler they say (its own sequence). */
@@ -131,6 +135,10 @@ export class OfficeGame {
   readonly dev: boolean;
   speed: number;
   private readonly soloPlayer: string | null;
+  private readonly soloHacker: boolean;
+  private readonly handInMs: number;
+  /** When the hacker first read the flag (game time). */
+  private flagReadAt: number | null = null;
 
   private readonly scenario: Scenario;
   private readonly mapName: string;
@@ -164,6 +172,8 @@ export class OfficeGame {
     this.speed = options.speed ?? 1;
     this.dev = options.dev ?? false;
     this.soloPlayer = options.soloPlayer ?? null;
+    this.soloHacker = options.soloHacker ?? false;
+    this.handInMs = (options.handInMinutes ?? 0) * 60_000;
     this.writeDump = options.writeDump;
     this.cctv = new Cctv(this.world, this.map);
     this.meetings = new Meetings({ ...DEFAULT_MEETING_TIMES, ...options.meetingTimes });
@@ -201,6 +211,10 @@ export class OfficeGame {
           strongCase: (guard, saw) => this.strongSuspect(guard, saw),
           detain: (a, target) => this.detain(a, target),
           finished: () => this.over !== null,
+          inMeeting: () => this.meetings.current !== null,
+          convincingCase: (not) => this.convincingCase(not),
+          whyNoMeeting: (a) => this.meetings.whyNot(a.playerId),
+          callMeeting: (a, suspect) => this.callMeeting(a, suspect),
           tasks: this.tasks,
         }, options.seed ?? 1, options.botOptions);
   }
@@ -268,7 +282,7 @@ export class OfficeGame {
   connect(clientId: string): void {
     this.clients.add(clientId);
     this.sendLobby(clientId);
-    if (this.soloPlayer) this.choose(clientId, { playerId: this.soloPlayer });
+    if (this.soloPlayer) this.choose(clientId, { playerId: this.soloPlayer, hacker: this.soloHacker });
   }
 
   /** The bodies controlled by a browser. */
@@ -430,7 +444,7 @@ export class OfficeGame {
       playerId: player.id,
       card: onboardingCard(this.world, this.scenario, player.id),
       // Only the hacker's own browser ever receives a briefing.
-      mission: this.world.mission.hacker === player.id ? missionBriefing(this.world) : null,
+      mission: this.world.mission.hacker === player.id ? { ...missionBriefing(this.world), ...(this.handInMs > 0 ? { handInMinutes: this.handInMs / 60_000 } : {}) } : null,
     });
     this.tasks.assign(player.id);
     this.tasks.takeChanged();
@@ -588,6 +602,37 @@ export class OfficeGame {
     return { kind: 'snapshot', title: shot.camera, text: `${new Date(shot.time).toISOString().slice(11, 19)} ${who}`, frame: { camera: shot.camera, time: shot.time, people } };
   }
 
+  /**
+   * The strongest case on the board that would convince a meeting. The key
+   * names the suspect and how much there is against them, so a case that failed
+   * is raised again only when there is more. An old action the SIEM flagged
+   * again does not count here: it may be an ordinary login, and somebody who
+   * only does their job must not be dragged to a meeting for it.
+   */
+  private convincingCase(not: (key: string) => boolean): { suspect: string; key: string; pinnedBy: string[] } | null {
+    if (this.board.items.length < 3) return null; // an accusation needs three pieces
+    const judge = this.judge();
+    const old = /threat-escalation/;
+    const items = this.board.items.filter((i) => !old.test(i.text));
+    const said = this.testimony.filter((t) => !old.test(t.text));
+    let best: { suspect: string; key: string; pinnedBy: string[]; size: number } | null = null;
+    for (const suspect of this.living()) {
+      const v = judgeAccusation(items, suspect, judge, said);
+      const key = `${suspect}/${v.pointing.length}/${v.unusual.length}`;
+      const size = v.pointing.length + v.unusual.length;
+      if (!v.convincing || not(key) || (best && best.size >= size)) continue;
+      best = { suspect, key, size, pinnedBy: this.board.items.filter((i) => v.pointing.includes(i.id)).map((i) => i.pinnedById) };
+    }
+    return best;
+  }
+
+  /** The pieces a bot brings against somebody: what points at them first, then the rest of the board up to three. */
+  private evidenceAgainst(suspect: string): string[] {
+    const { pointing } = judgeAccusation(this.board.items, suspect, this.judge(), this.testimony);
+    const others = this.board.items.map((i) => i.id).filter((id) => !pointing.includes(id));
+    return [...pointing, ...others.slice(0, Math.max(0, 3 - pointing.length))];
+  }
+
   /** Somebody against whom the evidence is strong, or null (see judge.ts). */
   private strongSuspect(guard: string, saw: { suspect: string; weight: number; caught: boolean }[]): string | null {
     const judge = this.judge();
@@ -661,6 +706,12 @@ export class OfficeGame {
 
   /** The hacker hands in the flag. On success the match ends for everybody and the hacker is named. */
   private submitFlag(avatar: Avatar, text: string): boolean {
+    // The contact who takes the file needs a while (Infiltration). Reading it is what started the clock.
+    const left = this.flagReadAt === null ? 0 : this.flagReadAt + this.handInMs - this.world.time;
+    if (left > 0) {
+      this.send(avatar.clientId, 'notice', { text: `Your contact is not here yet. Hand it in in ${left > 90_000 ? `${Math.ceil(left / 60_000)} minutes` : `${Math.ceil(left / 1000)} seconds`}.` });
+      return false;
+    }
     const result = submitFlag(this.world, avatar.playerId, text);
     if (!result.won) { this.send(avatar.clientId, 'notice', { text: result.text }); return false; }
     this.endMatch('hacker', avatar.name, 'The hacker got the flag out.');
@@ -679,7 +730,7 @@ export class OfficeGame {
       meetings: this.meetings.history, detentions: this.detentions, reputation: this.reputation,
       findings: this.world.players.map((p) => ({ playerId: p.id, list: this.bots?.findings(p.id) ?? [] })),
     });
-    if (this.soloPlayer) debrief.rating = this.rating(winner, hackerName);
+    if (this.soloPlayer) debrief.rating = this.soloHacker ? this.infiltrationRating(winner, debrief.totals) : this.rating(winner, hackerName);
     for (const client of this.clients) this.send(client, 'debrief', { debrief });
   }
 
@@ -698,6 +749,19 @@ export class OfficeGame {
       ms: this.world.time - this.startedAt,
       ownPins: this.board.items.filter((i) => i.pinnedById === player).length,
       otherPins: this.board.items.filter((i) => i.pinnedById !== player).length,
+    });
+  }
+
+  private infiltrationRating(winner: 'hacker' | 'defenders', totals: { steps: number; pinned: number; missed: number }): ReturnType<typeof rate> {
+    const hacker = this.soloPlayer!;
+    return rateInfiltration({
+      winner,
+      verdict: judgeAccusation(this.board.items, hacker, this.judge(), this.testimony),
+      detained: this.detentions.some((d) => d.wasHacker),
+      blamed: [...new Set([...[...this.fired].filter((id) => id !== hacker), ...this.detentions.filter((d) => !d.wasHacker).map((d) => d.targetId)])].map((id) => this.nameOf(id)),
+      meetings: this.meetings.history.length,
+      ms: this.world.time - this.startedAt,
+      steps: totals.steps, pinned: totals.pinned, missed: totals.missed,
     });
   }
 
@@ -769,12 +833,14 @@ export class OfficeGame {
     return !!button && !avatar.seatedAt && distanceToRect(button, avatar.x, avatar.y) <= BUTTON_DISTANCE;
   }
 
-  private callMeeting(avatar: Avatar): void {
+  /** `about`: a bot calls the meeting to accuse this person. */
+  private callMeeting(avatar: Avatar, about = ''): void {
     if (!this.atButton(avatar)) return this.send(avatar.clientId, 'notice', { text: 'The emergency button is in the meeting room.' });
     const why = this.meetings.whyNot(avatar.playerId);
     if (why) return this.send(avatar.clientId, 'notice', { text: why });
     const meeting = this.meetings.call(avatar.playerId, this.world.time, [...this.living()]);
     this.planBotMeeting(meeting.voters);
+    if (about && this.botMeeting) this.botMeeting.accuse = { by: avatar.playerId, suspect: about, at: (0.1 + this.talk.next() * 0.1) * this.meetings.times.discussionMs };
     // Everybody comes to the table. PCs stay exactly as they were left (unlocked ones too).
     const bodies = [...this.avatars.values()];
     bodies.forEach((a, i) => {
@@ -829,6 +895,8 @@ export class OfficeGame {
   private checkHackerWins(): void {
     const hacker = this.world.mission.hacker;
     if (!hacker || this.over || this.fired.has(hacker)) return;
+    // Infiltration is won with the flag only: getting colleagues fired is not a way to win.
+    if (this.soloHacker) return;
     if (this.reputation <= 0) {
       return this.endMatch('hacker', this.nameOf(hacker), "The company's reputation hit 0 %: too many innocent people were fired. The hacker wins.");
     }
@@ -964,6 +1032,16 @@ export class OfficeGame {
     }
     plan.elapsed += realMs;
     if (m.phase === 'discussion') {
+      const a = plan.accuse;
+      if (a && a.at <= plan.elapsed) {
+        plan.accuse = undefined;
+        const error = this.meetings.accuse(a.by, a.suspect, this.evidenceAgainst(a.suspect), new Set(this.board.items.map((i) => i.id)), this.living());
+        if (!error) {
+          this.postChat('meeting', this.nameOf(a.by), `I called this meeting because of ${this.nameOf(a.suspect)}. Look at the evidence.`);
+          this.planComment();
+          this.sendMeeting();
+        }
+      }
       while (plan.speak.length > 0 && plan.speak[0].at <= plan.elapsed) {
         const s = plan.speak.shift()!;
         if (!this.living().has(s.id)) continue;
@@ -999,11 +1077,25 @@ export class OfficeGame {
       const e = this.world.events[this.alertCursor];
       if (e.type === 'security.alert' && e.details.severity !== 'low') fresh = true;
       if (e.type === 'password.change') this.passwordChanged(e.user);
+      if (this.handInMs > 0 && this.flagReadAt === null && this.isFlagRead(e)) this.flagRead(e.time);
     }
     if (!fresh || this.world.time - this.lastBanner < ALERT_BANNER_GAP_MS) return;
     this.lastBanner = this.world.time;
     this.bots?.alarm();
     for (const a of this.humans()) this.send(a.clientId, 'alert', { text: 'SECURITY ALERT: unusual activity was detected on the company network.' });
+  }
+
+  /** The hacker read the flag file (in Infiltration that starts the wait for the contact). */
+  private isFlagRead(e: GameEvent): boolean {
+    const { flag, hacker } = this.world.mission;
+    return e.type === 'file.read' && e.actor === hacker && e.host === flag?.host && e.details.path === flag.path && !e.details.denied;
+  }
+
+  private flagRead(at: number): void {
+    this.flagReadAt = at;
+    const human = this.humans().find((a) => a.playerId === this.world.mission.hacker);
+    const minutes = Math.round(this.handInMs / 60_000);
+    if (human) this.send(human.clientId, 'notice', { text: `You have the file. Your contact takes it in ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}: do not get caught until then.` });
   }
 
   /** An avatar as the doors see it. */

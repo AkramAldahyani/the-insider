@@ -20,7 +20,7 @@ describe('what a browser may ask for', () => {
   it('only a known mode, role and difficulty; everything else is dropped', () => {
     expect(parseSoloChoice(CHOICE)).toEqual(CHOICE);
     expect(parseSoloChoice({ ...CHOICE, dev: true, seed: 1, bots: false, weaknesses: [], soloPlayer: 'p4' })).toEqual(CHOICE);
-    for (const bad of [null, undefined, 'investigation', 7, [], {}, { ...CHOICE, mode: 'office' }, { ...CHOICE, mode: 'infiltration' }, { ...CHOICE, role: 'hacker' },
+    for (const bad of [null, undefined, 'investigation', 7, [], {}, { ...CHOICE, mode: 'office' }, { ...CHOICE, mode: 'infiltration' }, { ...CHOICE, role: 'hacker' }, // (Infiltration as the SOC analyst)
       { ...CHOICE, role: ['soc'] }, { ...CHOICE, difficulty: 'impossible' }, { ...CHOICE, difficulty: undefined }, { ...CHOICE, mode: 'toString' }]) {
       expect(parseSoloChoice(bad), JSON.stringify(bad)).toBeNull();
     }
@@ -146,12 +146,15 @@ describe('over the network', () => {
 
   it('a match that does not exist is refused, and does not use up a place', async () => {
     for (let i = 0; i < LIMIT + 1; i++) {
-      await expect((await client()).create(SOLO_ROOM_NAME, { mode: 'infiltration', role: 'any', difficulty: 'easy' })).rejects.toThrow('does not exist');
+      await expect((await client()).create(SOLO_ROOM_NAME, { mode: 'infiltration', role: 'guard', difficulty: 'easy' })).rejects.toThrow('does not exist');
     }
     await expect((await client()).create(SOLO_ROOM_NAME)).rejects.toThrow('does not exist');
-    const room = await (await client()).create(SOLO_ROOM_NAME, CHOICE);
-    room.onMessage('*', () => undefined);
-    await room.leave();
+    for (const choice of [CHOICE, { mode: 'infiltration', role: 'any', difficulty: 'easy' }]) {
+      const room = await (await client()).create(SOLO_ROOM_NAME, choice);
+      room.onMessage('*', () => undefined);
+      expect(game(room.roomId).world.mission.hacker).not.toBeNull();
+      await room.leave();
+    }
   });
 
   it('a finished match in the shared office takes no new players: they get a new one', async () => {

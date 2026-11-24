@@ -12,7 +12,7 @@ import { defineConfig } from '@playwright/test';
  * That server runs with BOTS=0: these tests walk to particular desks and
  * expect to find them free, which a bot sitting at its own desk would break.
  * The bots are tested in packages/server/test (and by hand: TESTING.md).
- * One file, match.spec.ts, plays a whole solo match against a bot hacker. It has a
+ * match.spec.ts and infiltration.spec.ts play whole solo matches. They have a
  * server of its own (2578/5184) with a fixed seed, game time four times as
  * fast, and an anti-stall alert every game minute.
  * Screenshots are written to e2e/screenshots/.
@@ -21,6 +21,8 @@ const GAME_PORT = '2577';
 const PAGE_PORT = '5183';
 const MATCH_GAME_PORT = '2578';
 const MATCH_PAGE_PORT = '5184';
+/** Files that play a solo match. */
+const MATCHES = ['match.spec.ts', 'infiltration.spec.ts'];
 
 /** Starts a game server and a web page of its own. */
 const server = (gamePort: string, pagePort: string, env: Record<string, string>) => ({
@@ -41,8 +43,8 @@ export default defineConfig({
   reporter: [['list']],
   use: { viewport: { width: 1280, height: 800 } },
   projects: [
-    { name: 'office', testIgnore: 'match.spec.ts', use: { baseURL: `http://localhost:${PAGE_PORT}` } },
-    { name: 'match', testMatch: 'match.spec.ts', use: { baseURL: `http://localhost:${MATCH_PAGE_PORT}` } },
+    { name: 'office', testIgnore: MATCHES, use: { baseURL: `http://localhost:${PAGE_PORT}` } },
+    { name: 'match', testMatch: MATCHES, use: { baseURL: `http://localhost:${MATCH_PAGE_PORT}` } },
   ],
   webServer: [
     server(GAME_PORT, PAGE_PORT, { BOTS: '0', MEETING_SECONDS: '8,6,3' }),

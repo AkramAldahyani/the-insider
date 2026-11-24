@@ -210,6 +210,8 @@ export interface TaskView {
 
 /** The hacker's private briefing (only the hacker's own browser ever receives one). */
 export interface MissionBriefing {
+  /** Infiltration: game minutes between first reading the flag and the moment it can be handed in (absent = none). */
+  handInMinutes?: number;
   goal: string;
   /** Where the tools folder is on the hacker's own PC. */
   toolsPath: string;
