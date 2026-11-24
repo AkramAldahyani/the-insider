@@ -75,7 +75,7 @@ Update it at the end of every part.
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
 | 5 Investigation & social deduction | **done**: Parts A-J |
-| 5a Solo modes | **in progress**: Parts A-F done (both modes are playable); G (scenario ladder, optional) next |
+| 5a Solo modes | **in progress**: Parts A-G done (both modes and the ladder are playable); H (balance, final tests, docs) next |
 
 ## Phase 5a plan (solo modes): APPROVED by the owner on 2026-11-24, with all five defaults
 
@@ -90,8 +90,8 @@ with debrief." After each part: all tests, this file, commit locally (never push
 | D | Bots notice more: `ps aux`, `ss -tnp`, USB events, people at the wrong desk; they pin what they find | **done** |
 | E | Bot SOC analyst (reads the SIEM, follows addresses) and guard (cameras, patrols; detains only on strong evidence) | **done** |
 | F | Infiltration mode: bots call meetings, accuse with evidence and vote; the hacker's start and end screens. Infiltration playable | **done** |
-| G | Scenario ladder: five levels in the existing office, each with a briefing; progress kept in the browser | next |
-| H | Balance, soak test of both modes, browser tests, docs | |
+| G | Scenario ladder: five levels in the existing office, each with a briefing; progress kept in the browser | **done** |
+| H | Balance, soak test of both modes, browser tests, docs | next |
 
 Defaults (accepted):
 1. Weak evidence: at least two of the three pins must point at the accused, otherwise the bots vote "skip". A correct
@@ -227,6 +227,7 @@ Defaults (accepted):
 - THE WAIT (added while building, not in the approved defaults): the flag can be handed in only some game minutes after it
   was FIRST read (`handInMinutes`; notice and briefing say so). Measured without it: a hacker who does everything in one
   burst was never caught at any level, because nobody can react within seconds. Set it to 0 in `INFILTRATION` to drop it.
+  The owner was asked "which part next, keeping the hand-in wait?" and chose Part G without objecting, so it stays.
 - `bots/investigation-pace.ts`: how fast bots look at alerts, query, think (guard) and call meetings, by level;
   FAST_INVESTIGATION = part E. Elsewhere unchanged.
 - Meetings by bots (bots/manager.ts `consider` / `convene`): when the board would convince a meeting about somebody
@@ -242,6 +243,26 @@ Defaults (accepted):
 - Tests: `server/test/infiltration.test.ts` (25); browser `e2e/infiltration.spec.ts` (project `match`, 45 s).
 - For Part H: humans have not played it; phishing, log cleaning and the remote tools were not part of the measurements.
 - 639 Vitest tests in 51 files, 13 Playwright (11 office, 2 match).
+
+### Part G: what exists now (the scenario ladder)
+
+- `shared/src/ladder.ts` `LADDER`: five levels with name, briefing (menu and top of the mission), lesson (after the match)
+  and, on levels 4 and 5, three extra cameras in the departments (`withCameras` adds them to a COPY of the map file, on the
+  server to record and on the page to draw; the map itself is unchanged). `server/src/ladder.ts` `LADDER_SETTINGS`: seed,
+  player, weaknesses, pace, forgetting, checks, anti-stall, hand-in wait.
+- A level is an Infiltration with `SoloChoice.level` (1-5; anything else is refused); everything in it is fixed, whatever
+  SEED, VULNS or STALL_MINUTES say. The server does not know which levels are open.
+- 1 Old habits (Omar; old script; easy; wait 1), 2 The company password (Sara; weak admin password; easy; 2), 3 The borrowed
+  chair (Yousef; old script; normal; open PCs; 5), 4 Eyes everywhere (Noor; weak admin password; normal; cameras; 4),
+  5 Locked down (Rami; weak admin password; hard; cameras; locked screens; 5).
+- Client: `game/ladderProgress.ts` (localStorage key `insider-ladder`: level -> best rating; works without storage, then
+  only until the page is reloaded), ladder card in `ui/StartMenu.tsx`, `matchName`, "Next: ..." and the lesson at the end.
+- Measured with scripted players and several starting times: from the own desk levels 1 and 2 are always won, 3 and 4
+  mostly lost (1 win in 6 starts), 5 always lost; a borrowed chair wins 3; going through another machine wins 4 and 5 in 5
+  of 6 starts. The trick each briefing hints at works, and not only once.
+- Tests: `server/test/ladder.test.ts` (11); browser: level 1 to 2 and a page reload (`infiltration.spec.ts`).
+- Limit: progress is per browser and can be edited there (no accounts before Phase 8; nothing depends on it).
+- 650 Vitest tests in 52 files, 14 Playwright (11 office, 3 match).
 
 ## Phase 5 status: DONE (Parts A-J; plan approved by the owner, defaults 1-6 accepted)
 

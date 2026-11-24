@@ -13,9 +13,10 @@
  * sends messages to the server.
  */
 import { Client, type Room } from 'colyseus.js';
+import { readLadder, saveWin, type LadderProgress } from './ladderProgress';
 import { Movement } from './movement';
 import {
-  ROOM_NAME, SERVER_PORT, SOLO_ROOM_NAME, parseOfficeMap,
+  ROOM_NAME, SERVER_PORT, SOLO_ROOM_NAME, ladderLevel, parseOfficeMap, withCameras,
   type ClientMessages, type EmployeeChoice, type EvidenceView, type MeetingView, type MissionBriefing, type OfficeMap, type OnboardingCard, type PublicDesk, type PublicDoor, type PublicPlayer,
   type ServerMessages, type SoloChoice, type TaskView, type TermScreen, type TiledMap,
 } from '@insider/shared';
@@ -38,6 +39,8 @@ export interface UiState {
   phase: 'menu' | 'connecting' | 'lobby' | 'playing' | 'error';
   /** The solo match being played (null = the shared office). */
   solo: SoloChoice | null;
+  /** Levels of the scenario ladder won in this browser. */
+  ladder: LadderProgress;
   error: string;
   scenarioName: string;
   employees: EmployeeChoice[];
@@ -111,7 +114,7 @@ type Listener = () => void;
 
 /** A page that has just been opened (or has just left a match). */
 const START: UiState = {
-  phase: 'menu', solo: null, error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, debrief: null, debriefOpen: false, meeting: null, meetingAt: 0, chat: [], fired: '', nearButton: false, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
+  phase: 'menu', solo: null, ladder: {}, error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, debrief: null, debriefOpen: false, meeting: null, meetingAt: 0, chat: [], fired: '', nearButton: false, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
   clock: 0, speed: 1, roomName: '', nearDesk: '', nearDoor: '', nearDoorName: '', seatedAt: '', notice: '', tasks: [], tasksCompleted: 0, tasksOpen: true, devOpen: false, devLog: [],
 };
 
@@ -122,7 +125,7 @@ export class Store {
   /** The map file as Tiled wrote it (the scene reads the tile colours from it). */
   rawMap: TiledMap | null = null;
 
-  private ui: UiState = START;
+  private ui: UiState = { ...START, ladder: readLadder() };
   private listeners = new Set<Listener>();
   private termListener: ((event: TermEvent) => void) | null = null;
   /** Terminal events that arrived before the terminal window was ready. */
@@ -199,9 +202,8 @@ export class Store {
     void room?.leave();
   }
 
-  /** The same kind of match again, with a new office (and in a solo match a new hacker). */
-  async playAgain(): Promise<void> {
-    const { solo } = this.ui;
+  /** The same kind of match again, with a new office (and in a solo match a new hacker); or another solo match, e.g. the next level. */
+  async playAgain(solo: SoloChoice | null = this.ui.solo): Promise<void> {
     const room = this.room;
     this.reset();
     this.set({ phase: 'connecting', solo });
@@ -217,7 +219,7 @@ export class Store {
     this.termBacklog = [];
     window.clearTimeout(this.noticeTimer);
     window.clearTimeout(this.alertTimer);
-    this.set({ ...START });
+    this.set({ ...START, ladder: this.ui.ladder });
   }
 
   private async join(solo: SoloChoice | null): Promise<void> {
@@ -234,8 +236,9 @@ export class Store {
       on('lobby', (lobby) => {
         const file = Object.entries(MAP_FILES).find(([path]) => path.endsWith(`/${lobby.mapName}.json`));
         if (!file) return this.set({ phase: 'error', error: `This page does not have the map "${lobby.mapName}".` });
-        this.rawMap = file[1];
-        this.map = parseOfficeMap(file[1]);
+        // Some levels of the ladder have more cameras (the server records with the same ones).
+        this.rawMap = withCameras(file[1], ladderLevel(this.ui.solo?.level)?.cameras);
+        this.map = parseOfficeMap(this.rawMap);
         this.set({ scenarioName: lobby.scenarioName, employees: lobby.employees, dev: lobby.dev, hackerOpen: lobby.hackerOpen, asHacker: this.ui.asHacker && lobby.hackerOpen, phase: this.ui.phase === 'playing' || this.ui.solo ? this.ui.phase : 'lobby' }); // solo: the server has already chosen; "welcome" follows
       });
       on('welcome', ({ playerId, card, mission }) => {
@@ -260,7 +263,10 @@ export class Store {
         this.alertTimer = window.setTimeout(() => this.set({ alert: '' }), 8000);
       });
       on('match.over', (over) => this.set({ matchOver: over }));
-      on('debrief', ({ debrief }) => this.set({ debrief }));
+      on('debrief', ({ debrief }) => {
+        this.set({ debrief });
+        if (solo?.level && debrief.winner === 'hacker') this.set({ ladder: saveWin(solo.level, debrief.rating?.title ?? '') });
+      });
       on('monitors.index', (index) => this.set({ monitors: index }));
       on('board', ({ items }) => this.set({ board: items }));
       on('meeting', (meeting) => {

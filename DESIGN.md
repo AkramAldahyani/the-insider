@@ -72,6 +72,7 @@ The game has three modes that share the same engine, office, bots, tools and evi
 - **Infiltration is won only with the flag:** parity and reputation do not count there. The flag can be handed in only a few game minutes after it was first read (2 on Easy, 4 on Normal, 5 on Hard): the contact needs time. Otherwise a hacker who does everything in one burst could never be caught, and being quiet would not matter.
 - **Infiltration levels (part F):** weaknesses 4 / 3 / 2, forgotten screens 45 / 30 / 15 %, and colleagues who check their PCs, query, think and act faster the harder it is. Colleagues are at work from the start. Bots call a meeting when the board would convince one, accuse with the pieces that point at the person, and vote; old actions flagged again by the SIEM are not enough for them, so somebody who only does their job is left alone.
 - **Difficulty** changes the weaknesses, how often bots forget to lock, the bot hacker's knowledge and pace, and how closely bot defenders look.
+- **Scenario ladder (part G):** five fixed infiltrations (same person, weaknesses and seed every time), each with a briefing that hints at its trick and a lesson afterwards: an old script; a guessed password; a borrowed chair; going through another machine, with cameras in the departments; everything at once. Winning one opens the next. The progress is kept in the browser until there are accounts (Phase 8).
 - **Play again** works everywhere: a finished match takes no new players, so whoever joins next gets a new one.
 
 ### The Insider (multiplayer)

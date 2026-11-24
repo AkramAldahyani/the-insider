@@ -8,6 +8,8 @@
  * tools, or the hacker's name this way).
  */
 
+import { LADDER } from './ladder';
+
 /** Name of the Colyseus room type for solo matches (each one is a room of its own). */
 export const SOLO_ROOM_NAME = 'solo';
 
@@ -29,12 +31,14 @@ export interface SoloChoice {
   mode: SoloMode;
   role: SoloRole;
   difficulty: SoloDifficulty;
+  /** Infiltration only: a level of the scenario ladder (1 = the first). Everything else is then fixed by the level. */
+  level?: number;
 }
 
 /** Checks what a browser asked for. Null = not a valid choice. */
 export function parseSoloChoice(value: unknown): SoloChoice | null {
   if (typeof value !== 'object' || value === null) return null;
-  const { mode, role, difficulty } = value as Record<string, unknown>;
+  const { mode, role, difficulty, level } = value as Record<string, unknown>;
   const one = <T extends string>(list: readonly T[], x: unknown): T | undefined => list.find((item) => item === x);
   const m = one(SOLO_MODES, mode);
   const r = one(SOLO_ROLES, role);
@@ -42,5 +46,7 @@ export function parseSoloChoice(value: unknown): SoloChoice | null {
   if (!m || !r || !d) return null;
   // The hacker is one of the ordinary employees, as in every match.
   if (m === 'infiltration' && r !== 'any' && r !== 'employee') return null;
-  return { mode: m, role: r, difficulty: d };
+  if (level === undefined) return { mode: m, role: r, difficulty: d };
+  if (m !== 'infiltration' || typeof level !== 'number' || !Number.isInteger(level) || level < 1 || level > LADDER.length) return null;
+  return { mode: m, role: r, difficulty: d, level };
 }

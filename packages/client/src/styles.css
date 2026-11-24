@@ -361,3 +361,13 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .match-over-box .match-over-main { border-color: var(--green); }
 .debrief-rating { margin: 10px 0 14px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--line); background: #0f141d; }
 .debrief-rating strong { font-size: 17px; color: var(--amber); }
+
+/* ── The scenario ladder ── */
+.ladder { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ladder li { display: flex; gap: 16px; justify-content: space-between; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+.ladder small { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; line-height: 1.45; max-width: 60ch; }
+.ladder-closed { opacity: 0.55; }
+.ladder-won { color: var(--green); }
+.ladder button { flex: none; }
+.ladder button:disabled { border-color: var(--line); cursor: not-allowed; }
+.mission-level { padding: 6px 8px; border-left: 3px solid var(--amber); background: rgba(255, 255, 255, 0.04); }

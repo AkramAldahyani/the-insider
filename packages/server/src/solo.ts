@@ -5,10 +5,11 @@
  * comes from the server operator only.
  */
 import { ALL_WEAKNESSES, chooseWeaknesses, type Scenario, type WeaknessId } from '@insider/engine';
-import { SOLO_MEETINGS, type SoloChoice, type SoloDifficulty } from '@insider/shared';
+import { SOLO_MEETINGS, ladderLevel, withCameras, type SoloChoice, type SoloDifficulty } from '@insider/shared';
 import { INVESTIGATION_PACE } from './bots/investigation-pace';
 import { Random } from './bots/random';
 import type { OfficeGameOptions } from './game';
+import { LADDER_SETTINGS } from './ladder';
 
 /**
  * What a difficulty level of INVESTIGATION means, besides what the bot hacker
@@ -90,7 +91,29 @@ function pickPlayer(options: OfficeGameOptions, choice: SoloChoice, seed: number
 const roleOf = (options: OfficeGameOptions, playerId: string): SoloChoice['role'] =>
   (options.scenario.players.find((p) => p.id === playerId)!.role ?? 'employee') as SoloChoice['role'];
 
+/** A level of the scenario ladder: an Infiltration in which everything is fixed (ladder.ts). */
+function ladderGameOptions(base: OfficeGameOptions, level: number): OfficeGameOptions {
+  const s = LADDER_SETTINGS[level - 1];
+  return {
+    ...base,
+    seed: s.seed,
+    map: withCameras(base.map, ladderLevel(level)?.cameras),
+    bots: true,
+    botOptions: {
+      ...base.botOptions, hacker: false, investigate: true, arriveSeconds: ARRIVE_SECONDS, investigationPace: INVESTIGATION_PACE[s.pace],
+      pinClues: INFILTRATION_PINS, forgetLock: s.forgetLock, checkMinutes: s.checkMinutes,
+    },
+    weaknesses: s.weaknesses,
+    escalationMinutes: s.escalationMinutes,
+    meetingTimes: { ...base.meetingTimes, usesPerPlayer: SOLO_MEETINGS },
+    soloPlayer: s.playerId,
+    soloHacker: true,
+    handInMinutes: s.handInMinutes,
+  };
+}
+
 export function soloGameOptions(base: OfficeGameOptions, choice: SoloChoice, seed: number): OfficeGameOptions {
+  if (choice.level !== undefined) return ladderGameOptions(base, choice.level);
   const playerId = pickPlayer(base, choice, seed);
   // The operator may force certain weaknesses (VULNS, for tests); otherwise the level decides how many.
   const weaknesses = (count: number) => (Array.isArray(base.weaknesses) ? base.weaknesses : pickWeaknesses(base.scenario, { ...choice, role: roleOf(base, playerId) }, seed, count));

@@ -2,8 +2,9 @@
  * The start menu: which kind of match to play (DESIGN.md section 1a).
  * It only collects the choice. The server checks it and decides the rest.
  */
-import { SOLO_DIFFICULTIES, SOLO_ROLES, type SoloChoice, type SoloDifficulty, type SoloMode, type SoloRole } from '@insider/shared';
+import { LADDER, SOLO_DIFFICULTIES, SOLO_ROLES, type SoloChoice, type SoloDifficulty, type SoloMode, type SoloRole } from '@insider/shared';
 import { useState } from 'react';
+import { isOpen, type LadderProgress } from '../game/ladderProgress';
 import { store } from '../game/store';
 
 export const MODE_TEXT: Record<SoloMode, { name: string }> = { investigation: { name: 'Investigation' }, infiltration: { name: 'Infiltration' } };
@@ -29,7 +30,41 @@ const ROLE_TEXT: Record<SoloRole, { name: string; about: string }> = {
   helpdesk: { name: 'IT helpdesk', about: 'Lock any PC, reset passwords' },
 };
 
-export function StartMenu() {
+/** What the top bar calls a solo match. */
+export function matchName(solo: SoloChoice): string {
+  return solo.level ? `Level ${solo.level} · ${LADDER[solo.level - 1].name}` : `${MODE_TEXT[solo.mode].name} · ${DIFFICULTY_TEXT[solo.difficulty].name}`;
+}
+
+/** The choice that starts a level. Its role and difficulty are not used: a level is fixed. */
+export const levelChoice = (level: number): SoloChoice => ({ mode: 'infiltration', role: 'any', difficulty: 'normal', level });
+
+function Ladder({ progress }: { progress: LadderProgress }) {
+  return (
+    <div className="menu-card">
+      <h2>Scenario ladder</h2>
+      <p>Five fixed infiltrations, each harder than the last and with something to learn. Winning one opens the next.</p>
+      <ol className="ladder">
+        {LADDER.map((l, i) => {
+          const n = i + 1;
+          const open = isOpen(n, progress);
+          const won = progress[n];
+          return (
+            <li key={l.name} className={open ? '' : 'ladder-closed'} data-testid={`ladder-${n}`}>
+              <div>
+                <strong>{n}. {l.name}</strong>
+                {won !== undefined && <span className="ladder-won"> won{won ? `: ${won}` : ''}</span>}
+                <small>{open ? l.briefing : 'Win the level before it first.'}</small>
+              </div>
+              <button type="button" className="menu-go" data-testid={`ladder-play-${n}`} disabled={!open} onClick={() => void store.startSolo(levelChoice(n))}>{won !== undefined ? 'Again' : 'Play'}</button>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
+export function StartMenu({ progress }: { progress: LadderProgress }) {
   const [role, setRole] = useState<SoloRole>('soc');
   const [difficulty, setDifficulty] = useState<SoloDifficulty>('normal');
   const [risk, setRisk] = useState<SoloDifficulty>('normal');
@@ -88,6 +123,7 @@ export function StartMenu() {
             </div>
             <button type="submit" className="menu-go" data-testid="menu-infiltration">Start the infiltration</button>
           </form>
+          <Ladder progress={progress} />
           <div className="menu-card">
             <h2>Shared office</h2>
             <p>Everybody who opens it plays in the same office. Choose any employee; empty desks are filled by the computer.</p>

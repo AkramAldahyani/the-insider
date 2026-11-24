@@ -541,6 +541,16 @@ In the shared office and in Investigation nothing changed.
 6. Only doing your tasks: nobody bothers you.
 7. Accuse somebody else in a meeting: it does not win the match for you, however many are fired.
 
+## AN. Phase 5a, part G: the scenario ladder
+
+1. Menu, **Scenario ladder**: only level 1 can be played. Play it: you are Omar, the top bar says *Level 1 · Old habits*, and the mission starts with the level's briefing.
+2. Win it: the box shows the rating, the lesson and **Next: The company password**. Back in the menu level 1 says *won*, level 2 is open; also after a reload.
+3. Level 3 from your own desk: they are with you within a few minutes. From a colleague's open PC, with nobody in the room: the colleague gets the blame.
+4. Level 4: cameras hang in Finance, HR and Marketing (CAM-07 to CAM-09).
+5. In a private window (or with site data blocked) the game works; the progress is gone when the window is closed.
+
+To open all levels for testing, in the browser console: `localStorage.setItem('insider-ladder', '{"1":"x","2":"x","3":"x","4":"x"}')`, then reload.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -572,7 +582,7 @@ the outstanding manual check of password masking at a real interactive keyboard.
 pnpm test
 ```
 
-Expected: `Test Files 51 passed (51)` and `Tests 639 passed (639)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
+Expected: `Test Files 52 passed (52)` and `Tests 650 passed (650)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
 
 On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent workers. This passed the complete suite during Phase 5F validation after three existing long-running tests timed out with unrestricted workers.
 
@@ -580,9 +590,9 @@ On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent
 pnpm e2e
 ```
 
-Expected: `13 passed` (7 to 10 minutes). Playwright starts its own games (ports 2577 and 5183: no bots, only the plaintext-password weakness; ports 2578 and 5184: solo matches at four times the speed), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
+Expected: `14 passed` (8 to 11 minutes). Playwright starts its own games (ports 2577 and 5183: no bots, only the plaintext-password weakness; ports 2578 and 5184: solo matches at four times the speed), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
 
-For stability verification, run `pnpm e2e --retries=0` ten times consecutively; each must report 13 passes.
+For stability verification, run `pnpm e2e --retries=0` ten times consecutively; each must report 14 passes.
 Retries also default to zero. All PC-sitting steps share a helper that waits for the hostname's hint,
 the server-confirmed stop, and the initial terminal screen. Movement uses state changes rather than
 fixed sleeps, and holds the key through server-opened automatic doors; Playwright result attachments

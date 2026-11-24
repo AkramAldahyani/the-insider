@@ -1,9 +1,9 @@
 /** The small React pieces around the map: start screen, HUD and onboarding card. */
-import type { EmployeeChoice, OnboardingCard as Card } from '@insider/shared';
+import { LADDER, ladderLevel, type EmployeeChoice, type OnboardingCard as Card } from '@insider/shared';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { store, type UiState } from '../game/store';
 import { characterPortrait, departmentColor } from '../game/characterArt';
-import { DIFFICULTY_TEXT, MODE_TEXT } from './StartMenu';
+import { levelChoice, matchName } from './StartMenu';
 
 function Portrait({ id, department }: { id: string; department: string }) {
   return <span className="portrait" style={{ '--department': departmentColor(department) } as CSSProperties}>
@@ -91,7 +91,7 @@ export function Hud({ ui }: { ui: UiState }) {
         <span className="hud-brand"><span className="brand-mark" />THE INSIDER</span>
         <span className="hud-clock" data-testid="clock">{clockText(ui.clock)}</span>
         {ui.speed !== 1 && <span className="hud-speed">×{ui.speed}</span>}
-        {ui.solo && <span className="hud-mode" data-testid="mode">{MODE_TEXT[ui.solo.mode].name} · {DIFFICULTY_TEXT[ui.solo.difficulty].name}</span>}
+        {ui.solo && <span className="hud-mode" data-testid="mode">{matchName(ui.solo)}</span>}
         <span className="hud-room" data-testid="room">{ui.roomName || '—'}</span>
         <span className="hud-reputation" data-testid="reputation" title="Company reputation: it drops each time an innocent person is fired">Reputation {store.room?.state.reputation ?? 100}%</span>
         <span className="hud-spacer" />
@@ -200,6 +200,7 @@ export function MissionPanel({ ui }: { ui: UiState }) {
         <span>YOUR MISSION · PRIVATE</span>
         <button type="button" onClick={() => store.set({ briefingOpen: false })} aria-label="Close briefing">×</button>
       </div>
+      {ladderLevel(ui.solo?.level) && <p className="mission-level" data-testid="mission-level">{ladderLevel(ui.solo?.level)!.briefing}</p>}
       <p className="mission-goal" data-testid="mission-goal">{ui.briefing.goal}</p>
       <p>Your tools are in <code>{ui.briefing.toolsPath}</code> on your own PC (a hidden folder: <code>ls -a</code>).</p>
       <p className="mission-sub">Rumours about offices like this one:</p>
@@ -240,6 +241,8 @@ export function MatchOver({ ui }: { ui: UiState }) {
   if (!ui.matchOver) return null;
   const o = ui.matchOver;
   const iAmHacker = ui.briefing !== null;
+  const level = ui.solo?.level;
+  const nextLevel = level && o.winner === 'hacker' && level < LADDER.length ? level + 1 : null;
   // The hacker can also win without the flag (reputation, parity): the reason below says how.
   const byFlag = o.reason === 'The hacker got the flag out.';
   const title = o.winner === 'hacker'
@@ -252,9 +255,11 @@ export function MatchOver({ ui }: { ui: UiState }) {
         <h2>{title}</h2>
         <p>{o.reason} The hacker was <strong data-testid="match-over-hacker">{o.hacker}</strong>.</p>
         {ui.debrief?.rating && <p className="match-over-rating" data-testid="rating">{ui.debrief.rating.title}</p>}
+        {ladderLevel(ui.solo?.level) && <p data-testid="lesson">{ladderLevel(ui.solo?.level)!.lesson}</p>}
         <p className="start-note">The debrief shows everything they did, the evidence it left, and what was found or missed.</p>
         <div className="match-over-buttons">
           {ui.debrief && <button type="button" className="match-over-main" data-testid="open-debrief" onClick={() => store.set({ debriefOpen: true })}>See the debrief</button>}
+          {nextLevel && <button type="button" className="match-over-main" data-testid="next-level" onClick={() => void store.playAgain(levelChoice(nextLevel))}>Next: {LADDER[nextLevel - 1].name}</button>}
           <button type="button" data-testid="play-again" onClick={() => void store.playAgain()}>Play again</button>
           <button type="button" data-testid="to-menu" onClick={() => store.leave()}>Back to the menu</button>
           <button type="button" onClick={() => store.set({ matchOver: null })}>Look around the office</button>
