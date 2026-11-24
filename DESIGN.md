@@ -63,7 +63,10 @@ The game has three modes that share the same engine, office, bots, tools and evi
 - **The player is never the hacker** in Investigation, and cannot switch to somebody else.
 - **Two emergency meetings** per player (the shared office: one).
 - **Evidence has to convince (part B):** in solo matches the bots judge the pieces behind an accusation. At least two must point at the accused (account, name, PC, address, user or badge number, or a camera picture of them in the act), and one of those must show something out of the ordinary; otherwise the bots vote "skip". Old lines, lists of everybody and the player's own typed words do not count. Colleagues say in the chat what they make of it. They know only what everybody at the company knows, so they can be wrong. In the shared office the people judge, and bots keep voting only on what they saw.
-- **Help:** on Easy, bot colleagues pin some clues; on Normal and Hard they only speak in meetings. They never solve the case.
+- **Difficulty in numbers (part C):** 2 / 3 / 4 weaknesses, 15 / 25 / 40 % forgotten screens, and the bot hacker's knowledge and pace. A solo match always has at least one direct way in, so it never turns into hours of waiting.
+- **Testimony (part C):** what a bot told a meeting about what it saw itself (the SOC analyst reads out the alerts it found) can stand in for the unusual piece of an accusation, never for the two pieces about the accused. That makes every job able to prove a case.
+- **Rating (part C):** the debrief of a solo match starts with how well the case was proven (proven, proven at a price, lucky guess; so close, got away).
+- **Help:** on Easy, bot colleagues pin some clues (three at most); on Normal and Hard they only speak in meetings. They never solve the case.
 - **Infiltration is won only with the flag:** parity and reputation do not count there.
 - **Difficulty** changes the weaknesses, how often bots forget to lock, the bot hacker's knowledge and pace, and how closely bot defenders look.
 - **Play again** works everywhere: a finished match takes no new players, so whoever joins next gets a new one.
@@ -318,7 +321,7 @@ Decided in Phase 5 (part H):
 
 - **Parity counts the whole staff.** "Remaining defenders" are all employees on the company's list who were not fired, whether they are in the building right now or not; the hacker wins when that number is no more than the number of hackers left.
 - **A ruined company loses.** Every innocent person fired costs the company 25 points of reputation; at 0 % (the fourth wrong firing) the hacker wins (owner's decision). In an office of eleven this always comes before parity, which would take nine wrong firings; parity matters for small offices.
-- **Anti-stall.** Every 10 game minutes the oldest action of the hacker that left a log line (a login, su or sudo, a failed password, the USB stick, a tool, a scan, a cleared log, a watched file read...) and was not flagged yet is raised again as a HIGH alert, with the machine, account, source address and time from its log line. It never names a player. So the longer a match runs, the more of the hacker's trail the SIEM points at, from its beginning. Ordinary actions (typing commands, logging in at one's own desk) are never picked.
+- **Anti-stall.** Every 10 game minutes the oldest action of the hacker that left a log line (a login, su or sudo, a failed password, the USB stick, a tool, a scan, a cleared log, a watched file read...) and was not flagged yet is raised again as a HIGH alert, with the machine, account, source address and time from its log line. It never names a player. So the longer a match runs, the more of the hacker's trail the SIEM points at, from its beginning. Ordinary actions (typing commands, logging in at one's own desk, mistyping one's own password, an ordinary mail) are never picked.
 
 ### Lobby scaling
 | Players | Hackers |

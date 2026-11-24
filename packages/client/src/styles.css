@@ -352,3 +352,12 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .menu-go:hover, .start-back:hover { border-color: var(--green); }
 .menu-go:focus-visible, .start-back:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 .hud-mode { color: var(--amber); white-space: nowrap; }
+
+/* ── Investigation: the case and the rating ── */
+.case { border-color: var(--green); background: rgba(12, 22, 26, 0.96); }
+.case .mission-head, .case .mission-head button { color: var(--green); }
+.case code { color: #8fe3cd; }
+.match-over-rating { font-size: 18px; font-weight: 700; color: var(--amber); margin: 8px 0; }
+.match-over-box .match-over-main { border-color: var(--green); }
+.debrief-rating { margin: 10px 0 14px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--line); background: #0f141d; }
+.debrief-rating strong { font-size: 17px; color: var(--amber); }

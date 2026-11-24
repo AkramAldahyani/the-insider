@@ -26,7 +26,7 @@ describe('checking the own PC', () => {
       'wtmp begins Mon Feb 23 08:00:00 2026',
     ].join('\n');
     const found = inspect('last -n 10', output, me);
-    expect(found).toEqual([{ text: 'Someone logged in to my PC FIN-LT-04 as o.farouk from 10.0.0.71 at 09:52. That was not me.', weight: 0 }]);
+    expect(found).toEqual([{ text: 'Someone logged in to my PC FIN-LT-04 as o.farouk from 10.0.0.71 at 09:52. That was not me.', weight: 0, line: output.split('\n')[0].trim() }]);
   });
 
   it('an @reboot line in the crontab is worth mentioning; no crontab is not', () => {

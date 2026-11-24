@@ -505,6 +505,16 @@ Start an investigation as SOC analyst (`MEETING_SECONDS=40,25,5` makes meetings 
 4. `echo "severity=high user=s.alharbi"` and pin the output: it does not count.
 5. In the shared office nothing changed: bots who saw nothing do not vote.
 
+## AJ. Phase 5a, part C: Investigation mode
+
+1. Start an investigation as *Employee*, *Normal*. Close the card (`C`): the **case** tells you the goal and where an employee looks; `M` hides it. Meetings left: 2.
+2. Wait for the banner *unusual activity* (about ten minutes; `TIME_SPEED=3` makes it three). Give Huda a minute to look at the SIEM, then call a meeting: she says *The SIEM shows a security alert at ...: ... src_ip=ADDRESS*.
+3. At your PC: `ssh ADMIN-SRV-01`, `last | grep ADDRESS`, `grep -A 8 ADDRESS /var/lib/dhcp/dhcpd.leases`. Pin the login and two lines of the lease. The `client-hostname` is the PC, and the desk says whose it is.
+4. Second meeting: accuse that person. A colleague says the pieces point at them and that Huda told something odd; they are voted out. The box says **Case proven**, and the debrief starts with the rating.
+5. *Easy*, as *Security guard*: within a minute or two after the banner, Huda pins an alert on the board and you get a notice. On *Normal* and *Hard* nobody pins anything.
+6. As *Security guard*, detain somebody at random until you lose the power or are lucky: the rating says **Lucky guess**.
+7. Do nothing until the hacker wins: **The hacker got away**.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -536,7 +546,7 @@ the outstanding manual check of password masking at a real interactive keyboard.
 pnpm test
 ```
 
-Expected: `Test Files 47 passed (47)` and `Tests 554 passed (554)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
+Expected: `Test Files 48 passed (48)` and `Tests 582 passed (582)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
 
 On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent workers. This passed the complete suite during Phase 5F validation after three existing long-running tests timed out with unrestricted workers.
 

@@ -51,6 +51,12 @@ test('a defender follows the evidence to the bot hacker, has them voted out, and
   await expect(page.getByTestId('mode')).toHaveText('Investigation · Normal');
   const password = await page.getByTestId('card-password').innerText();
   await page.keyboard.press('c');
+  // After the card: the case, with where a SOC analyst looks. M hides it.
+  await expect(page.getByTestId('case')).toContainText('siem source=alert');
+  await expect(page.getByTestId('case')).toContainText('Meetings left: 2');
+  await page.screenshot({ path: `${SHOTS}/23-case.png` });
+  await page.keyboard.press('m');
+  await expect(page.getByTestId('case')).toBeHidden();
   await walkAndSit(page, 'SOC-WS-01');
   await page.keyboard.type(password);
   await page.keyboard.press('Enter');
@@ -94,9 +100,11 @@ test('a defender follows the evidence to the bot hacker, has them voted out, and
   // 4. They were the hacker: the defenders win, and the debrief tells the whole story.
   await expect(page.getByTestId('match-over')).toBeVisible({ timeout: 40_000 });
   await expect(page.getByTestId('match-over-hacker')).toHaveText(suspect.name);
+  await expect(page.getByTestId('rating')).toHaveText('Case proven');
   await page.getByTestId('open-debrief').click();
   const debrief = page.getByTestId('debrief');
   await expect(debrief).toContainText(`What ${suspect.name} did`);
+  await expect(page.getByTestId('debrief-rating')).toContainText(`You had evidence against ${suspect.name}: E1, E2 and E3.`);
   await expect(page.getByTestId('debrief-totals')).toBeVisible();
   await expect(page.getByTestId('debrief-meetings')).toContainText('Huda Rahman');
   await expect(debrief).not.toContainText('Handed in the flag');

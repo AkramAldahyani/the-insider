@@ -9,14 +9,14 @@ import { store } from '../game/store';
 export const MODE_TEXT: Record<SoloMode, { name: string }> = { investigation: { name: 'Investigation' } };
 
 export const DIFFICULTY_TEXT: Record<SoloDifficulty, { name: string; about: string }> = {
-  easy: { name: 'Easy', about: 'The hacker only knows rumours, tries things that fail, and takes its time.' },
-  normal: { name: 'Normal', about: 'The hacker knows some of the weaknesses.' },
-  hard: { name: 'Hard', about: 'The hacker knows every weakness and does not waste a step.' },
+  easy: { name: 'Easy', about: 'The hacker only knows rumours and takes its time. Colleagues pin some clues on the board.' },
+  normal: { name: 'Normal', about: 'The hacker knows some of the weaknesses. Colleagues only speak in meetings.' },
+  hard: { name: 'Hard', about: 'More weaknesses, and the hacker knows all of them. Many PCs are left open.' },
 };
 
 const ROLE_TEXT: Record<SoloRole, { name: string; about: string }> = {
   any: { name: 'Surprise me', about: 'Anybody at the company' },
-  employee: { name: 'Employee', about: 'Your own PC, your eyes, and the meeting room' },
+  employee: { name: 'Employee', about: 'Your own PC, your eyes, and the meeting room. The hardest job' },
   soc: { name: 'SOC analyst', about: 'Search the logs of every machine' },
   guard: { name: 'Security guard', about: 'Cameras, badge logs, and you can detain someone' },
   sysadmin: { name: 'System administrator', about: 'Root everywhere, and the hacker’s favourite target' },

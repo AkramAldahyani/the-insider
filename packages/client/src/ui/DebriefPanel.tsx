@@ -113,6 +113,12 @@ export function DebriefPanel({ ui }: { ui: UiState }) {
           </div>
           <button type="button" onClick={() => store.set({ debriefOpen: false })} aria-label="Close debrief">×</button>
         </div>
+        {d.rating && (
+          <div className="debrief-rating" data-testid="debrief-rating">
+            <strong>{d.rating.title}</strong>
+            {d.rating.lines.map((l) => <p key={l}>{l}</p>)}
+          </div>
+        )}
         <p>{d.reason}</p>
         <p data-testid="debrief-totals">
           {t.steps === 0

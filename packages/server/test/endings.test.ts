@@ -9,7 +9,7 @@
  * and the anti-stall escalation in the SIEM.
  */
 import { describe, expect, it } from 'vitest';
-import { siemQuery } from '@insider/engine';
+import { queryEvents, siemQuery } from '@insider/engine';
 import { TICK_RATE } from '@insider/shared';
 import { PW, Recorder } from './helpers';
 
@@ -110,8 +110,10 @@ describe('anti-stall', () => {
   /** The hacker logs in to the server, reads the old script and becomes root. */
   function attack(r: Recorder): void {
     r.sitAt('h', 'p4', 'MKT-LT-11');
+    r.type('h', 'oops'); // mistyping the own password, typing commands and sending mail are ordinary: never flagged
     r.type('h', PW['o.farouk']);
-    r.type('h', 'whoami'); // ordinary: never flagged
+    r.type('h', 'whoami');
+    r.type('h', 'mail -s "Lunch" s.alharbi Are you coming?');
     r.type('h', 'ssh ADMIN-SRV-01');
     r.type('h', PW['o.farouk']);
     const script = r.type('h', 'cat /srv/shared/old/backup-2025.sh');
@@ -132,8 +134,10 @@ describe('anti-stall', () => {
     r.tick(minutes(10));
     expect(escalations(r)).toHaveLength(2);
     expect(escalations(r)[1]).toContain(`su.success on ADMIN-SRV-01 (account o.farouk from ${omarIp})`);
-    // Reading an ordinary file (the old script) and typing commands are never on the list; no names either.
-    expect(alertsLog(r)).not.toMatch(/Omar|Farouk|whoami|file\.read/);
+    expect(queryEvents(r.game.world, { type: 'mail.send', actor: 'p4' })).toHaveLength(1);
+    expect(queryEvents(r.game.world, { type: 'unlock.fail', actor: 'p4' })).toHaveLength(1);
+    // Reading an ordinary file (the old script), sending a mail and typing commands are never on the list; no names either.
+    expect(alertsLog(r)).not.toMatch(/Omar|Farouk|whoami|file\.read|mail\.send|unlock/);
     // The SOC analyst finds them in the SIEM.
     expect(siemQuery(r.game.world, 'rule=threat-escalation severity=high').matched).toBe(2);
     // Once the trail is used up, nothing more is flagged.

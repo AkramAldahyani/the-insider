@@ -245,9 +245,10 @@ export function MatchOver({ ui }: { ui: UiState }) {
         <div className="eyebrow">MATCH OVER · {clockText(o.at)}</div>
         <h2>{title}</h2>
         <p>{o.reason} The hacker was <strong data-testid="match-over-hacker">{o.hacker}</strong>.</p>
+        {ui.debrief?.rating && <p className="match-over-rating" data-testid="rating">{ui.debrief.rating.title}</p>}
         <p className="start-note">The debrief shows everything they did, the evidence it left, and what was found or missed.</p>
         <div className="match-over-buttons">
-          {ui.debrief && <button type="button" data-testid="open-debrief" onClick={() => store.set({ debriefOpen: true })}>See the debrief</button>}
+          {ui.debrief && <button type="button" className="match-over-main" data-testid="open-debrief" onClick={() => store.set({ debriefOpen: true })}>See the debrief</button>}
           <button type="button" data-testid="play-again" onClick={() => void store.playAgain()}>Play again</button>
           <button type="button" data-testid="to-menu" onClick={() => store.leave()}>Back to the menu</button>
           <button type="button" onClick={() => store.set({ matchOver: null })}>Look around the office</button>

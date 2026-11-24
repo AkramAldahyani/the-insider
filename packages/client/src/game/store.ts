@@ -239,7 +239,7 @@ export class Store {
         this.set({ scenarioName: lobby.scenarioName, employees: lobby.employees, dev: lobby.dev, hackerOpen: lobby.hackerOpen, asHacker: this.ui.asHacker && lobby.hackerOpen, phase: this.ui.phase === 'playing' || this.ui.solo ? this.ui.phase : 'lobby' }); // solo: the server has already chosen; "welcome" follows
       });
       on('welcome', ({ playerId, card, mission }) => {
-        this.set({ phase: 'playing', playerId, card, cardOpen: true, briefing: mission, briefingOpen: mission !== null });
+        this.set({ phase: 'playing', playerId, card, cardOpen: true, briefing: mission, briefingOpen: mission !== null || this.ui.solo !== null });
         this.send('move', { dx: 0, dy: 0 });
       });
       on('move.ack', (reply) => this.movement.acknowledge(reply));

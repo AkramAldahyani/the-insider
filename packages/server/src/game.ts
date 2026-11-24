@@ -26,7 +26,8 @@ import { Random } from './bots/random';
 import { Cctv } from './cctv';
 import { Debrief } from './debrief';
 import { EvidenceBoard } from './evidence';
-import { comment, judgeAccusation, type Judge, type Verdict } from './judge';
+import { comment, judgeAccusation, type Judge, type Testimony, type Verdict } from './judge';
+import { rate } from './rating';
 import { DEFAULT_MEETING_TIMES, Meetings, type MeetingTimes } from './meeting';
 import { checkMapAgainstScenario } from './mapCheck';
 import { TaskBoard } from './tasks';
@@ -114,7 +115,9 @@ export class OfficeGame {
    * What the bots do in the current meeting (Phase 5, part G): when each one
    * speaks and votes, in real milliseconds since the phase began.
    */
-  private botMeeting: { phase: string; elapsed: number; speak: { id: string; at: number; lines: string[] }[]; vote: { id: string; at: number }[] } | null = null;
+  private botMeeting: { phase: string; elapsed: number; speak: { id: string; at: number; lines: string[]; about?: string }[]; vote: { id: string; at: number }[] } | null = null;
+  /** What bots told meetings about what they saw themselves (the judges remember it). */
+  private readonly testimony: Testimony[] = [];
   /** Random numbers for when bots talk and what filler they say (its own sequence). */
   private readonly talk: Random;
   /** Every chat line, for the debrief. */
@@ -187,6 +190,7 @@ export class OfficeGame {
           switchUser: (a) => switchUser(this.world, a.terminalId),
           usb: (a, hostname) => this.startItem(a, { item: 'usb', hostname }),
           submit: (a, text) => this.submitFlag(a, text),
+          pin: (a, text) => this.pinForBot(a, text),
           finished: () => this.over !== null,
           tasks: this.tasks,
         }, options.seed ?? 1, options.botOptions);
@@ -570,6 +574,14 @@ export class OfficeGame {
     this.sendBoard();
   }
 
+  /** A bot puts a line of its own screen on the board, and says so. */
+  private pinForBot(avatar: Avatar, text: string): void {
+    const item = this.board.add({ time: this.world.time, pinnedBy: avatar.name, pinnedById: avatar.playerId, kind: 'screen', title: `${avatar.seatedAt} screen`, text, shown: text });
+    if (!item) return;
+    for (const a of this.humans()) this.send(a.clientId, 'notice', { text: `${avatar.name} pinned something to the evidence board (${item.id}).` });
+    this.sendBoard();
+  }
+
   /** Sends the board to every player (each sees which pins are their own). */
   private sendBoard(): void {
     for (const a of this.humans()) this.send(a.clientId, 'board', { items: this.board.view(a.playerId) });
@@ -640,7 +652,26 @@ export class OfficeGame {
       meetings: this.meetings.history, detentions: this.detentions, reputation: this.reputation,
       findings: this.world.players.map((p) => ({ playerId: p.id, list: this.bots?.findings(p.id) ?? [] })),
     });
+    if (this.soloPlayer) debrief.rating = this.rating(winner, hackerName);
     for (const client of this.clients) this.send(client, 'debrief', { debrief });
+  }
+
+  /** Solo matches: how well did the player do? (See rating.ts.) */
+  private rating(winner: 'hacker' | 'defenders', hackerName: string): ReturnType<typeof rate> {
+    const hacker = this.world.mission.hacker ?? '';
+    const voted = this.meetings.current?.result?.wasHacker ? this.verdicts().get(hacker) : undefined;
+    const player = this.soloPlayer!;
+    return rate({
+      winner, hacker: hackerName,
+      verdict: voted ?? judgeAccusation(this.board.items, hacker, this.judge(), this.testimony),
+      firedWrongly: [...this.fired].filter((id) => id !== hacker).map((id) => this.nameOf(id)),
+      detainedWrongly: this.detentions.filter((d) => !d.wasHacker).map((d) => this.nameOf(d.targetId)),
+      meetingsCalled: this.meetings.history.filter((m) => m.calledById === player).length,
+      meetingsAllowed: this.meetings.times.usesPerPlayer,
+      ms: this.world.time - this.startedAt,
+      ownPins: this.board.items.filter((i) => i.pinnedById === player).length,
+      otherPins: this.board.items.filter((i) => i.pinnedById !== player).length,
+    });
   }
 
   // ───────────────────────────── Guard and helpdesk (Phase 5, part E) ─────────────────────────────
@@ -866,7 +897,7 @@ export class OfficeGame {
     const out = new Map<string, Verdict>();
     const judge = this.judge();
     for (const a of this.meetings.current?.accusations ?? []) {
-      const verdict = judgeAccusation(this.board.items.filter((i) => a.evidence.includes(i.id)), a.suspectId, judge);
+      const verdict = judgeAccusation(this.board.items.filter((i) => a.evidence.includes(i.id)), a.suspectId, judge, this.testimony);
       const old = out.get(a.suspectId);
       if (!old || (verdict.convincing && !old.convincing) || (verdict.convincing === old.convincing && verdict.pointing.length > old.pointing.length)) out.set(a.suspectId, verdict);
     }
@@ -882,11 +913,9 @@ export class OfficeGame {
     const bots = this.bots;
     const speakers = m!.voters.filter((id) => bots.isPresent(id) && id !== a.suspectId && id !== a.accuserId && this.living().has(id));
     if (speakers.length === 0) return;
-    const items = this.board.items.filter((i) => a.evidence.includes(i.id));
-    const text = comment(judgeAccusation(items, a.suspectId, this.judge()), this.nameOf(a.suspectId));
     const total = this.meetings.times.discussionMs;
     const at = Math.min(total - 1, plan.elapsed + (0.04 + this.talk.next() * 0.05) * total);
-    plan.speak.push({ id: this.talk.pick(speakers), at, lines: [text] });
+    plan.speak.push({ id: this.talk.pick(speakers), at, lines: [], about: a.suspectId });
     plan.speak.sort((x, y) => x.at - y.at);
   }
 
@@ -911,7 +940,13 @@ export class OfficeGame {
       while (plan.speak.length > 0 && plan.speak[0].at <= plan.elapsed) {
         const s = plan.speak.shift()!;
         if (!this.living().has(s.id)) continue;
-        for (const text of s.lines) this.postChat('meeting', this.nameOf(s.id), text);
+        // A comment on an accusation is worked out now, so it includes what was said in the meantime.
+        const verdict = s.about ? this.verdicts().get(s.about) : undefined;
+        if (s.about && verdict) s.lines.push(comment(verdict, this.nameOf(s.about)));
+        for (const text of s.lines) {
+          this.postChat('meeting', this.nameOf(s.id), text);
+          if (!s.about) this.testimony.push({ from: this.nameOf(s.id), text });
+        }
       }
     } else if (m.phase === 'voting') {
       const accused = [...new Set(m.accusations.map((a) => a.suspectId))];
@@ -940,6 +975,7 @@ export class OfficeGame {
     }
     if (!fresh || this.world.time - this.lastBanner < ALERT_BANNER_GAP_MS) return;
     this.lastBanner = this.world.time;
+    this.bots?.alarm();
     for (const a of this.humans()) this.send(a.clientId, 'alert', { text: 'SECURITY ALERT: unusual activity was detected on the company network.' });
   }
 

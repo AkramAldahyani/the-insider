@@ -112,12 +112,31 @@ describe('a whole accusation', () => {
   const nothing = text('SOC-WS-01 is my PC');
 
   it('needs two pieces about the accused, one of them unusual', () => {
-    expect(judgeAccusation([alert, lease, login], 'p4', judge)).toEqual({ convincing: true, pointing: [alert.id, lease.id, login.id], unusual: [alert.id] });
+    expect(judgeAccusation([alert, lease, login], 'p4', judge)).toEqual({ convincing: true, pointing: [alert.id, lease.id, login.id], unusual: [alert.id], testimony: '' });
     expect(judgeAccusation([alert, lease, nothing], 'p4', judge).convincing).toBe(true);
     expect(judgeAccusation([alert, nothing, nothing], 'p4', judge).convincing).toBe(false);
     expect(judgeAccusation([lease, login, nothing], 'p4', judge).convincing).toBe(false);
-    expect(judgeAccusation([alert, lease, login], 'p3', judge)).toEqual({ convincing: false, pointing: [], unusual: [] });
+    expect(judgeAccusation([alert, lease, login], 'p3', judge)).toEqual({ convincing: false, pointing: [], unusual: [], testimony: '' });
     expect(judgeAccusation([alert, lease, login], 'nobody', judge).convincing).toBe(false);
+  });
+
+  it('what a colleague told a meeting can stand in for the unusual piece, but not for the two about the accused', () => {
+    const siem = { from: 'Huda Rahman', text: 'The SIEM shows a security alert at 09:09:12: severity=high rule=flag-read src_ip=10.0.2.185.' };
+    expect(judgeAccusation([lease, login, nothing], 'p4', judge, [siem])).toMatchObject({ convincing: true, unusual: [], testimony: 'Huda Rahman' });
+    expect(judgeAccusation([lease, nothing], 'p4', judge, [siem]).convincing).toBe(false);
+    expect(judgeAccusation([lease, login], 'p3', judge, [siem]).testimony).toBe(''); // another address
+    const ordinary = { from: 'Lina Haddad', text: 'I saw Omar Farouk in the cafeteria.' };
+    expect(judgeAccusation([lease, login], 'p4', judge, [ordinary]).convincing).toBe(false);
+    const witness = { from: 'Lina Haddad', text: 'I saw Omar Farouk sitting at my PC HR-LT-03 at 09:30, while I was away from it.' };
+    expect(judgeAccusation([lease, login], 'p4', judge, [witness]).testimony).toBe('Lina Haddad');
+    // A witness names their own PC: that is not testimony against themselves.
+    expect(judgeAccusation([], 'p3', judge, [witness]).testimony).toBe('');
+    expect(comment(judgeAccusation([lease, login], 'p4', judge, [witness]), 'Omar Farouk')).toContain('Lina Haddad told us something odd about them');
+  });
+
+  it('yesterday in the output of last is old news too', () => {
+    expect(points(text('o.farouk   pts/0        10.0.2.185       Fri Feb 27 16:00 - 16:08  (00:08)'))).toBe(false);
+    expect(points(text('o.farouk   pts/0        10.0.2.185       Mon Mar  2 09:07   still logged in'))).toBe(true);
   });
 
   it('the same text pinned twice counts once', () => {

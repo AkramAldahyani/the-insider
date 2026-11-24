@@ -7,6 +7,7 @@ import { PhaserView } from './game/PhaserView';
 import { store } from './game/store';
 import { BoardPanel } from './ui/BoardPanel';
 import { DebriefPanel } from './ui/DebriefPanel';
+import { CasePanel } from './ui/CasePanel';
 import { StartMenu } from './ui/StartMenu';
 import { FiredPanel, MeetingPanel } from './ui/MeetingPanel';
 import { MonitorsPanel } from './ui/MonitorsPanel';
@@ -44,6 +45,7 @@ export function App() {
       <TaskList ui={ui} />
       {/* The briefing shares the right-hand side with the onboarding card: card first, then (after C) the briefing. */}
       {!ui.seatedAt && !ui.cardOpen && <MissionPanel ui={ui} />}
+      {!ui.seatedAt && !ui.cardOpen && <CasePanel ui={ui} />}
       {ui.monitors && !ui.seatedAt && <MonitorsPanel ui={ui} />}
       {!ui.seatedAt && <BoardPanel ui={ui} />}
       <AlertBanner ui={ui} />

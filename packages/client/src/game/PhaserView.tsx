@@ -128,7 +128,7 @@ export function PhaserView() {
       } else if (event.code === 'KeyC') store.set({ cardOpen: !ui.cardOpen });
       else if (event.code === 'KeyT') store.set({ tasksOpen: !ui.tasksOpen });
       else if (event.code === 'KeyB') store.set({ boardOpen: !ui.boardOpen });
-      else if (event.code === 'KeyM' && ui.briefing) store.set({ briefingOpen: !ui.briefingOpen });
+      else if (event.code === 'KeyM' && (ui.briefing || ui.solo)) store.set({ briefingOpen: !ui.briefingOpen });
       else if (event.code === 'KeyU' && ui.briefing && ui.nearDesk) {
         // The hacker's USB stick: hold U at a PC. Letting go (or walking) before 5 s cancels it.
         usb = true;

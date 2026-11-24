@@ -75,7 +75,7 @@ Update it at the end of every part.
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
 | 5 Investigation & social deduction | **done**: Parts A-J |
-| 5a Solo modes | **in progress**: Parts A-B done; C (Investigation mode) next |
+| 5a Solo modes | **in progress**: Parts A-C done (Investigation is playable); D (bots notice more) next |
 
 ## Phase 5a plan (solo modes): APPROVED by the owner on 2026-11-24, with all five defaults
 
@@ -86,8 +86,8 @@ with debrief." After each part: all tests, this file, commit locally (never push
 |---|---|---|
 | A | Start menu and private matches: mode, role, difficulty; own room, new random seed; play again, back to menu; the server checks every choice | **done** |
 | B | Evidence that convinces: bots judge whether the pins point at the accused (account, PC, address, camera picture) and vote on that; never the hidden truth | **done** |
-| C | Investigation mode: role choice, three difficulty levels, a rating in the debrief (proven case / lucky guess), browser test. Investigation playable | next |
-| D | Bots notice more: `ps aux`, `ss -tnp`, USB events, people at the wrong desk; they pin what they find | |
+| C | Investigation mode: role choice, three difficulty levels, a rating in the debrief (proven case / lucky guess), browser test. Investigation playable | **done** |
+| D | Bots notice more: `ps aux`, `ss -tnp`, USB events, people at the wrong desk; they pin what they find | next |
 | E | Bot SOC analyst (reads the SIEM, follows addresses) and guard (cameras, patrols; detains only on strong evidence) | |
 | F | Infiltration mode: bots call meetings, accuse with evidence and vote; the hacker's start and end screens. Infiltration playable | |
 | G | Scenario ladder: five levels in the existing office, each with a briefing; progress kept in the browser | |
@@ -131,8 +131,8 @@ Defaults (accepted):
   of them in the act (crouched at a PC, at somebody else's desk, in the server room without an IT job). It is UNUSUAL when
   the same line shows an alert, a refusal, root rights for somebody outside IT, another account used from their
   address... An accusation convinces with two pointing pieces (the owner's rule) of which one is unusual.
-- The "one unusual piece" half was ADDED while building (the owner's rule alone lets two ordinary login lines fire
-  anybody). To drop it: the last line of `judgeAccusation`.
+- The "one unusual piece" half was added while building (the owner's rule alone lets two ordinary login lines fire
+  anybody); the owner decided on 2026-11-24 to keep it.
 - Not counted: lines dated another day, pieces naming more than three people, the same text twice, and the pinner's own
   words (`EvidenceItem.shown`, from `EvidenceBoard.withoutOwnWords`; never sent).
 - It knows only what everybody could (staff list, current addresses), never who the hacker is. So it can be fooled, also
@@ -146,6 +146,30 @@ Defaults (accepted):
 - Limits: the pieces are judged as they stand when the bots vote (an unpinned piece no longer counts); addresses are the
   current ones; a screen text joined or cut by hand (a changed browser) could cheat, which only matters in solo matches.
 - 554 Vitest tests in 47 files, 12 Playwright.
+
+### Part C: what exists now (Investigation is playable)
+
+- Levels (`LEVELS` in server/src/solo.ts): weaknesses 2 / 3 / 4, forgetting to lock 15 / 25 / 40 %, colleagues pin clues on
+  Easy only; plus the bot hacker's knowledge and pace as before. A solo match always has `plaintext-password` or
+  `weak-admin-password` (no days of waiting for the administrator); `careless-admin` never when the player is the sysadmin.
+  VULNS still wins. The shared office is not affected.
+- The bot SOC analyst's job (brain.ts `SOC_CHECK`, in every match): `siem source=alert | tail 5` about every two minutes and
+  before starting a task; each alert becomes a finding ("The SIEM shows a security alert at ..."), told at meetings. When
+  the alert banner goes out (`BotManager.alarm`) it drops a break, an errand or a server session to look at once.
+- Easy: `botOptions.pinClues` puts the screen line of a fresh finding on the board (`pinForBot`, at most `MAX_BOT_PINS` = 3
+  per match, with a notice to the player).
+- Testimony (judge.ts): what bots told meetings about what THEY saw is remembered for the match and can stand in for the
+  unusual piece, never for the two pieces about the accused. Without it an employee or the helpdesk could not prove much,
+  because they cannot read alerts. Comments on accusations are worked out when spoken, so they include it.
+- Rating (`server/src/rating.ts`, `DebriefView.rating`, solo only): "Case proven", "Case proven, at a price", "Lucky guess",
+  "So close", "The hacker got away", with the reasons. Shown in the match-over box and on top of the debrief.
+- Client: `ui/CasePanel.tsx` (after the card; M): goal, where this job looks, what convinces, meetings left.
+- Fixed (older): the anti-stall alert could pick the hacker's ORDINARY actions: an ordinary mail, or mistyping the own
+  password (`OWN_SLIPS` in engine security/alerts.ts). Those led nowhere; DESIGN says ordinary actions are never picked.
+- Measured: scripted players who wait for the banner and trace the address with what their job may read solved 375 of 375
+  matches (5 jobs x 3 levels x 25 seeds). Humans are slower and will lose some.
+- Tests: `server/test/investigation.test.ts` (26); `match.spec.ts` checks the case panel and the rating.
+- 582 Vitest tests in 48 files, 12 Playwright.
 
 ## Phase 5 status: DONE (Parts A-J; plan approved by the owner, defaults 1-6 accepted)
 

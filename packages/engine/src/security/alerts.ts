@@ -68,6 +68,9 @@ const ESCALATION_TYPES = new Set([
   'mail.send', 'tool.run', 'file.read',
 ]);
 
+/** Mistyping one's own password happens to everybody. */
+const OWN_SLIPS = new Set(['unlock.fail', 'login.fail', 'ssh.fail']);
+
 /**
  * ANTI-STALL (DESIGN.md section 1, "Match length"): called every few game
  * minutes by the game server. It takes the OLDEST real action of the hacker
@@ -82,7 +85,11 @@ export function escalate(world: World): GameEvent | null {
   const hacker = world.mission.hacker;
   if (!hacker || world.noise.from === null) return null;
   const done = new Set(world.mission.escalated);
+  const own = world.players.find((p) => p.id === hacker)?.account;
   const e = world.events.find((x) => x.actor === hacker && x.time >= world.noise.from! && !done.has(x.id) && ESCALATION_TYPES.has(x.type)
+    && !(OWN_SLIPS.has(x.type) && x.user === own)
+    // An ordinary mail is work; only a phishing mail is worth a second look.
+    && (x.type !== 'mail.send' || world.mail.messages.some((m) => m.id === x.details.id && m.headerFrom !== m.from))
     && (x.type !== 'file.read' || (!x.details.denied && watchedFile(world, x.host, String(x.details.path)) !== null)));
   if (!e) return null;
   world.mission.escalated.push(e.id);

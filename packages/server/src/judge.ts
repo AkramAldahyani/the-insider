@@ -17,8 +17,13 @@
  *            a refusal, root rights for somebody outside IT, another person's
  *            account used from their address...
  *
+ * Colleagues also remember what OTHER colleagues told a meeting about what
+ * they saw themselves (TESTIMONY). It can stand in for the unusual piece - an
+ * employee cannot read the security alerts, but the SOC analyst can tell - and
+ * never for the two pieces that point at the accused.
+ *
  * An accusation CONVINCES when at least two of its pieces point at the accused
- * (the owner's rule) and at least one of those is unusual. Without the second
+ * (the owner's rule) and at least one of those is unusual (or testimony is). Without the second
  * half, two ordinary "logged in" lines would be enough to fire anybody.
  */
 import type { EvidenceItem } from './evidence';
@@ -55,6 +60,14 @@ export interface Verdict {
   /** Ids of the pieces that point at the accused, and of those that are also unusual. */
   pointing: string[];
   unusual: string[];
+  /** Who told the meeting something unusual about the accused ("" = nobody). */
+  testimony: string;
+}
+
+/** Something a colleague said in a meeting about what they saw themselves. */
+export interface Testimony {
+  from: string;
+  text: string;
 }
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -70,13 +83,16 @@ function mentions(line: string, p: StaffMember): boolean {
 }
 
 const ODD = /severity=|\[(low|medium|high)\]|\brule=|denied|refused|not in (the )?sudoers|not allowed|invalid user|flag-read|flag\.txt|log-cleared|network-scan|@reboot|backdoor|implant|keylog|\.tools\/|usb.*(keyboard|hid)|password-reset\.example|spf=fail/i;
+/** What witnesses say (the sentences of bots/manager.ts). */
+const WITNESS = /sitting at my PC|doing something to my PC|stood right behind me|They do not work in IT|Someone logged in to my PC|a line I never added/i;
 const ROOT = /\(to root\)|user=root|session opened for user root|\buid=0\b/i;
 
 /** Lines like "Feb 27 15:10:00 ..." or "2026-02-27 ..." that are not from today. Without a date (SIEM rows) it is today. */
 function oldNews(line: string, today: string): boolean {
   const iso = /^\s*(\d{4}-\d\d-\d\d)[ T]/.exec(line);
   if (iso) return iso[1] !== today;
-  const syslog = /^\s*([A-Z][a-z]{2}) +(\d{1,2}) \d\d:\d\d:\d\d /.exec(line);
+  // Syslog lines begin with "Mar  2 09:03:12"; `last` has "Mon Mar  2 09:03" in the middle.
+  const syslog = /^\s*([A-Z][a-z]{2}) +(\d{1,2}) \d\d:\d\d:\d\d /.exec(line) ?? /\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) ([A-Z][a-z]{2}) +(\d{1,2}) \d\d:\d\d\b/.exec(line);
   if (!syslog) return false;
   const d = new Date(`${today}T00:00:00Z`);
   return syslog[1] !== d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' }) || Number(syslog[2]) !== d.getUTCDate();
@@ -108,9 +124,9 @@ export function judgePiece(item: EvidenceItem, suspect: StaffMember, judge: Judg
 }
 
 /** A whole accusation. The same text pinned twice counts once. */
-export function judgeAccusation(items: EvidenceItem[], suspectId: string, judge: Judge): Verdict {
+export function judgeAccusation(items: EvidenceItem[], suspectId: string, judge: Judge, said: Testimony[] = []): Verdict {
   const suspect = judge.staff.find((p) => p.id === suspectId);
-  const verdict: Verdict = { convincing: false, pointing: [], unusual: [] };
+  const verdict: Verdict = { convincing: false, pointing: [], unusual: [], testimony: '' };
   if (!suspect) return verdict;
   const seen = new Set<string>();
   for (const item of items) {
@@ -121,7 +137,8 @@ export function judgeAccusation(items: EvidenceItem[], suspectId: string, judge:
     if (points) verdict.pointing.push(item.id);
     if (unusual) verdict.unusual.push(item.id);
   }
-  verdict.convincing = verdict.pointing.length >= POINTING_PIECES && verdict.unusual.length > 0;
+  verdict.testimony = said.find((t) => t.from !== suspect.name && mentions(t.text, suspect) && (unusualLine(t.text, suspect, judge.staff) || WITNESS.test(t.text)))?.from ?? '';
+  verdict.convincing = verdict.pointing.length >= POINTING_PIECES && (verdict.unusual.length > 0 || verdict.testimony !== '');
   return verdict;
 }
 
@@ -130,6 +147,7 @@ const list = (ids: string[]) => (ids.length < 2 ? ids.join('') : `${ids.slice(0,
 /** What a colleague says about an accusation in the meeting chat. */
 export function comment(verdict: Verdict, name: string): string {
   const { pointing, unusual } = verdict;
+  if (verdict.convincing && unusual.length === 0) return `${list(pointing)} point at ${name}, and ${verdict.testimony} told us something odd about them. That convinces me.`;
   if (verdict.convincing) return `${list(pointing)} point at ${name}, and ${list(unusual)} ${unusual.length === 1 ? 'is' : 'are'} not ordinary work. That convinces me.`;
   if (pointing.length === 0) return `None of that evidence says anything about ${name}. I will not fire somebody for that.`;
   if (pointing.length < POINTING_PIECES) return `Only ${list(pointing)} says anything about ${name}. That is not enough for me.`;

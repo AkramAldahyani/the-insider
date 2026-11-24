@@ -31,6 +31,9 @@ const CHECK_FIRST: [number, number] = [240, 600];
 const CHECK_EVERY: [number, number] = [480, 1200];
 /** What an employee types to see whether anyone else used their PC. */
 export const SELF_CHECKS = ['last -n 10', 'crontab -l'];
+/** The SOC analyst's job is the SIEM: it looks at the newest alerts much more often. */
+export const SOC_CHECK = 'siem source=alert | tail 5';
+const SOC_CHECK_EVERY: [number, number] = [60, 150];
 
 /** What the brain may do in the world. Supplied by the BotManager. */
 export interface BrainWorld {
@@ -62,9 +65,17 @@ export interface BrainWorld {
   /** The address of the bot's own PC (what `ip a` would show). */
   myIp(): string;
   /** The bot noticed something odd while checking its own PC: it remembers it (and may tell a meeting). */
-  report(finding: { text: string; suspect?: string; weight: number }): void;
+  report(finding: ClueReport): void;
   /** Whether the own inbox shows an unread IT reset subject; ordinary mail is part of everyday work. */
   hasUnreadMail(): boolean;
+}
+
+/** Something a bot noticed on its own screen; `line` is the screen line that shows it (for the evidence board). */
+export interface ClueReport {
+  text: string;
+  suspect?: string;
+  weight: number;
+  line?: string;
 }
 
 /** Everything fixed about one bot. */
@@ -114,6 +125,8 @@ export interface Mind {
   doing: string;
   /** Game time of the next look at its own PC for anything odd (Phase 5, part G). */
   nextCheckAt: number;
+  /** The SOC analyst saw the alert banner and has not looked at the SIEM since. */
+  alarmed: boolean;
   /** The next inbox action learned from the bot's own terminal output. */
   mailCommand: string;
   /** A read message gets one response decision, even if ordinary work rereads it. */
@@ -128,7 +141,7 @@ export function newMind(now: number, random: Random, taskEveryMs: number): Mind 
     // The first task starts some time after sitting down, not all at once.
     typing: false, errand: '', errandMs: 0, nextTaskAt: now + random.between(0.2, 0.8) * taskEveryMs, stepKey: '', stepTries: 0,
     nextCheckAt: Infinity, // set by firstCheck() (its own random numbers)
-    mailCommand: '', seenMail: [],
+    mailCommand: '', seenMail: [], alarmed: false,
   };
 }
 
@@ -384,6 +397,14 @@ function work(b: BotSubject): Status {
     return 'running';
   }
 
+  // The SOC analyst looks at the alerts before starting anything else (after an alert: leaving the server for it, too).
+  if (mind.alarmed && inRemoteShell(b)) {
+    mind.screen = b.world.type('exit');
+    pause(b, 1, 3);
+    return 'running';
+  }
+  if (persona.role === 'soc' && atOwnShell(b) && b.world.now() >= mind.nextCheckAt) return checkOwnPc(b);
+
   // The next task step - unless it would START a new task before it is time (task pace).
   const next = b.world.nextStep();
   const step = next && (next.index > 0 || inRemoteShell(b) || b.world.now() >= mind.nextTaskAt) ? next : null;
@@ -426,15 +447,7 @@ function work(b: BotSubject): Status {
   }
 
   // Every now and then: is anything odd on my own PC? (The defenders' side of the game.)
-  if (!inRemoteShell(b) && b.world.now() >= mind.nextCheckAt) {
-    const command = b.checks.pick(SELF_CHECKS);
-    mind.screen = b.world.type(command);
-    for (const finding of inspect(command, mind.screen.output, { account: persona.account, desk: persona.desk, ip: b.world.myIp(), today: today(b.world.now()) })) b.world.report(finding);
-    mind.nextCheckAt = b.world.now() + b.checks.between(CHECK_EVERY[0], CHECK_EVERY[1]) * SECOND;
-    mind.doing = 'checking own PC';
-    mind.nextKeyAt = b.world.now() + b.checks.between(5, 15) * SECOND;
-    return 'running';
-  }
+  if (!inRemoteShell(b) && b.world.now() >= mind.nextCheckAt) return checkOwnPc(b);
 
   // Nothing from a task right now: now and then an everyday command, otherwise
   // reading, thinking, a phone call... (idle time: no keys pressed at all).
@@ -448,6 +461,21 @@ function work(b: BotSubject): Status {
     mind.doing = 'working';
   } else mind.doing = 'reading';
   pause(b, 15, 50);
+  return 'running';
+}
+
+/** One look at the own PC (or, for the SOC analyst, usually the SIEM), and what is odd about it. */
+function checkOwnPc(b: BotSubject): Status {
+  const { mind, persona } = b;
+  const soc = persona.role === 'soc' && (mind.alarmed || b.checks.chance(0.85));
+  mind.alarmed = false;
+  const command = soc ? SOC_CHECK : b.checks.pick(SELF_CHECKS);
+  mind.screen = b.world.type(command);
+  for (const finding of inspect(command, mind.screen.output, { account: persona.account, desk: persona.desk, ip: b.world.myIp(), today: today(b.world.now()) })) b.world.report(finding);
+  const [from, to] = persona.role === 'soc' ? SOC_CHECK_EVERY : CHECK_EVERY;
+  mind.nextCheckAt = b.world.now() + b.checks.between(from, to) * SECOND;
+  mind.doing = 'checking own PC';
+  mind.nextKeyAt = b.world.now() + b.checks.between(5, 15) * SECOND;
   return 'running';
 }
 
@@ -476,24 +504,32 @@ export function today(now: number): string {
  *  - `last`: a login TODAY that came over the network (an address in the
  *    third column) - nobody but the owner should use this PC, and the owner
  *    sits in front of it. (Before today it is old news.)
+ *  - `siem source=alert` (the SOC analyst): the alerts of today;
  *  - `crontab -l`: an "@reboot" line - ordinary employees never schedule
  *    anything, so this was not them.
  * Findings carry no suspect: the PC does not know WHO did it. The meeting
  * hears the facts and the investigators follow them up.
  */
-export function inspect(command: string, output: string, me: { account: string; desk: string; ip: string; today: string }): { text: string; weight: number }[] {
-  const found: { text: string; weight: number }[] = [];
+export function inspect(command: string, output: string, me: { account: string; desk: string; ip: string; today: string }): ClueReport[] {
+  const found: ClueReport[] = [];
   if (command.startsWith('last')) {
     for (const line of output.split('\n')) {
       const [user, , from] = line.trim().split(/\s+/);
       if (!user || !from || !/^\d+\.\d+\.\d+\.\d+$/.test(from) || from === me.ip || !line.includes(me.today)) continue;
       const at = /(\d\d:\d\d)/.exec(line.slice(line.indexOf(me.today)))?.[1] ?? '?';
-      found.push({ text: `Someone logged in to my PC ${me.desk} as ${user} from ${from} at ${at}. That was not me.`, weight: 0 });
+      found.push({ text: `Someone logged in to my PC ${me.desk} as ${user} from ${from} at ${at}. That was not me.`, weight: 0, line: line.trim() });
     }
   }
   if (command.startsWith('crontab')) {
     for (const line of output.split('\n')) {
-      if (line.trim().startsWith('@reboot')) found.push({ text: `My crontab on ${me.desk} has a line I never added: ${line.trim()}`, weight: 0 });
+      if (line.trim().startsWith('@reboot')) found.push({ text: `My crontab on ${me.desk} has a line I never added: ${line.trim()}`, weight: 0, line: line.trim() });
+    }
+  }
+  if (command === SOC_CHECK) {
+    // Rows of today begin with the time: "09:10:03 SEC-SRV-01    alert    severity=high rule=flag-read src_ip=10.0.2.71"
+    for (const line of output.split('\n')) {
+      const m = /^(\d\d:\d\d:\d\d) \S+ +alert +(.+)$/.exec(line.trimEnd());
+      if (m) found.push({ text: `The SIEM shows a security alert at ${m[1]}: ${m[2]}.`, weight: 0, line: line.trim() });
     }
   }
   return found;

@@ -120,6 +120,12 @@ export interface DebriefStepView {
   status: 'pinned' | 'seen' | 'missed' | 'none';
 }
 
+/** Solo matches: how well the player investigated. */
+export interface RatingView {
+  title: string;
+  lines: string[];
+}
+
 export interface DebriefView {
   winner: 'hacker' | 'defenders';
   reason: string;
@@ -140,6 +146,8 @@ export interface DebriefView {
     fired: string; wasHacker: boolean;
   }[];
   detentions: { time: number; guard: string; target: string; right: boolean }[];
+  /** Only in solo matches. */
+  rating?: RatingView;
 }
 
 export interface PublicState {

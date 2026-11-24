@@ -58,6 +58,8 @@ export interface BotHost extends Omit<MoverWorld, 'mayEnter'> {
   switchUser(avatar: Avatar): TerminalResult;
   usb(avatar: Avatar, hostname: string): void;
   submit(avatar: Avatar, text: string): boolean;
+  /** Puts a line of the bot's own screen on the evidence board. */
+  pin(avatar: Avatar, text: string): void;
   finished(): boolean;
   /** Job tasks: hand a player their tasks, read the next step, give one up. */
   tasks: TaskBoard;
@@ -71,6 +73,8 @@ export interface BotOptions {
   hackerNot?: string;
   /** How fast the simulated hacker plays. Default: the pace that belongs to its difficulty. */
   hackerPace?: HackerPace;
+  /** Bots put the clues they find on the evidence board themselves (solo matches on Easy). */
+  pinClues?: boolean;
   /** Probability that a bot leaves its desk without locking the screen (default 0.25). */
   forgetLock?: number;
   /**
@@ -112,6 +116,8 @@ export const VOTE_THRESHOLD = 2;
 /** A bot that strongly suspects somebody who was NOT accused votes "skip" instead of abstaining. */
 const SKIP_THRESHOLD = 3;
 const MAX_FINDINGS = 40;
+/** With `pinClues`, bots pin this many clues per match at most: some help, not the whole case. */
+export const MAX_BOT_PINS = 3;
 
 export interface Bot {
   playerId: string;
@@ -152,6 +158,7 @@ export class BotManager {
   readonly hackerDifficulty: HackerDifficulty;
   private readonly knowledge: HackerKnowledge;
   private lastLook = 0;
+  private pinned = 0;
 
   constructor(private readonly host: BotHost, seed: number, private readonly options: BotOptions = {}) {
     this.random = new Random(seed ^ 0x5eed_b075);
@@ -232,6 +239,23 @@ export class BotManager {
     for (const bot of this.bots.values()) if (bot.subject?.persona.account === account) bot.subject.persona.password = password;
   }
 
+  /**
+   * The security-alert banner went out. The SOC analyst saw it like everybody
+   * else, and goes to look at the SIEM now instead of finishing a break or an errand.
+   */
+  alarm(): void {
+    const now = this.host.world.time;
+    for (const bot of this.bots.values()) {
+      const s = bot.subject;
+      if (s?.persona.role !== 'soc') continue;
+      if (!s.body.seatedAt) s.mover.stop();
+      Object.assign(s.mind, {
+        alarmed: true, nextCheckAt: now, nextBreakAt: Math.max(s.mind.nextBreakAt, now + 120_000),
+        breakSpot: null, breakRoom: '', atBreakSpot: false, breakUntil: 0, errand: '', errandMs: 0, leaving: 'undecided',
+      });
+    }
+  }
+
   /** A bot's memory (tests and the developer panel). */
   mind(playerId: string): Mind | undefined {
     return this.bots.get(playerId)?.subject?.mind;
@@ -260,11 +284,12 @@ export class BotManager {
   }
 
   /** Adds a finding, unless the bot already remembers the same thing. */
-  private find(bot: Bot, f: Omit<Finding, 'time'>): void {
+  private find(bot: Bot, f: Omit<Finding, 'time'>): boolean {
     const same = bot.findings.find((x) => x.text === f.text || (f.suspect && x.suspect === f.suspect && x.weight === f.weight && this.host.world.time - x.time < 5 * 60_000));
-    if (same) return; // seen again within minutes: it is the same story
+    if (same) return false; // seen again within minutes: it is the same story
     bot.findings.push({ ...f, time: this.host.world.time });
     if (bot.findings.length > MAX_FINDINGS) bot.findings.shift();
+    return true;
   }
 
   /**
@@ -450,7 +475,12 @@ export class BotManager {
       hasUnreadMail: () => host.world.mail.messages.some((m) => m.to.includes(body.account) && !m.readBy.includes(body.account) && m.subject === 'IT password reset'),
       report: (f) => {
         const bot = this.bots.get(body.playerId);
-        if (bot) this.find(bot, { suspect: f.suspect ?? '', weight: f.weight, text: f.text });
+        if (!bot) return;
+        const fresh = this.find(bot, { suspect: f.suspect ?? '', weight: f.weight, text: f.text });
+        if (fresh && f.line && this.options.pinClues && this.pinned < MAX_BOT_PINS) {
+          this.pinned++;
+          host.pin(body, f.line);
+        }
       },
     };
   }

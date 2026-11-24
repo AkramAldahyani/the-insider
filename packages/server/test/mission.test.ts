@@ -194,13 +194,20 @@ describe('the careless sysadmin', () => {
     const r = new Recorder({ bots: true, weaknesses: ['careless-admin'] });
     r.tick(minutes(90));
     const world = r.game.world;
-    const rate = (playerId: string, host: string) => {
-      const forgotten = world.unattended.filter((w) => w.host === host && w.ownerPlayer === playerId && w.from > START).length;
-      const locked = queryEvents(world, { type: 'session.lock', host, actor: playerId, since: START }).length;
-      return forgotten / Math.max(1, forgotten + locked);
+    /** Of all the times these people left their own PC: how often it stayed open. */
+    const rate = (people: typeof scenario.players) => {
+      let forgotten = 0;
+      let locked = 0;
+      for (const p of people) {
+        forgotten += world.unattended.filter((w) => w.host === p.desk && w.ownerPlayer === p.id && w.from > START).length;
+        locked += queryEvents(world, { type: 'session.lock', host: p.desk, actor: p.id, since: START }).length;
+      }
+      expect(forgotten + locked).toBeGreaterThan(3);
+      return forgotten / (forgotten + locked);
     };
-    expect(rate('p5', 'IT-WS-02')).toBeGreaterThan(0.55);
-    expect(rate('p1', 'FIN-LT-07')).toBeLessThan(0.5);
+    // His colleagues together, not one of them: one person leaves their desk too few times to show a habit.
+    expect(rate(scenario.players.filter((p) => p.id === 'p5'))).toBeGreaterThan(0.55);
+    expect(rate(scenario.players.filter((p) => p.id !== 'p5'))).toBeLessThan(0.4);
     expect(world.unattended.filter((w) => w.host === 'IT-WS-02' && w.from > START).length).toBeGreaterThanOrEqual(3);
   }, 30_000);
 });
