@@ -23,10 +23,10 @@ import {
 import { BotManager, type BotOptions } from './bots/manager';
 import { Doors, type Walker } from './doors';
 import { Random } from './bots/random';
-import { Cctv } from './cctv';
+import { Cctv, type Snapshot } from './cctv';
 import { Debrief } from './debrief';
-import { EvidenceBoard } from './evidence';
-import { comment, judgeAccusation, type Judge, type Testimony, type Verdict } from './judge';
+import { EvidenceBoard, type EvidenceItem } from './evidence';
+import { comment, judgeAccusation, strongCase, type Judge, type Testimony, type Verdict } from './judge';
 import { rate } from './rating';
 import { DEFAULT_MEETING_TIMES, Meetings, type MeetingTimes } from './meeting';
 import { checkMapAgainstScenario } from './mapCheck';
@@ -190,7 +190,16 @@ export class OfficeGame {
           switchUser: (a) => switchUser(this.world, a.terminalId),
           usb: (a, hostname) => this.startItem(a, { item: 'usb', hostname }),
           submit: (a, text) => this.submitFlag(a, text),
-          pin: (a, text) => this.pinForBot(a, text),
+          pin: (a, text) => this.pinForBot(a, { kind: 'screen', title: `${a.seatedAt} screen`, text, shown: text }),
+          pinPicture: (a, shot) => this.pinForBot(a, this.pictureItem(shot)),
+          pinBadgeLine: (a, line) => this.pinForBot(a, { kind: 'log', title: 'Badge log', text: line }),
+          board: () => this.board.items,
+          atMonitors: (a) => this.atMonitors(a),
+          pictures: (after) => this.cctv.cameras.flatMap((c) => this.cctv.recording(c.id).filter((s) => s.time > after)).sort((a, b) => a.time - b.time),
+          badgeLines: () => this.badgeLines(),
+          mayDetain: (a) => !this.detainLost.has(a.playerId),
+          strongCase: (guard, saw) => this.strongSuspect(guard, saw),
+          detain: (a, target) => this.detain(a, target),
           finished: () => this.over !== null,
           tasks: this.tasks,
         }, options.seed ?? 1, options.botOptions);
@@ -562,9 +571,7 @@ export class OfficeGame {
     } else if (data.kind === 'snapshot' && typeof data.snapshot === 'string') {
       const shot = this.cctv.find(data.snapshot);
       if (!shot || !this.board.sawShot(avatar.clientId, data.snapshot)) return no('You can pin a camera picture you are looking at on the monitors.');
-      const people = shot.people.map((p) => ({ name: p.name, x: p.x, y: p.y, facing: p.facing, seatedAt: p.seatedAt, activity: p.activity }));
-      const who = people.length === 0 ? 'nobody in view' : people.map((p) => p.name + (p.seatedAt ? ` at ${p.seatedAt}` : '') + (p.activity === 'at-pc' ? ' (crouched at a PC)' : '')).join(', ');
-      item = this.board.add({ ...base, kind: 'snapshot', title: shot.camera, text: `${new Date(shot.time).toISOString().slice(11, 19)} ${who}`, frame: { camera: shot.camera, time: shot.time, people } });
+      item = this.board.add({ ...base, ...this.pictureItem(shot) });
     } else if (data.kind === 'log' && typeof data.text === 'string' && (data.source === 'badges' || data.source === 'motion')) {
       if (!this.board.sawLine(avatar.clientId, data.text)) return no('You can pin a line the monitors showed you.');
       item = this.board.add({ ...base, kind: 'log', title: data.source === 'badges' ? 'Badge log' : 'Camera motion log', text: data.text.trim() });
@@ -574,9 +581,22 @@ export class OfficeGame {
     this.sendBoard();
   }
 
-  /** A bot puts a line of its own screen on the board, and says so. */
-  private pinForBot(avatar: Avatar, text: string): void {
-    const item = this.board.add({ time: this.world.time, pinnedBy: avatar.name, pinnedById: avatar.playerId, kind: 'screen', title: `${avatar.seatedAt} screen`, text, shown: text });
+  /** A camera picture as it goes on the board. */
+  private pictureItem(shot: Snapshot): Pick<EvidenceItem, 'kind' | 'title' | 'text' | 'frame'> {
+    const people = shot.people.map((p) => ({ name: p.name, x: p.x, y: p.y, facing: p.facing, seatedAt: p.seatedAt, activity: p.activity }));
+    const who = people.length === 0 ? 'nobody in view' : people.map((p) => p.name + (p.seatedAt ? ` at ${p.seatedAt}` : '') + (p.activity === 'at-pc' ? ' (crouched at a PC)' : '')).join(', ');
+    return { kind: 'snapshot', title: shot.camera, text: `${new Date(shot.time).toISOString().slice(11, 19)} ${who}`, frame: { camera: shot.camera, time: shot.time, people } };
+  }
+
+  /** Somebody against whom the evidence is strong, or null (see judge.ts). */
+  private strongSuspect(guard: string, saw: { suspect: string; weight: number; caught: boolean }[]): string | null {
+    const judge = this.judge();
+    return [...this.living()].find((id) => id !== guard && strongCase(this.board.items, id, judge, saw)) ?? null;
+  }
+
+  /** A bot puts something it saw on the board, and the players are told. */
+  private pinForBot(avatar: Avatar, what: Pick<EvidenceItem, 'kind' | 'title' | 'text' | 'shown' | 'frame'>): void {
+    const item = this.board.add({ time: this.world.time, pinnedBy: avatar.name, pinnedById: avatar.playerId, ...what });
     if (!item) return;
     for (const a of this.humans()) this.send(a.clientId, 'notice', { text: `${avatar.name} pinned something to the evidence board (${item.id}).` });
     this.sendBoard();
@@ -602,16 +622,23 @@ export class OfficeGame {
   /** The list of recordings and the latest badge and motion lines, for someone at the monitors. */
   private monitorsOpen(avatar: Avatar): void {
     if (!this.atMonitors(avatar)) return this.send(avatar.clientId, 'notice', { text: 'The security monitors are in the security office.' });
-    const host = this.world.badges.serverHost;
-    const lines = (path: string, n: number) => this.tail(host, path, n).split('\n').filter((l) => l && !l.startsWith('(no file'));
     this.send(avatar.clientId, 'monitors.index', {
       cameras: this.cctv.cameras.map((c) => ({
         id: c.id,
         shots: this.cctv.recording(c.id).slice(-MONITOR_SHOTS).map((s) => ({ id: s.id, time: s.time, count: s.people.length })),
       })),
-      badges: lines('/var/log/badge/access.log', 40),
-      motion: lines('/var/log/cctv/motion.log', 25),
+      badges: this.badgeLines(),
+      motion: this.logLines('/var/log/cctv/motion.log', 25),
     });
+  }
+
+  /** The last lines of a log on the badge server. */
+  private logLines(path: string, n: number): string[] {
+    return this.tail(this.world.badges.serverHost, path, n).split('\n').filter((l) => l && !l.startsWith('(no file'));
+  }
+
+  private badgeLines(): string[] {
+    return this.logLines('/var/log/badge/access.log', 40);
   }
 
   /** One recorded picture (the latest at or before `time`), for someone at the monitors. */

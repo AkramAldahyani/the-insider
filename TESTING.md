@@ -524,6 +524,13 @@ Shared office, two tabs: Omar joining **as the hacker**, and Sara. `BOT_HACKER=0
 3. As Sara, sit at a colleague's PC while somebody else is in the room, and call a meeting: the witness says *I saw Sara Alharbi sitting at the PC of ...*.
 4. Developer panel, **Bots**: a bot that checks its PC shows *checking own PC*.
 
+## AL. Phase 5a, part E: bots that investigate
+
+There is no menu entry for this yet (Infiltration, part F, will use it). The automated tests play it:
+`pnpm exec vitest run packages/server/test/investigators.test.ts`. They cover the analyst's queries, the guard's monitors, a careless
+hacker being traced and detained, a framed colleague being detained by mistake, weak evidence, and ordinary days.
+In the shared office and in Investigation nothing changed.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -555,7 +562,7 @@ the outstanding manual check of password masking at a real interactive keyboard.
 pnpm test
 ```
 
-Expected: `Test Files 49 passed (49)` and `Tests 597 passed (597)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
+Expected: `Test Files 50 passed (50)` and `Tests 614 passed (614)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
 
 On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent workers. This passed the complete suite during Phase 5F validation after three existing long-running tests timed out with unrestricted workers.
 

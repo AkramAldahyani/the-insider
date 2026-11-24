@@ -33,11 +33,14 @@
  * on what it knows itself (see `ballot`).
  */
 import { commandNames, screenState, setHacker, type Scenario, type TerminalResult, type World } from '@insider/engine';
-import { PLAYER_RADIUS, isFree, roomAt, type MapDoor, type Point } from '@insider/shared';
+import { DETAIN_DISTANCE, PLAYER_RADIUS, isFree, roomAt, type MapDoor, type Point } from '@insider/shared';
 import type { Avatar } from '../visibility';
 import { CHECK_MINUTES, employeeTree, firstCheck, newMind, type BotSubject, type BrainWorld, type Mind, type Persona } from './brain';
+import { Analyst, refusedBadge, suspicious, type StaffEntry } from './investigators';
 import { Mover, type MoverWorld } from './mover';
 import { Random } from './random';
+import type { Snapshot } from '../cctv';
+import type { EvidenceItem } from '../evidence';
 import type { Verdict } from '../judge';
 import type { TaskBoard } from '../tasks';
 import { HackerBrain, type HackerPlan } from './hacker';
@@ -61,8 +64,20 @@ export interface BotHost extends Omit<MoverWorld, 'mayEnter'> {
   switchUser(avatar: Avatar): TerminalResult;
   usb(avatar: Avatar, hostname: string): void;
   submit(avatar: Avatar, text: string): boolean;
-  /** Puts a line of the bot's own screen on the evidence board. */
+  /** Puts a line of the bot's own screen on the evidence board, or a picture or badge line from the monitors. */
   pin(avatar: Avatar, text: string): void;
+  pinPicture(avatar: Avatar, shot: Snapshot): void;
+  pinBadgeLine(avatar: Avatar, line: string): void;
+  /** The evidence board, which everybody sees. */
+  board(): readonly EvidenceItem[];
+  /** Is this body standing at the security monitors? What they show: pictures after a time, and the badge log's last lines. */
+  atMonitors(avatar: Avatar): boolean;
+  pictures(after: number): Snapshot[];
+  badgeLines(): string[];
+  /** May this guard still detain people? And somebody against whom the evidence is strong, given what the guard saw (null = nobody). */
+  mayDetain(avatar: Avatar): boolean;
+  strongCase(guard: string, saw: { suspect: string; weight: number; caught: boolean }[]): string | null;
+  detain(avatar: Avatar, target: string): void;
   finished(): boolean;
   /** Job tasks: hand a player their tasks, read the next step, give one up. */
   tasks: TaskBoard;
@@ -78,6 +93,8 @@ export interface BotOptions {
   hackerPace?: HackerPace;
   /** Bots put the clues they find on the evidence board themselves: at most this many in a match (default 0). */
   pinClues?: number;
+  /** The bot SOC analyst follows addresses and the bot guard watches the monitors and detains (see investigators.ts). */
+  investigate?: boolean;
   /** Game minutes between two rounds of checks a bot makes of its own PC (default 8 to 20). */
   checkMinutes?: readonly [number, number];
   /** Probability that a bot leaves its desk without locking the screen (default 0.25). */
@@ -114,6 +131,8 @@ export interface Finding {
   suspect: string;
   /** How suspicious (0-3, see the top of this file). */
   weight: number;
+  /** It was seen while it happened (somebody fiddling with a PC). */
+  caught?: boolean;
 }
 
 /** A bot votes for an accused person when what it knows against them adds up to at least this. */
@@ -135,6 +154,12 @@ export interface Bot {
   /** Player id -> how the bot last saw them ("room|desk"), to record only changes. */
   lastSeen: Map<string, string>;
   hacker: HackerBrain | null;
+  /** An investigating guard: whom it is after, when it may go after somebody again, and what it has looked at on the monitors. */
+  chase: { suspect: string; until: number; replanAt: number } | null;
+  nextChaseAt: number;
+  considered: string;
+  watchedUntil: number;
+  badgeLines: Set<string>;
 }
 
 /** Bots arrive between these many game seconds after they are scheduled. */
@@ -190,7 +215,7 @@ export class BotManager {
     const delay = this.random.between(earliestInSeconds, Math.max(earliestInSeconds + 10, ARRIVE_MAX_S));
     // Every bot has its own generator, so removing one bot does not change what the others do.
     const random = new Random(Math.floor(this.random.next() * 2 ** 32));
-    this.bots.set(playerId, { playerId, arriveAt: this.host.world.time + delay * 1000, random, subject: null, observations: [], findings: [], lastSeen: new Map(), hacker: null });
+    this.bots.set(playerId, { playerId, arriveAt: this.host.world.time + delay * 1000, random, subject: null, observations: [], findings: [], lastSeen: new Map(), hacker: null, chase: null, nextChaseAt: 0, considered: '', watchedUntil: this.host.world.time, badgeLines: new Set() });
   }
 
   /** A human took this employee: the bot disappears (its PC, if it was at one, stays as it is). */
@@ -289,6 +314,7 @@ export class BotManager {
   /** Adds a finding, unless the bot already remembers the same thing. */
   private find(bot: Bot, f: Omit<Finding, 'time'>): boolean {
     const same = bot.findings.find((x) => x.text === f.text || (f.suspect && x.suspect === f.suspect && x.weight === f.weight && this.host.world.time - x.time < 5 * 60_000));
+    if (same && f.caught) same.caught = true;
     if (same) return false; // seen again within minutes: it is the same story
     bot.findings.push({ ...f, time: this.host.world.time });
     if (bot.findings.length > MAX_FINDINGS) bot.findings.shift();
@@ -475,6 +501,10 @@ export class BotManager {
       abandon: (taskId) => host.tasks.abandon(body.playerId, taskId),
       colleagueDesks: () => workstations.filter((h) => h.department === own?.department).map((h) => h.hostname),
       otherDesks: () => workstations.map((h) => h.hostname),
+      watchSpot: () => {
+        const station = map.furniture.find((f) => f.kind === 'monitors');
+        return this.options.investigate && station ? { x: station.x + station.width / 2, y: station.y - 16 } : null;
+      },
       myIp: () => (own ? host.world.hosts[own.hostname]?.ip ?? '' : ''),
       hasUnreadMail: () => host.world.mail.messages.some((m) => m.to.includes(body.account) && !m.readBy.includes(body.account) && m.subject === 'IT password reset'),
       report: (f) => {
@@ -482,10 +512,7 @@ export class BotManager {
         // The hacker checks its own PC like everybody (it would stand out otherwise), but tells nobody about its own traces.
         if (!bot || host.world.mission.hacker === body.playerId) return;
         const fresh = this.find(bot, { suspect: f.suspect ?? '', weight: f.weight, text: f.text });
-        if (fresh && f.line && this.pinned < (this.options.pinClues ?? 0)) {
-          this.pinned++;
-          host.pin(body, f.line);
-        }
+        if ((fresh || f.pin) && f.line && this.mayPin(f.line)) host.pin(body, f.line);
       },
     };
   }
@@ -509,9 +536,93 @@ export class BotManager {
       mind: newMind(world.time, bot.random, persona.taskEveryMs),
       world: this.brainWorld(body, mover, bot.random),
     };
+    if (this.options.investigate && player.role === 'soc') bot.subject.analyst = new Analyst(player.id, this.staff(), () => [...this.host.board()]);
     bot.subject.mind.nextCheckAt = firstCheck(world.time, checks, persona.checkMinutes);
     this.host.addBody(body);
     this.host.tasks.assign(player.id);
+  }
+
+  // ───────────────────────────── Investigating (Phase 5a, part E) ─────────────────────────────
+
+  private staff(): StaffEntry[] {
+    return this.host.world.players.map((p) => ({ id: p.id, name: p.name, account: p.account, desk: p.desk, it: p.role === 'sysadmin' || p.role === 'helpdesk' }));
+  }
+
+  /** Counts a pin against the limit of the match. The same line is never pinned twice. */
+  private mayPin(text: string): boolean {
+    if (this.pinned >= (this.options.pinClues ?? 0) || this.host.board().some((i) => i.text === text)) return false;
+    this.pinned++;
+    return true;
+  }
+
+  /** The guard at the monitors: the pictures and badge lines since it last looked. */
+  private watch(bot: Bot): void {
+    const body = bot.subject!.body;
+    const { world, map } = this.host;
+    const since = bot.watchedUntil;
+    bot.watchedUntil = world.time;
+    const staff = this.staff();
+    for (const shot of this.host.pictures(since)) {
+      for (const p of shot.people) {
+        if (p.playerId === bot.playerId) continue;
+        const clue = suspicious({ ...p, room: roomAt(map, p.x, p.y) }, shot.camera, clock(shot.time), staff);
+        if (clue && this.find(bot, { suspect: clue.suspect!, weight: clue.weight, text: clue.text, caught: clue.caught }) && this.mayPin(`picture ${shot.id}`)) this.host.pinPicture(body, shot);
+      }
+    }
+    for (const line of this.host.badgeLines()) {
+      if (bot.badgeLines.has(line)) continue;
+      bot.badgeLines.add(line);
+      const clue = refusedBadge(line, staff);
+      if (clue && clue.suspect !== bot.playerId && this.find(bot, { suspect: clue.suspect!, weight: clue.weight, text: clue.text }) && this.mayPin(line)) this.host.pinBadgeLine(body, line);
+    }
+  }
+
+  /**
+   * The guard goes after somebody against whom the evidence is strong. True
+   * while it does (it then follows no routine). It gives up after five game
+   * minutes and thinks again three minutes later.
+   */
+  private pursue(bot: Bot): boolean {
+    const s = bot.subject!;
+    if (!this.options.investigate || s.persona.role !== 'guard') return false;
+    const now = this.host.world.time;
+    if (!bot.chase) {
+      if (now < bot.nextChaseAt) return false;
+      bot.nextChaseAt = now + 5000;
+      if (!this.host.mayDetain(s.body)) return false;
+      // Think again only when there is something new to think about.
+      const known = `${this.host.board().length}/${bot.findings.length}/${bot.findings.filter((f) => f.caught).length}`;
+      if (known === bot.considered) return false;
+      bot.considered = known;
+      const suspect = this.host.strongCase(bot.playerId, bot.findings.map((f) => ({ suspect: f.suspect, weight: f.weight, caught: f.caught ?? false })));
+      if (!suspect || suspect === bot.playerId) return false;
+      bot.chase = { suspect, until: now + 5 * 60_000, replanAt: 0 };
+      if (s.body.seatedAt) this.host.stand(s.body);
+      s.mover.stop();
+      Object.assign(s.mind, { screen: null, breakSpot: null, breakRoom: '', atBreakSpot: false, breakUntil: 0, errand: '', errandMs: 0, leaving: 'undecided', loginSteps: 0 });
+    }
+    const chase = bot.chase;
+    const target = this.host.bodies().find((b) => b.playerId === chase.suspect);
+    if (!target || now > chase.until || !this.host.mayDetain(s.body)) {
+      bot.chase = null;
+      bot.considered = ''; // the same evidence is still strong: try again later
+      bot.nextChaseAt = now + 3 * 60_000;
+      s.mover.stop();
+      return false;
+    }
+    s.mind.doing = `going to ${target.name}`;
+    if (Math.hypot(target.x - s.body.x, target.y - s.body.y) <= DETAIN_DISTANCE - 16 && roomAt(this.host.map, target.x, target.y) === roomAt(this.host.map, s.body.x, s.body.y)) {
+      s.mover.stop();
+      bot.chase = null;
+      bot.nextChaseAt = now + 3 * 60_000;
+      this.host.detain(s.body, target.playerId);
+      return true;
+    }
+    if (now >= chase.replanAt) {
+      chase.replanAt = now + 1500;
+      s.mover.goTo(target.x, target.y); // if there is no way (a door this badge does not open): wait and try again
+    }
+    return true;
   }
 
   // ───────────────────────────── Every tick ─────────────────────────────
@@ -526,7 +637,7 @@ export class BotManager {
       const isHacker = this.options.hacker !== false && this.host.world.mission.hacker === bot.playerId && this.host.world.mission.flag !== null;
       if (isHacker && !bot.hacker) bot.hacker = this.hackerBrain(bot.subject);
       if (!isHacker && bot.hacker) this.relinquishHacker(bot.playerId);
-      if (!isHacker || !bot.hacker!.tick(bot.subject)) employeeTree(bot.subject); // decide
+      if ((!isHacker || !bot.hacker!.tick(bot.subject)) && !this.pursue(bot)) employeeTree(bot.subject); // decide
       if (this.host.finished()) return;
       bot.subject.mover.update(realMs); // walk
     }
@@ -534,6 +645,7 @@ export class BotManager {
     if (this.host.world.time - this.lastLook >= 1000) {
       this.lastLook = this.host.world.time;
       this.look();
+      if (this.options.investigate) for (const bot of this.bots.values()) if (bot.subject?.persona.role === 'guard' && this.host.atMonitors(bot.subject.body)) this.watch(bot);
     }
   }
 
@@ -562,14 +674,14 @@ export class BotManager {
         // Is any of this worth telling a meeting?
         const at = clock(world.time);
         if (body.seatedAt === myDesk) this.find(bot, { suspect: body.playerId, weight: 2, text: `I saw ${body.name} sitting at my PC ${myDesk} at ${at}, while I was away from it.` });
-        if (body.hold?.hostname === myDesk) this.find(bot, { suspect: body.playerId, weight: 3, text: `I saw ${body.name} doing something to my PC ${myDesk} at ${at}, standing at it, not sitting.` });
+        if (body.hold?.hostname === myDesk) this.find(bot, { suspect: body.playerId, weight: 3, caught: true, text: `I saw ${body.name} doing something to my PC ${myDesk} at ${at}, standing at it, not sitting.` });
         const job = world.players.find((p) => p.id === body.playerId)?.role;
         // At somebody else's PC? (The helpdesk and the administrator work there.)
         const owner = (hostname: string) => world.players.find((p) => p.desk === hostname && p.id !== body.playerId);
         const theirs = body.seatedAt && body.seatedAt !== myDesk ? owner(body.seatedAt) : undefined;
         const held = body.hold && body.hold.hostname !== myDesk ? owner(body.hold.hostname) : undefined;
         if (theirs && job !== 'sysadmin' && job !== 'helpdesk') this.find(bot, { suspect: body.playerId, weight: 1, text: `I saw ${body.name} sitting at the PC of ${theirs.name} at ${at}.` });
-        if (held) this.find(bot, { suspect: body.playerId, weight: 2, text: `I saw ${body.name} doing something to the PC of ${held.name} at ${at}, standing at it, not sitting.` });
+        if (held) this.find(bot, { suspect: body.playerId, weight: 2, caught: true, text: `I saw ${body.name} doing something to the PC of ${held.name} at ${at}, standing at it, not sitting.` });
         if (room === 'Server room' && job !== 'sysadmin' && job !== 'helpdesk') this.find(bot, { suspect: body.playerId, weight: 1, text: `I saw ${body.name} in the server room at ${at}. They do not work in IT.` });
       }
       // Out of sight: seeing them again later is a new observation.

@@ -75,7 +75,7 @@ Update it at the end of every part.
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
 | 5 Investigation & social deduction | **done**: Parts A-J |
-| 5a Solo modes | **in progress**: Parts A-D done (Investigation is playable); E (bot SOC analyst and guard) next |
+| 5a Solo modes | **in progress**: Parts A-E done (Investigation is playable); F (Infiltration mode) next |
 
 ## Phase 5a plan (solo modes): APPROVED by the owner on 2026-11-24, with all five defaults
 
@@ -88,8 +88,8 @@ with debrief." After each part: all tests, this file, commit locally (never push
 | B | Evidence that convinces: bots judge whether the pins point at the accused (account, PC, address, camera picture) and vote on that; never the hidden truth | **done** |
 | C | Investigation mode: role choice, three difficulty levels, a rating in the debrief (proven case / lucky guess), browser test. Investigation playable | **done** |
 | D | Bots notice more: `ps aux`, `ss -tnp`, USB events, people at the wrong desk; they pin what they find | **done** |
-| E | Bot SOC analyst (reads the SIEM, follows addresses) and guard (cameras, patrols; detains only on strong evidence) | next |
-| F | Infiltration mode: bots call meetings, accuse with evidence and vote; the hacker's start and end screens. Infiltration playable | |
+| E | Bot SOC analyst (reads the SIEM, follows addresses) and guard (cameras, patrols; detains only on strong evidence) | **done** |
+| F | Infiltration mode: bots call meetings, accuse with evidence and vote; the hacker's start and end screens. Infiltration playable | next |
 | G | Scenario ladder: five levels in the existing office, each with a briefing; progress kept in the browser | |
 | H | Balance, soak test of both modes, browser tests, docs | |
 
@@ -194,6 +194,28 @@ Defaults (accepted):
 - Limits: `dmesg` lines carry no time of day, so an old USB keyboard would be reported too (the scenario has none); bots do
   not look at their own `.bash_history`.
 - 597 Vitest tests in 49 files, 12 Playwright.
+
+### Part E: what exists now (bots that investigate)
+
+- Switched on by `botOptions.investigate` (default off: the shared office and Investigation are unchanged, colleagues there
+  never solve the case). Part F turns it on for Infiltration, together with a larger `pinClues`.
+- `server/src/bots/investigators.ts` (no World): `Analyst` (the SOC bot): `saw` the alerts, `next` query, `read` answer:
+  alert > address > DHCP lease > PC > owner; the newest login from there; and, if it was the owner's own account outside
+  IT, whether it became root. Leads also come from what colleagues pinned (ESTAB peers, odd logins). Pins its rows. An
+  escalated or LOW alert is only a lead (weight 1). Addresses of servers, and its own, lead nowhere.
+  `suspicious` / `refusedBadge`: what the guard makes of a camera picture or a badge line.
+- Guard (bots/manager.ts): half of its rounds go to the monitors (`watchSpot`, `watch`): pictures since the last look and
+  the last 40 badge lines, like a human there. `pursue`: when `strongCase` (judge.ts) names somebody, walks up and detains
+  through the same `detain` as a human; a wrong one costs the power. Five game minutes, then a pause.
+- `strongCase` is stricter than a vote: three pointing pieces with two unusual ones (not counted: anti-stall alerts, LOW
+  alerts, refusals), or the guard saw them fiddling with a PC (`Finding.caught`), or at a wrong desk plus one unusual piece.
+- Nothing here knows the hacker: working from somebody else's open PC frames its owner (tested).
+- Measured: a careless human hacker (own desk, su, flag) is detained 0.9 to 1.5 game minutes after reading the flag (25
+  seeds); no pin and no detention in 24 ordinary office hours (12 seeds). FOR PART F/H: that is quick; difficulty should
+  slow the investigators down (pauses between queries, how often the guard thinks), and the anti-stall alerts lead to the
+  hacker's own login every 10 minutes.
+- Tests: `server/test/investigators.test.ts` (17).
+- 614 Vitest tests in 50 files, 12 Playwright.
 
 ## Phase 5 status: DONE (Parts A-J; plan approved by the owner, defaults 1-6 accepted)
 

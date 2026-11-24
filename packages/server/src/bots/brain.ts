@@ -21,6 +21,7 @@
 import { lastStamp, type TerminalResult } from '@insider/engine';
 import type { Point } from '@insider/shared';
 import type { Avatar } from '../visibility';
+import type { Analyst } from './investigators';
 import type { Mover } from './mover';
 import type { Random } from './random';
 import { condition, selector, sequence, type Node, type Status } from './tree';
@@ -61,6 +62,8 @@ export interface BrainWorld {
   colleagueDesks(): string[];
   /** Every desk except the bot's own. */
   otherDesks(): string[];
+  /** Where a guard who investigates stands to look at the monitors (null = this bot does not). */
+  watchSpot(): Point | null;
   /** The address of the bot's own PC (what `ip a` would show). */
   myIp(): string;
   /** The bot noticed something odd while checking its own PC: it remembers it (and may tell a meeting). */
@@ -75,6 +78,8 @@ export interface ClueReport {
   suspect?: string;
   weight: number;
   line?: string;
+  /** Pin the line even if the finding itself is an old story. */
+  pin?: boolean;
 }
 
 /** Everything fixed about one bot. */
@@ -161,6 +166,8 @@ export interface BotSubject {
   checks: Random;
   mailRandom: Random;
   world: BrainWorld;
+  /** The SOC analyst's investigation, in matches where bots investigate. */
+  analyst?: Analyst;
 }
 
 // ───────────────────────────── Helpers ─────────────────────────────
@@ -221,7 +228,9 @@ function chooseBreak(b: BotSubject): { spot: Point | null; room: string } {
   if (b.mind.errand) return room(b.mind.errand); // a task sends the bot somewhere
   const roll = random.next();
   if (persona.role === 'guard') {
-    // A patrol: mostly the corridor and the public rooms.
+    // A patrol: mostly the corridor and the public rooms. An investigating guard also goes to the monitors.
+    const watch = world.watchSpot();
+    if (watch && b.checks.chance(0.5)) return { spot: watch, room: 'the monitors' };
     return room(random.pick(['Corridor', 'Corridor', 'Reception', 'Cafeteria / meeting room', 'Printer room', 'Storage']));
   }
   if (persona.role === 'helpdesk' && roll < 0.6) return desk(random.pick(reachable(world.otherDesks()))); // "have you tried turning it off and on?"
@@ -410,6 +419,18 @@ function work(b: BotSubject): Status {
     return 'running';
   }
 
+  // An investigating analyst follows its leads, one query at a time.
+  if (b.analyst && !mind.alarmed && atOwnShell(b) && b.world.now() < mind.nextCheckAt) {
+    const query = b.analyst.next();
+    if (query) {
+      mind.screen = b.world.type(query);
+      for (const clue of b.analyst.read(mind.screen.output)) b.world.report(clue);
+      mind.doing = 'investigating';
+      mind.nextKeyAt = b.world.now() + b.checks.between(8, 20) * SECOND;
+      return 'running';
+    }
+  }
+
   // The SOC analyst looks at the alerts before starting anything else (after an alert: leaving the server for it, too).
   if (mind.alarmed && inRemoteShell(b)) {
     mind.screen = b.world.type('exit');
@@ -496,6 +517,7 @@ function checkOwnPc(b: BotSubject): Status {
   const command = mind.checkQueue.shift()!;
   mind.screen = b.world.type(command);
   for (const finding of inspect(command, mind.screen.output, { account: persona.account, desk: persona.desk, ip: b.world.myIp(), today: today(b.world.now()) })) b.world.report(finding);
+  if (command === SOC_CHECK && b.analyst) for (const clue of b.analyst.saw(mind.screen.output)) b.world.report(clue);
   if (mind.checkQueue.length === 0) {
     const [from, to] = persona.role === 'soc' ? SOC_CHECK_EVERY : [persona.checkMinutes[0] * 60, persona.checkMinutes[1] * 60];
     mind.nextCheckAt = b.world.now() + b.checks.between(from, to) * SECOND;

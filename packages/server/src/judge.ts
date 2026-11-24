@@ -86,7 +86,7 @@ function mentions(line: string, p: StaffMember): boolean {
 
 const ODD = /severity=|\[(low|medium|high)\]|\brule=|denied|refused|not in (the )?sudoers|not allowed|invalid user|flag-read|flag\.txt|log-cleared|network-scan|@reboot|backdoor|implant|keylog|\.tools\/|usb.*(keyboard|hid)|remote shell|\/\.[\w-]+\/|ESTAB.*:\d{4,5}\s+\S+:\d{4,5}\b|password-reset\.example|spf=fail/i;
 /** What witnesses say (the sentences of bots/manager.ts). */
-const WITNESS = /sitting at (my PC|the PC of)|doing something to (my PC|the PC of)|stood right behind me|They do not work in IT|Someone logged in to my PC|a line I never added|that I did not make/i;
+const WITNESS = /sitting at (my PC|the PC of)|doing something to (my PC|the PC of)|stood right behind me|They do not work in IT|crouched at a PC|That is another person's account|used root rights|was refused at the door|Someone logged in to my PC|a line I never added|that I did not make/i;
 const ROOT = /\(to root\)|user=root|session opened for user root|\buid=0\b/i;
 
 /** Lines like "Feb 27 15:10:00 ..." or "2026-02-27 ..." that are not from today. Without a date (SIEM rows) it is today. */
@@ -142,6 +142,25 @@ export function judgeAccusation(items: EvidenceItem[], suspectId: string, judge:
   verdict.testimony = said.find((t) => t.from !== suspect.name && (t.suspect ? t.suspect === suspect.id : mentions(t.text, suspect)) && (unusualLine(t.text, suspect, judge.staff) || WITNESS.test(t.text)))?.from ?? '';
   verdict.convincing = verdict.pointing.length >= POINTING_PIECES && (verdict.unusual.length > 0 || verdict.testimony !== '');
   return verdict;
+}
+
+const WEAK = /threat-escalation|severity=low|\[low\]|result=denied/i;
+
+/**
+ * Is the evidence strong enough for the guard to detain somebody? More than for
+ * a vote, because there is no second opinion and one mistake costs the power:
+ *  - three pieces on the board point at them, two of them unusual (not
+ *    counted here: an old action flagged again by the SIEM, which may be an
+ *    ordinary login, and attempts that were refused); or
+ *  - the guard saw them fiddling with a PC; or
+ *  - the guard saw them where they should not be, and one piece is unusual.
+ */
+export function strongCase(items: EvidenceItem[], suspectId: string, judge: Judge, saw: { suspect: string; weight: number; caught: boolean }[]): boolean {
+  const own = saw.filter((s) => s.suspect === suspectId);
+  if (own.some((s) => s.caught)) return true;
+  const { pointing, unusual } = judgeAccusation(items, suspectId, judge);
+  const solid = unusual.filter((id) => !WEAK.test(items.find((i) => i.id === id)!.text)).length;
+  return (pointing.length >= 3 && solid >= 2) || (solid >= 1 && own.some((s) => s.weight >= 2));
 }
 
 const list = (ids: string[]) => (ids.length < 2 ? ids.join('') : `${ids.slice(0, -1).join(', ')} and ${ids.at(-1)!}`);
