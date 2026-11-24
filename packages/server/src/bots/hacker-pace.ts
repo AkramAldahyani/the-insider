@@ -31,9 +31,9 @@ export interface HackerPace {
 export const FAST_PACE: HackerPace = { coverMinutes: [2, 2], lineSeconds: [2, 5], restMinutes: [0.5, 0.5], handInMinutes: [0, 0] };
 
 const PACES: Record<HackerDifficulty, HackerPace> = {
-  easy: { coverMinutes: [6, 9], lineSeconds: [35, 75], restMinutes: [3, 5], handInMinutes: [4, 6] },
-  normal: { coverMinutes: [5, 8], lineSeconds: [25, 55], restMinutes: [2, 4], handInMinutes: [3, 5] },
-  hard: { coverMinutes: [4, 6], lineSeconds: [15, 35], restMinutes: [1.5, 3], handInMinutes: [2, 3] },
+  easy: { coverMinutes: [6, 9], lineSeconds: [35, 75], restMinutes: [3, 5], handInMinutes: [7, 9] },
+  normal: { coverMinutes: [5, 8], lineSeconds: [25, 55], restMinutes: [2, 4], handInMinutes: [5.5, 7.5] },
+  hard: { coverMinutes: [4, 6], lineSeconds: [15, 35], restMinutes: [1.5, 3], handInMinutes: [4, 5.5] },
 };
 
 export function paceFor(difficulty: HackerDifficulty): HackerPace {

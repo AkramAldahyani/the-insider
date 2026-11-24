@@ -137,21 +137,29 @@ const pin = (r: Recorder, text: string) => r.send('me', 'evidence.pin', { kind: 
 /**
  * Plays one Investigation the way a person with this job would: waits for the
  * alert banner that everybody sees, finds out the address behind it, and traces
- * the address with what everybody may read on the admin server.
+ * the address with what everybody may read on the admin server. `think` is how many
+ * seconds they need for a step (reading, deciding, typing).
  */
-function investigate(role: SoloRole, difficulty: SoloChoice['difficulty'], seed: number): Recorder {
+function investigate(role: SoloRole, difficulty: SoloChoice['difficulty'], seed: number, think = 0): Recorder {
   const { r, me } = solo({ role, difficulty }, seed);
+  const slow = (steps: number) => void play(r, () => r.game.over !== null, (think * steps) / 60);
   const server = (host: string) => {
+    slow(1);
+    if (r.game.over) return;
     r.type('me', `ssh ${host}`);
     r.type('me', r.game.world.credentials[me.account].password);
     expect(r.screen('me').prompt).toContain(`@${host}`);
   };
   if (!play(r, () => r.messages('me', 'alert').length > 0 || r.game.over !== null, 60) || r.game.over) return r;
+  slow(3); // noticing the banner, going to the PC
+  if (r.game.over) return r;
 
   let ip = '';
   const fromLog = () => {
     atOwnPc(r, me);
     server('SEC-SRV-01');
+    slow(2);
+    if (r.game.over) return;
     const lines = r.type('me', 'cat /var/log/security/alerts.log').split('\n').filter((l) => / from \d+\.\d+/.test(l));
     ip = / from (\d+\.\d+\.\d+\.\d+)/.exec(lines.at(-1) ?? '')?.[1] ?? '';
     if (ip) pin(r, lines.at(-1)!.trim());
@@ -171,17 +179,24 @@ function investigate(role: SoloRole, difficulty: SoloChoice['difficulty'], seed:
     play(r, () => r.game.meetings.current === null, 3);
     ip = /src_ip=(\d+\.\d+\.\d+\.\d+)/.exec(chat(r).map((l) => l.text).join('\n'))?.[1] ?? '';
   }
+  if (r.game.over) return r;
   expect(ip, 'the address behind the alert').not.toBe('');
 
   if (!r.game.publicState().players[me.id].seatedAt) atOwnPc(r, me);
   server('ADMIN-SRV-01');
+  slow(2);
+  if (r.game.over) return r;
   const login = r.type('me', `last | grep "${ip} "`).split('\n').find((l) => l.includes(ip));
   if (login) pin(r, login.trim());
+  slow(2);
+  if (r.game.over) return r;
   const lease = r.type('me', `grep -A 8 "lease ${ip} " /var/lib/dhcp/dhcpd.leases | tail -9`);
   const pc = /client-hostname "([^"]+)"/.exec(lease)![1];
   const shown = lease.split('\n').filter((l) => l.includes(`lease ${ip} `) || l.includes('client-hostname'));
   for (const l of shown.slice(-2)) pin(r, l.trim());
   const suspect = scenario.players.find((p) => p.desk === pc)!;
+  slow(2);
+  if (r.game.over) return r;
   while (!r.screen('me').prompt.startsWith(`${me.account}@${me.desk}:`)) r.type('me', 'exit');
   if (r.game.over) return r;
 
@@ -204,6 +219,15 @@ describe('every job can solve the case', () => {
       expect(r.game.over?.winner, `seed ${seed}: ${JSON.stringify({ chat: chat(r).slice(-6), board: r.game.board.items.map((i) => i.text) })}`).toBe('defenders');
       expect(debrief(r).rating).toMatchObject({ title: 'Case proven' });
     }
+  }, 60_000);
+
+  it('also at a human pace: 20 seconds for every step are enough on Normal, whatever the job', () => {
+    for (const role of roles) for (const seed of [1, 2, 3]) expect(investigate(role, 'normal', seed, 20).game.over?.winner, `${role} ${seed}`).toBe('defenders');
+  }, 60_000);
+
+  it('on Hard that is too slow for the jobs that have to look in two places', () => {
+    const wins = [1, 2, 3, 4, 5, 6].filter((seed) => investigate('sysadmin', 'hard', seed, 35).game.over?.winner === 'defenders').length;
+    expect(wins).toBeLessThanOrEqual(2);
   }, 60_000);
 
   it('for an employee, what the SOC analyst told the meeting stands in for the alert nobody showed', () => {

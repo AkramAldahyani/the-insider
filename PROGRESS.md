@@ -75,7 +75,7 @@ Update it at the end of every part.
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
 | 5 Investigation & social deduction | **done**: Parts A-J |
-| 5a Solo modes | **in progress**: Parts A-G done (both modes and the ladder are playable); H (balance, final tests, docs) next |
+| 5a Solo modes | **done**: Parts A-H. Next is Phase 6 (multiplayer), after the owner's OK of a plan |
 
 ## Phase 5a plan (solo modes): APPROVED by the owner on 2026-11-24, with all five defaults
 
@@ -91,7 +91,7 @@ with debrief." After each part: all tests, this file, commit locally (never push
 | E | Bot SOC analyst (reads the SIEM, follows addresses) and guard (cameras, patrols; detains only on strong evidence) | **done** |
 | F | Infiltration mode: bots call meetings, accuse with evidence and vote; the hacker's start and end screens. Infiltration playable | **done** |
 | G | Scenario ladder: five levels in the existing office, each with a briefing; progress kept in the browser | **done** |
-| H | Balance, soak test of both modes, browser tests, docs | next |
+| H | Balance, soak test of both modes, browser tests, docs | **done** |
 
 Defaults (accepted):
 1. Weak evidence: at least two of the three pins must point at the accused, otherwise the bots vote "skip". A correct
@@ -107,7 +107,7 @@ Defaults (accepted):
 
 - `shared/src/solo.ts`: `SoloChoice {mode, role, difficulty}`, the allowed values, `parseSoloChoice` (the only thing the
   server accepts from a browser about a match; unknown values = refused, extra fields = dropped). Only the mode
-  `investigation` is listed; Part F adds `infiltration` (the menu shows it as not ready).
+  `investigation` was listed here at first; Part F added `infiltration`.
 - `server/src/solo.ts` `soloGameOptions(base, choice, seed)`: bots and bot hacker always on, the chosen difficulty,
   two meetings, the employee (picked by the match's seed among the role's people; own random sequence), and
   `botOptions.hackerNot` so the hacker is never the player. Part C adds the rest of the difficulty here.
@@ -263,6 +263,28 @@ Defaults (accepted):
 - Tests: `server/test/ladder.test.ts` (11); browser: level 1 to 2 and a page reload (`infiltration.spec.ts`).
 - Limit: progress is per browser and can be edited there (no accounts before Phase 8; nothing depends on it).
 - 650 Vitest tests in 52 files, 14 Playwright (11 office, 3 match).
+
+### Part H: what exists now (balance, long tests; Phase 5a is complete)
+
+- BALANCE CHANGE: the bot hacker waits longer between reading the flag and handing it in (hacker-pace.ts): easy 7-9 game
+  minutes (was 4-6), normal 5.5-7.5 (was 3-5), hard 4-5.5 (was 2-3). Pacing only. It applies to the shared office too.
+  Why: the earlier 375-of-375 came from players who type instantly. With players who need 20 s per step (12 seeds per
+  job and level) Normal was won 4 to 12 of 12 times depending on the job, Hard 0 to 6. Now at 20 s: Easy and Normal
+  12 of 12 with every job, Hard 12 (employee, SOC analyst, helpdesk) and 6 (guard, sysadmin). At 35 s: Easy 11-12; Normal
+  12 (employee, helpdesk), 8 (SOC analyst), 1-2 (guard, sysadmin); Hard 12 and 0. Calling a meeting early buys time
+  (the hacker must lie low and read the flag again), which is why employee and helpdesk do best.
+- Match lengths if nobody interferes (25 seeds): Investigation 19-35 / 14-28 / 11-16 game minutes (easy / normal / hard).
+  The shared office is the same but for days without a direct way in (up to 110).
+- Infiltration was measured again and left as it is (16 seeds): own desk 16 of 16 on Easy, 3 (12 s per line) to 7 (5 s) on
+  Normal, 0 on Hard; a borrowed chair with nobody near won every time one was free (14, 8 and 4 of 16 starts found one
+  within 25 minutes).
+- Server load: 0.1 (Investigation) to 0.9 (Infiltration) ms per second of play and match, worst tick about 8 ms.
+- Tests: `server/test/solo-soak.test.ts` (9: two hours of Infiltration doing only one's job at each level, passive
+  Investigations, no secret in a browser, caps, replay, load); `investigation.test.ts` also plays at a human pace.
+- Not done: phishing and the remote tools were not measured as ways to win Infiltration. Nobody has played either mode by
+  hand for a whole match yet; the numbers come from scripts.
+- 661 Vitest tests in 53 files, 14 Playwright (11 office, 3 match; 7.5 minutes). On a busy machine the office tests took twice as
+  long and one or two timed out (three runs that day, different tests, also slow on the previous commit); rerun them then.
 
 ## Phase 5 status: DONE (Parts A-J; plan approved by the owner, defaults 1-6 accepted)
 

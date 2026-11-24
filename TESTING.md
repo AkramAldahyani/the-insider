@@ -551,6 +551,23 @@ In the shared office and in Investigation nothing changed.
 
 To open all levels for testing, in the browser console: `localStorage.setItem('insider-ladder', '{"1":"x","2":"x","3":"x","4":"x"}')`, then reload.
 
+## AO. Phase 5a, part H: playing for balance
+
+No script replaces this. Play a few whole matches at the normal speed (no `TIME_SPEED`) and note the result, the rating and how it felt:
+
+| Match | Expected for a careful player |
+|---|---|
+| Investigation, Easy, any job | Comfortable: several minutes between the flag alert and the end |
+| Investigation, Normal, SOC analyst or employee | Usually won; call a meeting early when time runs out (it makes the hacker read the flag again) |
+| Investigation, Normal, guard or sysadmin | Tighter: two machines to look at. The guard may detain instead |
+| Investigation, Hard | Only with practice |
+| Infiltration, Easy, own desk | Won |
+| Infiltration, Normal, own desk | Often caught |
+| Infiltration, Hard, own desk | Always caught; from a colleague's PC, unseen, it can be won |
+
+Too easy or too hard? The numbers are in `packages/server/src/bots/hacker-pace.ts` (how long the bot hacker waits),
+`packages/server/src/solo.ts` (levels) and `packages/server/src/bots/investigation-pace.ts` (how fast bots investigate).
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -582,7 +599,7 @@ the outstanding manual check of password masking at a real interactive keyboard.
 pnpm test
 ```
 
-Expected: `Test Files 52 passed (52)` and `Tests 650 passed (650)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
+Expected: `Test Files 53 passed (53)` and `Tests 661 passed (661)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
 
 On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent workers. This passed the complete suite during Phase 5F validation after three existing long-running tests timed out with unrestricted workers.
 

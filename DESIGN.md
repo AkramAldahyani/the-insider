@@ -47,7 +47,7 @@ The game has three modes that share the same engine, office, bots, tools and evi
   confirmations), and **Hard** (full weakness knowledge). See §10 and §12.
 - Bot employees act as coworkers: they do tasks, share findings in chat, attend meetings and vote based on the evidence they have seen.
 - The player wins by getting the hacker voted out or detained with a valid evidence chain. They lose if the flag is stolen or the hackers reach parity.
-- Difficulty controls the bot hacker's stealth, how much bot coworkers help, and how many vulnerabilities are open.
+- Difficulty controls the bot hacker's knowledge and pace (not new stealth behaviour; owner's decision in Phase 5a), how much bot coworkers help, and how many vulnerabilities are open.
 - Does not require any human hacker, so it is the first mode to ship.
 
 ### Infiltration (solo hacker)
@@ -316,9 +316,9 @@ Decided in Phase 5 (part J):
 
 - **The bot hacker has a job too.** It works normally for a while after arriving (easy 6-9 game minutes, normal 5-8,
   hard 4-6), thinks between terminal lines, goes back to ordinary work after a failure or a meeting, and works for a few
-  minutes between reading the flag and handing it in (easy 4-6, normal 3-5, hard 2-3). Reading the flag raises a HIGH
+  minutes between reading the flag and handing it in (easy 7-9, normal 5.5-7.5, hard 4-5.5; longer than at first, Phase 5a part H). Reading the flag raises a HIGH
   alert, so this is the defenders' last chance. Harder hackers are faster as well as better informed.
-- **Target length** of a match nobody interferes with: about 20 game minutes on easy, 15 on normal, 11 on hard. A day
+- **Target length** of a match nobody interferes with: about 24 game minutes on easy, 17 on normal, 13 on hard. A day
   without a direct weakness can take far longer; the anti-stall alerts then hand the defenders the trail.
 
 Decided in Phase 5 (part H):
