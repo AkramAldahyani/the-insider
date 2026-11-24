@@ -68,6 +68,8 @@ export interface Verdict {
 export interface Testimony {
   from: string;
   text: string;
+  /** Player id of the person it is about ("" = it names nobody; then an address in it may still point at somebody). */
+  suspect?: string;
 }
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -82,9 +84,9 @@ function mentions(line: string, p: StaffMember): boolean {
   return new RegExp(ways.join('|'), 'i').test(line);
 }
 
-const ODD = /severity=|\[(low|medium|high)\]|\brule=|denied|refused|not in (the )?sudoers|not allowed|invalid user|flag-read|flag\.txt|log-cleared|network-scan|@reboot|backdoor|implant|keylog|\.tools\/|usb.*(keyboard|hid)|password-reset\.example|spf=fail/i;
+const ODD = /severity=|\[(low|medium|high)\]|\brule=|denied|refused|not in (the )?sudoers|not allowed|invalid user|flag-read|flag\.txt|log-cleared|network-scan|@reboot|backdoor|implant|keylog|\.tools\/|usb.*(keyboard|hid)|remote shell|\/\.[\w-]+\/|ESTAB.*:\d{4,5}\s+\S+:\d{4,5}\b|password-reset\.example|spf=fail/i;
 /** What witnesses say (the sentences of bots/manager.ts). */
-const WITNESS = /sitting at my PC|doing something to my PC|stood right behind me|They do not work in IT|Someone logged in to my PC|a line I never added/i;
+const WITNESS = /sitting at (my PC|the PC of)|doing something to (my PC|the PC of)|stood right behind me|They do not work in IT|Someone logged in to my PC|a line I never added|that I did not make/i;
 const ROOT = /\(to root\)|user=root|session opened for user root|\buid=0\b/i;
 
 /** Lines like "Feb 27 15:10:00 ..." or "2026-02-27 ..." that are not from today. Without a date (SIEM rows) it is today. */
@@ -137,7 +139,7 @@ export function judgeAccusation(items: EvidenceItem[], suspectId: string, judge:
     if (points) verdict.pointing.push(item.id);
     if (unusual) verdict.unusual.push(item.id);
   }
-  verdict.testimony = said.find((t) => t.from !== suspect.name && mentions(t.text, suspect) && (unusualLine(t.text, suspect, judge.staff) || WITNESS.test(t.text)))?.from ?? '';
+  verdict.testimony = said.find((t) => t.from !== suspect.name && (t.suspect ? t.suspect === suspect.id : mentions(t.text, suspect)) && (unusualLine(t.text, suspect, judge.staff) || WITNESS.test(t.text)))?.from ?? '';
   verdict.convincing = verdict.pointing.length >= POINTING_PIECES && (verdict.unusual.length > 0 || verdict.testimony !== '');
   return verdict;
 }

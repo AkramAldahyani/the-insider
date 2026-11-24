@@ -27,10 +27,9 @@ import { condition, selector, sequence, type Node, type Status } from './tree';
 
 const SECOND = 1000;
 /** When a bot first checks its own PC after arriving, and how often after that (game seconds). */
-const CHECK_FIRST: [number, number] = [240, 600];
-const CHECK_EVERY: [number, number] = [480, 1200];
+export const CHECK_MINUTES: readonly [number, number] = [8, 20];
 /** What an employee types to see whether anyone else used their PC. */
-export const SELF_CHECKS = ['last -n 10', 'crontab -l'];
+export const SELF_CHECKS = ['last -n 10', 'crontab -l', 'ps aux', 'ss -tnp', 'ss -tlnp', 'dmesg | tail -8'];
 /** The SOC analyst's job is the SIEM: it looks at the newest alerts much more often. */
 export const SOC_CHECK = 'siem source=alert | tail 5';
 const SOC_CHECK_EVERY: [number, number] = [60, 150];
@@ -90,6 +89,8 @@ export interface Persona {
   commands: string[];
   /** Probability of walking away without locking the screen. */
   forgetLock: number;
+  /** Game minutes between two rounds of checks of the own PC. */
+  checkMinutes: readonly [number, number];
   /** Average game time between the starts of two job tasks (ms). */
   taskEveryMs: number;
 }
@@ -125,6 +126,10 @@ export interface Mind {
   doing: string;
   /** Game time of the next look at its own PC for anything odd (Phase 5, part G). */
   nextCheckAt: number;
+  /** The last password it typed was a slip of the finger. */
+  slipped: boolean;
+  /** Commands left of the round of checks going on. */
+  checkQueue: string[];
   /** The SOC analyst saw the alert banner and has not looked at the SIEM since. */
   alarmed: boolean;
   /** The next inbox action learned from the bot's own terminal output. */
@@ -141,7 +146,7 @@ export function newMind(now: number, random: Random, taskEveryMs: number): Mind 
     // The first task starts some time after sitting down, not all at once.
     typing: false, errand: '', errandMs: 0, nextTaskAt: now + random.between(0.2, 0.8) * taskEveryMs, stepKey: '', stepTries: 0,
     nextCheckAt: Infinity, // set by firstCheck() (its own random numbers)
-    mailCommand: '', seenMail: [], alarmed: false,
+    mailCommand: '', seenMail: [], alarmed: false, slipped: false, checkQueue: [],
   };
 }
 
@@ -169,8 +174,16 @@ const atShell = (b: BotSubject) => b.mind.screen?.screen === 'shell' && !b.mind.
 const atOwnShell = (b: BotSubject) => atShell(b) && promptUser(b.mind.screen) === b.persona.account && promptHost(b.mind.screen) === b.persona.desk;
 /** ...of the bot's own account on ANOTHER machine: it is inside an ssh session it opened. */
 const inRemoteShell = (b: BotSubject) => atShell(b) && promptUser(b.mind.screen) === b.persona.account && promptHost(b.mind.screen) !== b.persona.desk;
-/** The password, with an occasional slip of the finger (which leaves an honest failure in the log). */
-const typedPassword = (b: BotSubject) => (b.random.chance(0.06) ? b.persona.password.slice(0, -1) : b.persona.password);
+/**
+ * The password, with an occasional slip of the finger (which leaves an honest
+ * failure in the log). After a slip people type slowly: never two in a row, or
+ * three of them would look like somebody guessing (the auth-failures alert).
+ */
+function typedPassword(b: BotSubject): string {
+  const slip = b.random.chance(0.06) && !b.mind.slipped;
+  b.mind.slipped = slip;
+  return slip ? b.persona.password.slice(0, -1) : b.persona.password;
+}
 
 /** Pauses like a person: the next key press is `min` to `max` seconds from now. */
 function pause(b: BotSubject, min: number, max: number): void {
@@ -464,16 +477,29 @@ function work(b: BotSubject): Status {
   return 'running';
 }
 
-/** One look at the own PC (or, for the SOC analyst, usually the SIEM), and what is odd about it. */
+/**
+ * One look at the own PC, and what is odd about it. An employee runs all the
+ * checks one after another (a round), in a different order each time; the SOC
+ * analyst mostly looks at the SIEM instead.
+ */
 function checkOwnPc(b: BotSubject): Status {
   const { mind, persona } = b;
-  const soc = persona.role === 'soc' && (mind.alarmed || b.checks.chance(0.85));
+  if (mind.checkQueue.length === 0) {
+    const soc = persona.role === 'soc' && (mind.alarmed || b.checks.chance(0.85));
+    if (soc) mind.checkQueue = [SOC_CHECK];
+    else {
+      const left = [...SELF_CHECKS];
+      while (left.length > 0) mind.checkQueue.push(left.splice(b.checks.int(0, left.length - 1), 1)[0]);
+    }
+  } else if (mind.alarmed) mind.checkQueue = [SOC_CHECK];
   mind.alarmed = false;
-  const command = soc ? SOC_CHECK : b.checks.pick(SELF_CHECKS);
+  const command = mind.checkQueue.shift()!;
   mind.screen = b.world.type(command);
   for (const finding of inspect(command, mind.screen.output, { account: persona.account, desk: persona.desk, ip: b.world.myIp(), today: today(b.world.now()) })) b.world.report(finding);
-  const [from, to] = persona.role === 'soc' ? SOC_CHECK_EVERY : CHECK_EVERY;
-  mind.nextCheckAt = b.world.now() + b.checks.between(from, to) * SECOND;
+  if (mind.checkQueue.length === 0) {
+    const [from, to] = persona.role === 'soc' ? SOC_CHECK_EVERY : [persona.checkMinutes[0] * 60, persona.checkMinutes[1] * 60];
+    mind.nextCheckAt = b.world.now() + b.checks.between(from, to) * SECOND;
+  }
   mind.doing = 'checking own PC';
   mind.nextKeyAt = b.world.now() + b.checks.between(5, 15) * SECOND;
   return 'running';
@@ -488,9 +514,9 @@ export function resetLink(output: string, roll: number): string {
 
 // ───────────────────────────── Checking the own PC ─────────────────────────────
 
-/** When a newly arrived bot first checks its own PC. */
-export function firstCheck(now: number, checks: Random): number {
-  return now + checks.between(CHECK_FIRST[0], CHECK_FIRST[1]) * SECOND;
+/** When a newly arrived bot first checks its own PC: after about half the usual time. */
+export function firstCheck(now: number, checks: Random, minutes: readonly [number, number] = CHECK_MINUTES): number {
+  return now + checks.between(minutes[0] * 30, minutes[1] * 30) * SECOND;
 }
 
 /** "Mon Mar  2": how `last` writes today's date (the start of its time column). */
@@ -505,6 +531,12 @@ export function today(now: number): string {
  *    third column) - nobody but the owner should use this PC, and the owner
  *    sits in front of it. (Before today it is old news.)
  *  - `siem source=alert` (the SOC analyst): the alerts of today;
+ *  - `ps aux`: a program that runs from a hidden folder, or calls itself a
+ *    remote shell - employees start neither;
+ *  - `ss -tnp`: a connection that is not ssh: between two high port numbers
+ *    (its other end is an address: whose PC is that?);
+ *  - `ss -tlnp`: something other than ssh waiting for connections;
+ *  - `dmesg`: a USB keyboard plugged in after the PC started;
  *  - `crontab -l`: an "@reboot" line - ordinary employees never schedule
  *    anything, so this was not them.
  * Findings carry no suspect: the PC does not know WHO did it. The meeting
@@ -514,15 +546,45 @@ export function inspect(command: string, output: string, me: { account: string; 
   const found: ClueReport[] = [];
   if (command.startsWith('last')) {
     for (const line of output.split('\n')) {
-      const [user, , from] = line.trim().split(/\s+/);
-      if (!user || !from || !/^\d+\.\d+\.\d+\.\d+$/.test(from) || from === me.ip || !line.includes(me.today)) continue;
+      const [user, tty, from] = line.trim().split(/\s+/);
+      if (!user || !tty || !from || !line.includes(me.today)) continue;
       const at = /(\d\d:\d\d)/.exec(line.slice(line.indexOf(me.today)))?.[1] ?? '?';
+      if (tty.startsWith('tty') && user !== me.account) {
+        found.push({ text: `${user} logged in at my PC ${me.desk}, sitting in front of it, at ${at}.`, weight: 0, line: line.trim() });
+        continue;
+      }
+      if (!/^\d+\.\d+\.\d+\.\d+$/.test(from) || from === me.ip) continue;
       found.push({ text: `Someone logged in to my PC ${me.desk} as ${user} from ${from} at ${at}. That was not me.`, weight: 0, line: line.trim() });
     }
   }
   if (command.startsWith('crontab')) {
     for (const line of output.split('\n')) {
       if (line.trim().startsWith('@reboot')) found.push({ text: `My crontab on ${me.desk} has a line I never added: ${line.trim()}`, weight: 0, line: line.trim() });
+    }
+  }
+  if (command === 'ps aux') {
+    for (const line of output.split('\n')) {
+      const program = line.trim().split(/\s+/).slice(10).join(' ');
+      if (/^\S*\/\.[\w-]+\/\S*|^\S+: remote shell/.test(program)) found.push({ text: `A program I never started runs on my PC ${me.desk}: ${program}`, weight: 0, line: line.trim() });
+    }
+  }
+  if (command.startsWith('ss ')) {
+    for (const line of output.split('\n')) {
+      const [state, , , local, peer, users] = line.trim().split(/\s+/);
+      const port = Number(/:(\d+)$/.exec(local ?? '')?.[1]);
+      const program = /\(\("([^"]+)"/.exec(users ?? '')?.[1];
+      const by = program ? ` (${program})` : '';
+      if (state === 'LISTEN' && port !== 22 && users) found.push({ text: `Something waits for connections on port ${port} of my PC ${me.desk}${by}.`, weight: 0, line: line.trim() });
+      if (state === 'ESTAB' && port >= 1024 && Number(/:(\d+)$/.exec(peer ?? '')?.[1]) >= 1024) {
+        found.push({ text: `My PC ${me.desk} has a connection with ${peer.slice(0, peer.lastIndexOf(':'))} on port ${port} that I did not make${by}.`, weight: 0, line: line.trim() });
+      }
+    }
+  }
+  if (command.startsWith('dmesg')) {
+    for (const line of output.split('\n')) {
+      // The seconds since the PC started: its own devices are found in the first moments.
+      const m = /^\[ *(\d+)\.\d+\] usb .*Product: (.*Keyboard.*)$/i.exec(line.trim());
+      if (m && Number(m[1]) > 300) found.push({ text: `A ${m[2]} was plugged into my PC ${me.desk}. That was not me.`, weight: 0, line: line.trim() });
     }
   }
   if (command === SOC_CHECK) {

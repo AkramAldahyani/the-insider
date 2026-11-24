@@ -515,6 +515,15 @@ Start an investigation as SOC analyst (`MEETING_SECONDS=40,25,5` makes meetings 
 6. As *Security guard*, detain somebody at random until you lose the power or are lucky: the rating says **Lucky guess**.
 7. Do nothing until the hacker wins: **The hacker got away**.
 
+## AK. Phase 5a, part D: bots notice more
+
+Shared office, two tabs: Omar joining **as the hacker**, and Sara. `BOT_HACKER=0` is not needed.
+
+1. As Omar, wait until a colleague leaves a PC open (green monitor), hold `U` at it for 5 seconds, then use it from your desk with `~/.tools/implant HOST`.
+2. Wait up to 20 game minutes (`TIME_SPEED=5`), then call a meeting as Sara: the owner of that PC tells about a USB keyboard, a program, a port or a connection with Omar's address.
+3. As Sara, sit at a colleague's PC while somebody else is in the room, and call a meeting: the witness says *I saw Sara Alharbi sitting at the PC of ...*.
+4. Developer panel, **Bots**: a bot that checks its PC shows *checking own PC*.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -546,7 +555,7 @@ the outstanding manual check of password masking at a real interactive keyboard.
 pnpm test
 ```
 
-Expected: `Test Files 48 passed (48)` and `Tests 582 passed (582)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
+Expected: `Test Files 49 passed (49)` and `Tests 597 passed (597)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
 
 On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent workers. This passed the complete suite during Phase 5F validation after three existing long-running tests timed out with unrestricted workers.
 

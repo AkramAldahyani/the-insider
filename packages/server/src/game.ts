@@ -115,7 +115,7 @@ export class OfficeGame {
    * What the bots do in the current meeting (Phase 5, part G): when each one
    * speaks and votes, in real milliseconds since the phase began.
    */
-  private botMeeting: { phase: string; elapsed: number; speak: { id: string; at: number; lines: string[]; about?: string }[]; vote: { id: string; at: number }[] } | null = null;
+  private botMeeting: { phase: string; elapsed: number; speak: { id: string; at: number; lines: { text: string; suspect: string }[]; about?: string }[]; vote: { id: string; at: number }[] } | null = null;
   /** What bots told meetings about what they saw themselves (the judges remember it). */
   private readonly testimony: Testimony[] = [];
   /** Random numbers for when bots talk and what filler they say (its own sequence). */
@@ -942,10 +942,10 @@ export class OfficeGame {
         if (!this.living().has(s.id)) continue;
         // A comment on an accusation is worked out now, so it includes what was said in the meantime.
         const verdict = s.about ? this.verdicts().get(s.about) : undefined;
-        if (s.about && verdict) s.lines.push(comment(verdict, this.nameOf(s.about)));
-        for (const text of s.lines) {
+        if (s.about && verdict) s.lines.push({ text: comment(verdict, this.nameOf(s.about)), suspect: '' });
+        for (const { text, suspect } of s.lines) {
           this.postChat('meeting', this.nameOf(s.id), text);
-          if (!s.about) this.testimony.push({ from: this.nameOf(s.id), text });
+          if (!s.about) this.testimony.push({ from: this.nameOf(s.id), text, suspect });
         }
       }
     } else if (m.phase === 'voting') {

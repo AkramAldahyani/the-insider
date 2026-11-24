@@ -18,13 +18,13 @@ interface Level {
   weaknesses: number;
   /** How often bots leave their desk without locking (more open PCs, more false trails). */
   forgetLock: number;
-  /** Colleagues pin clues they find on the board themselves. Otherwise they only speak in meetings. */
-  pinClues: boolean;
+  /** How many clues colleagues put on the board themselves. With 0 they only speak in meetings. */
+  pinClues: number;
 }
 const LEVELS: Record<SoloDifficulty, Level> = {
-  easy: { weaknesses: 2, forgetLock: 0.15, pinClues: true },
-  normal: { weaknesses: 3, forgetLock: 0.25, pinClues: false },
-  hard: { weaknesses: 4, forgetLock: 0.4, pinClues: false },
+  easy: { weaknesses: 2, forgetLock: 0.15, pinClues: 3 },
+  normal: { weaknesses: 3, forgetLock: 0.25, pinClues: 0 },
+  hard: { weaknesses: 4, forgetLock: 0.4, pinClues: 0 },
 };
 
 /**

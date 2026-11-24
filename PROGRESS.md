@@ -75,7 +75,7 @@ Update it at the end of every part.
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
 | 5 Investigation & social deduction | **done**: Parts A-J |
-| 5a Solo modes | **in progress**: Parts A-C done (Investigation is playable); D (bots notice more) next |
+| 5a Solo modes | **in progress**: Parts A-D done (Investigation is playable); E (bot SOC analyst and guard) next |
 
 ## Phase 5a plan (solo modes): APPROVED by the owner on 2026-11-24, with all five defaults
 
@@ -87,8 +87,8 @@ with debrief." After each part: all tests, this file, commit locally (never push
 | A | Start menu and private matches: mode, role, difficulty; own room, new random seed; play again, back to menu; the server checks every choice | **done** |
 | B | Evidence that convinces: bots judge whether the pins point at the accused (account, PC, address, camera picture) and vote on that; never the hidden truth | **done** |
 | C | Investigation mode: role choice, three difficulty levels, a rating in the debrief (proven case / lucky guess), browser test. Investigation playable | **done** |
-| D | Bots notice more: `ps aux`, `ss -tnp`, USB events, people at the wrong desk; they pin what they find | next |
-| E | Bot SOC analyst (reads the SIEM, follows addresses) and guard (cameras, patrols; detains only on strong evidence) | |
+| D | Bots notice more: `ps aux`, `ss -tnp`, USB events, people at the wrong desk; they pin what they find | **done** |
+| E | Bot SOC analyst (reads the SIEM, follows addresses) and guard (cameras, patrols; detains only on strong evidence) | next |
 | F | Infiltration mode: bots call meetings, accuse with evidence and vote; the hacker's start and end screens. Infiltration playable | |
 | G | Scenario ladder: five levels in the existing office, each with a briefing; progress kept in the browser | |
 | H | Balance, soak test of both modes, browser tests, docs | |
@@ -156,8 +156,8 @@ Defaults (accepted):
 - The bot SOC analyst's job (brain.ts `SOC_CHECK`, in every match): `siem source=alert | tail 5` about every two minutes and
   before starting a task; each alert becomes a finding ("The SIEM shows a security alert at ..."), told at meetings. When
   the alert banner goes out (`BotManager.alarm`) it drops a break, an errand or a server session to look at once.
-- Easy: `botOptions.pinClues` puts the screen line of a fresh finding on the board (`pinForBot`, at most `MAX_BOT_PINS` = 3
-  per match, with a notice to the player).
+- Easy: `botOptions.pinClues` puts the screen line of a fresh finding on the board (`pinForBot`, at most that many
+  per match (3), with a notice to the player).
 - Testimony (judge.ts): what bots told meetings about what THEY saw is remembered for the match and can stand in for the
   unusual piece, never for the two pieces about the accused. Without it an employee or the helpdesk could not prove much,
   because they cannot read alerts. Comments on accusations are worked out when spoken, so they include it.
@@ -170,6 +170,30 @@ Defaults (accepted):
   matches (5 jobs x 3 levels x 25 seeds). Humans are slower and will lose some.
 - Tests: `server/test/investigation.test.ts` (26); `match.spec.ts` checks the case panel and the rating.
 - 582 Vitest tests in 48 files, 12 Playwright.
+
+### Part D: what exists now (bots notice more)
+
+- A check is now a ROUND (brain.ts `checkOwnPc`, `mind.checkQueue`): all of `SELF_CHECKS` one after another, in a different
+  order each time: `last -n 10`, `crontab -l`, `ps aux`, `ss -tnp`, `ss -tlnp`, `dmesg | tail -8`. `inspect` finds: a program
+  from a hidden folder or calling itself a remote shell, a connection between two high ports (with the address at its
+  other end), a listener other than ssh, a USB keyboard plugged in after the start, somebody else logged in at the
+  keyboard, plus what it found before. It reads only what is on the bot's screen.
+- `botOptions.checkMinutes` (default 8-20 game minutes between rounds; the first after half of that): how closely bots
+  look. For the difficulty of Infiltration (Part F).
+- `botOptions.pinClues` is now a NUMBER: how many clues bots pin in a match (default 0; solo Easy 3). Part F will use more.
+- Sightings (bots/manager.ts): somebody outside IT sitting at a colleague's PC (weight 1), doing something to it standing
+  (weight 2); before, only at the bot's own PC. `speech` returns the suspect with each sentence, and testimony counts
+  against that person only, not against the owner of the PC a witness names.
+- The bot hacker runs the same checks but never reports its own traces.
+- judge.ts recognises the new lines (hidden folders, remote shell, high-port connections).
+- Fixed (older): a bot could mistype its password three times in a row and raise a false auth-failures alert; now never
+  twice in a row (`mind.slipped`).
+- Applies to every match, also the shared office (findings are told at meetings); pinning only where `pinClues` says so.
+- Measured: no false alarm in 48 office hours (24 seeds x 2 hours, no hacker); Investigation still 375 of 375.
+- Tests: `server/test/vigilance.test.ts` (15).
+- Limits: `dmesg` lines carry no time of day, so an old USB keyboard would be reported too (the scenario has none); bots do
+  not look at their own `.bash_history`.
+- 597 Vitest tests in 49 files, 12 Playwright.
 
 ## Phase 5 status: DONE (Parts A-J; plan approved by the owner, defaults 1-6 accepted)
 

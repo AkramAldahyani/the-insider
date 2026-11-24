@@ -6,7 +6,6 @@ import { describe, expect, it } from 'vitest';
 import { queryEvents } from '@insider/engine';
 import { SOLO_DIFFICULTIES, type DebriefView, type MeetingView, type SoloChoice, type SoloRole } from '@insider/shared';
 import { SOC_CHECK, inspect } from '../src/bots/brain';
-import { MAX_BOT_PINS } from '../src/bots/manager';
 import { rate, type RatingInput } from '../src/rating';
 import { soloGameOptions } from '../src/solo';
 import { PW, Recorder, clone, scenario, tiledMap } from './helpers';
@@ -92,13 +91,13 @@ describe('the SOC analyst (a bot) and its alerts', () => {
       const { r } = solo({ role: 'guard', difficulty: 'easy' }, seed);
       play(r, () => r.game.over !== null, 60);
       const items = r.game.board.items;
-      expect(items.length).toBeLessThanOrEqual(MAX_BOT_PINS);
+      expect(items.length).toBeLessThanOrEqual(3);
       pinned += items.length;
       for (const i of items) {
         expect(i.pinnedById).not.toBe('p10');
         expect(r.messages('me', 'notice').some((m) => (m.payload as { text: string }).text === `${i.pinnedBy} pinned something to the evidence board (${i.id}).`)).toBe(true);
         // It is a real line from a real screen, and it does not say who did it.
-        expect(i.text).toMatch(/alert|pts\/|@reboot/);
+        expect(i.text).toMatch(/alert|pts\/|@reboot|ESTAB|LISTEN|usb|\/\./);
         const hacker = scenario.players.find((p) => p.id === r.game.world.mission.hacker)!;
         expect(i.text).not.toContain(hacker.name);
       }

@@ -23,16 +23,19 @@
  *   3  somebody stood right behind me while I typed my password;
  *   3  somebody fiddled with my PC while standing at it (the USB stick);
  *   2  somebody sat at my PC while I was not there;
+ *   2  somebody fiddled with a colleague's PC;
+ *   1  somebody without an IT job sat at a colleague's PC;
  *   1  somebody without an IT job was in the server room;
- *   0  facts from checking my own PC (a login from another address, an odd
- *      crontab line): suspicious, but they name nobody.
+ *   0  facts from checking my own PC (a login from another address, a program
+ *      or connection I never started, a USB keyboard...): suspicious, but they
+ *      name nobody.
  * In a meeting a bot says its strongest findings in the chat, and votes only
  * on what it knows itself (see `ballot`).
  */
 import { commandNames, screenState, setHacker, type Scenario, type TerminalResult, type World } from '@insider/engine';
 import { PLAYER_RADIUS, isFree, roomAt, type MapDoor, type Point } from '@insider/shared';
 import type { Avatar } from '../visibility';
-import { employeeTree, firstCheck, newMind, type BotSubject, type BrainWorld, type Mind, type Persona } from './brain';
+import { CHECK_MINUTES, employeeTree, firstCheck, newMind, type BotSubject, type BrainWorld, type Mind, type Persona } from './brain';
 import { Mover, type MoverWorld } from './mover';
 import { Random } from './random';
 import type { Verdict } from '../judge';
@@ -73,8 +76,10 @@ export interface BotOptions {
   hackerNot?: string;
   /** How fast the simulated hacker plays. Default: the pace that belongs to its difficulty. */
   hackerPace?: HackerPace;
-  /** Bots put the clues they find on the evidence board themselves (solo matches on Easy). */
-  pinClues?: boolean;
+  /** Bots put the clues they find on the evidence board themselves: at most this many in a match (default 0). */
+  pinClues?: number;
+  /** Game minutes between two rounds of checks a bot makes of its own PC (default 8 to 20). */
+  checkMinutes?: readonly [number, number];
   /** Probability that a bot leaves its desk without locking the screen (default 0.25). */
   forgetLock?: number;
   /**
@@ -116,8 +121,6 @@ export const VOTE_THRESHOLD = 2;
 /** A bot that strongly suspects somebody who was NOT accused votes "skip" instead of abstaining. */
 const SKIP_THRESHOLD = 3;
 const MAX_FINDINGS = 40;
-/** With `pinClues`, bots pin this many clues per match at most: some help, not the whole case. */
-export const MAX_BOT_PINS = 3;
 
 export interface Bot {
   playerId: string;
@@ -297,12 +300,12 @@ export class BotManager {
    * now and then that it saw nothing. Every sentence is about things the bot
    * itself saw on its own screen or with its own eyes.
    */
-  speech(playerId: string, random: () => number): string[] {
+  speech(playerId: string, random: () => number): { text: string; suspect: string }[] {
     const bot = this.bots.get(playerId);
     if (!bot) return [];
     const best = [...bot.findings].sort((a, b) => b.weight - a.weight || b.time - a.time).slice(0, 2);
-    if (best.length > 0) return best.map((f) => f.text);
-    return random() < 0.25 ? [random() < 0.5 ? 'Nothing odd on my side.' : 'I did not notice anything strange today.'] : [];
+    if (best.length > 0) return best.map((f) => ({ text: f.text, suspect: f.suspect }));
+    return random() < 0.25 ? [{ text: random() < 0.5 ? 'Nothing odd on my side.' : 'I did not notice anything strange today.', suspect: '' }] : [];
   }
 
   /** How much a bot has against one person (the sum of its findings about them). */
@@ -422,6 +425,7 @@ export class BotManager {
       chair: { x: desk.seatX, y: desk.seatY },
       commands: commands.length > 0 ? commands : ['ls'],
       // Today's match may have a sysadmin who is careless about locking (a weakness, see engine mission.ts).
+      checkMinutes: this.options.checkMinutes ?? CHECK_MINUTES,
       forgetLock: world.mission.carelessPlayer === playerId
         ? (scenario.mission?.carelessAdmin?.forgetLock ?? 0.8)
         : (this.options.forgetLock ?? 0.25),
@@ -475,9 +479,10 @@ export class BotManager {
       hasUnreadMail: () => host.world.mail.messages.some((m) => m.to.includes(body.account) && !m.readBy.includes(body.account) && m.subject === 'IT password reset'),
       report: (f) => {
         const bot = this.bots.get(body.playerId);
-        if (!bot) return;
+        // The hacker checks its own PC like everybody (it would stand out otherwise), but tells nobody about its own traces.
+        if (!bot || host.world.mission.hacker === body.playerId) return;
         const fresh = this.find(bot, { suspect: f.suspect ?? '', weight: f.weight, text: f.text });
-        if (fresh && f.line && this.options.pinClues && this.pinned < MAX_BOT_PINS) {
+        if (fresh && f.line && this.pinned < (this.options.pinClues ?? 0)) {
           this.pinned++;
           host.pin(body, f.line);
         }
@@ -504,7 +509,7 @@ export class BotManager {
       mind: newMind(world.time, bot.random, persona.taskEveryMs),
       world: this.brainWorld(body, mover, bot.random),
     };
-    bot.subject.mind.nextCheckAt = firstCheck(world.time, checks);
+    bot.subject.mind.nextCheckAt = firstCheck(world.time, checks, persona.checkMinutes);
     this.host.addBody(body);
     this.host.tasks.assign(player.id);
   }
@@ -559,6 +564,12 @@ export class BotManager {
         if (body.seatedAt === myDesk) this.find(bot, { suspect: body.playerId, weight: 2, text: `I saw ${body.name} sitting at my PC ${myDesk} at ${at}, while I was away from it.` });
         if (body.hold?.hostname === myDesk) this.find(bot, { suspect: body.playerId, weight: 3, text: `I saw ${body.name} doing something to my PC ${myDesk} at ${at}, standing at it, not sitting.` });
         const job = world.players.find((p) => p.id === body.playerId)?.role;
+        // At somebody else's PC? (The helpdesk and the administrator work there.)
+        const owner = (hostname: string) => world.players.find((p) => p.desk === hostname && p.id !== body.playerId);
+        const theirs = body.seatedAt && body.seatedAt !== myDesk ? owner(body.seatedAt) : undefined;
+        const held = body.hold && body.hold.hostname !== myDesk ? owner(body.hold.hostname) : undefined;
+        if (theirs && job !== 'sysadmin' && job !== 'helpdesk') this.find(bot, { suspect: body.playerId, weight: 1, text: `I saw ${body.name} sitting at the PC of ${theirs.name} at ${at}.` });
+        if (held) this.find(bot, { suspect: body.playerId, weight: 2, text: `I saw ${body.name} doing something to the PC of ${held.name} at ${at}, standing at it, not sitting.` });
         if (room === 'Server room' && job !== 'sysadmin' && job !== 'helpdesk') this.find(bot, { suspect: body.playerId, weight: 1, text: `I saw ${body.name} in the server room at ${at}. They do not work in IT.` });
       }
       // Out of sight: seeing them again later is a new observation.
