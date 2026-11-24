@@ -75,7 +75,7 @@ Update it at the end of every part.
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
 | 5 Investigation & social deduction | **done**: Parts A-J |
-| 5a Solo modes | **in progress**: Part A done; B (evidence that convinces) next |
+| 5a Solo modes | **in progress**: Parts A-B done; C (Investigation mode) next |
 
 ## Phase 5a plan (solo modes): APPROVED by the owner on 2026-11-24, with all five defaults
 
@@ -85,8 +85,8 @@ with debrief." After each part: all tests, this file, commit locally (never push
 | Part | What | State |
 |---|---|---|
 | A | Start menu and private matches: mode, role, difficulty; own room, new random seed; play again, back to menu; the server checks every choice | **done** |
-| B | Evidence that convinces: bots judge whether the pins point at the accused (account, PC, address, camera picture) and vote on that; never the hidden truth | next |
-| C | Investigation mode: role choice, three difficulty levels, a rating in the debrief (proven case / lucky guess), browser test. Investigation playable | |
+| B | Evidence that convinces: bots judge whether the pins point at the accused (account, PC, address, camera picture) and vote on that; never the hidden truth | **done** |
+| C | Investigation mode: role choice, three difficulty levels, a rating in the debrief (proven case / lucky guess), browser test. Investigation playable | next |
 | D | Bots notice more: `ps aux`, `ss -tnp`, USB events, people at the wrong desk; they pin what they find | |
 | E | Bot SOC analyst (reads the SIEM, follows addresses) and guard (cameras, patrols; detains only on strong evidence) | |
 | F | Infiltration mode: bots call meetings, accuse with evidence and vote; the hacker's start and end screens. Infiltration playable | |
@@ -123,6 +123,29 @@ Defaults (accepted):
 - The shared office is unchanged otherwise (its seed is still 1 unless SEED is set).
 - For Part C: a human sysadmin makes the weakness `careless-admin` meaningless (it only affects that bot).
 - 529 Vitest tests in 46 files, 12 Playwright.
+
+### Part B: what exists now
+
+- `server/src/judge.ts` (pure functions, no World): `judgePiece` / `judgeAccusation` / `comment`. A piece POINTS at the
+  accused by account, full name, own PC, that PC's address, user number (`uid=`/`auid=`), badge number, or a camera picture
+  of them in the act (crouched at a PC, at somebody else's desk, in the server room without an IT job). It is UNUSUAL when
+  the same line shows an alert, a refusal, root rights for somebody outside IT, another account used from their
+  address... An accusation convinces with two pointing pieces (the owner's rule) of which one is unusual.
+- The "one unusual piece" half was ADDED while building (the owner's rule alone lets two ordinary login lines fire
+  anybody). To drop it: the last line of `judgeAccusation`.
+- Not counted: lines dated another day, pieces naming more than three people, the same text twice, and the pinner's own
+  words (`EvidenceItem.shown`, from `EvidenceBoard.withoutOwnWords`; never sent).
+- It knows only what everybody could (staff list, current addresses), never who the hacker is. So it can be fooled, also
+  into firing the owner of a stolen account (tested on purpose).
+- game.ts: `judge()`, `verdicts()`, `planComment()` (a few seconds after an accusation one colleague says in the chat what
+  the evidence is worth); `BotManager.ballot(..., verdicts)`: own sightings first, then the convincing accusation, else
+  "skip". ONLY in solo matches (`soloPlayer`); in the shared office bots still abstain, as decided in Phase 5 G.
+- The accuse form explains the rule in solo matches.
+- Measured: the scripted SOC analyst of Phase 5 J (alert, lease, login) convinces the bots in 75 of 75 solo matches
+  (25 seeds x 3 levels). Tests: `server/test/judge.test.ts` (25).
+- Limits: the pieces are judged as they stand when the bots vote (an unpinned piece no longer counts); addresses are the
+  current ones; a screen text joined or cut by hand (a changed browser) could cheat, which only matters in solo matches.
+- 554 Vitest tests in 47 files, 12 Playwright.
 
 ## Phase 5 status: DONE (Parts A-J; plan approved by the owner, defaults 1-6 accepted)
 

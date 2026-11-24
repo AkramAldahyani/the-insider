@@ -35,6 +35,7 @@ import type { Avatar } from '../visibility';
 import { employeeTree, firstCheck, newMind, type BotSubject, type BrainWorld, type Mind, type Persona } from './brain';
 import { Mover, type MoverWorld } from './mover';
 import { Random } from './random';
+import type { Verdict } from '../judge';
 import type { TaskBoard } from '../tasks';
 import { HackerBrain, type HackerPlan } from './hacker';
 import { hackerKnowledge, type HackerDifficulty, type HackerKnowledge } from './hacker-knowledge';
@@ -292,12 +293,21 @@ export class BotManager {
    *    was NOT accused -> "skip" (they are blaming the wrong person);
    *  - otherwise null: it does not vote (it has no evidence either way, so it
    *    leaves the decision to those who do).
+   *
+   * In a solo match (`verdicts` given, see judge.ts) it also looks at the
+   * evidence: it votes for the person the evidence convinces it of, and
+   * otherwise "skip" instead of nothing. Nobody is fired for weak evidence.
    */
-  ballot(playerId: string, accused: string[]): string | null {
+  ballot(playerId: string, accused: string[], verdicts?: ReadonlyMap<string, Verdict>): string | null {
     const ranked = accused.filter((s) => s !== playerId).map((s) => ({ s, score: this.suspicion(playerId, s) })).sort((a, b) => b.score - a.score);
     if (ranked[0] && ranked[0].score >= VOTE_THRESHOLD) return ranked[0].s;
     const others = new Set(this.findings(playerId).map((f) => f.suspect).filter((s) => s && !accused.includes(s)));
     if ([...others].some((s) => this.suspicion(playerId, s) >= SKIP_THRESHOLD)) return 'skip';
+    if (verdicts) {
+      const strength = (s: string) => verdicts.get(s)!.pointing.length + verdicts.get(s)!.unusual.length;
+      const convinced = accused.filter((s) => s !== playerId && verdicts.get(s)?.convincing).sort((a, b) => strength(b) - strength(a));
+      return convinced[0] ?? 'skip';
+    }
     return null;
   }
 

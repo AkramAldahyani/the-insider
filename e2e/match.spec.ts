@@ -85,6 +85,10 @@ test('a defender follows the evidence to the bot hacker, has them voted out, and
   for (const id of ['E1', 'E2', 'E3']) await page.getByTestId(`accuse-evidence-${id}`).check();
   await page.getByTestId('accuse-submit').click();
   await expect(page.getByTestId('accusation-A1')).toContainText(suspect.name);
+  // A colleague says what they make of the evidence, and the bots vote on it too.
+  await expect(page.getByTestId('chat-meeting')).toContainText(`point at ${suspect.name}`, { timeout: 15_000 });
+  await expect(page.getByTestId('chat-meeting')).toContainText('That convinces me.');
+  await page.screenshot({ path: `${SHOTS}/22-evidence-judged.png` });
   await page.getByTestId(`vote-${suspect.id}`).click({ timeout: 40_000 });
 
   // 4. They were the hacker: the defenders win, and the debrief tells the whole story.

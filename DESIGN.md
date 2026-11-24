@@ -62,7 +62,7 @@ The game has three modes that share the same engine, office, bots, tools and evi
 - **A solo match is private.** It has its own room for one browser, and a new random office and hacker each time. The browser may ask only for a mode, a job and a difficulty from fixed lists; the server decides everything else. Leaving ends it.
 - **The player is never the hacker** in Investigation, and cannot switch to somebody else.
 - **Two emergency meetings** per player (the shared office: one).
-- **Evidence has to convince:** at least two of an accusation's three pieces must point at the accused, otherwise the bots vote "skip" (part B).
+- **Evidence has to convince (part B):** in solo matches the bots judge the pieces behind an accusation. At least two must point at the accused (account, name, PC, address, user or badge number, or a camera picture of them in the act), and one of those must show something out of the ordinary; otherwise the bots vote "skip". Old lines, lists of everybody and the player's own typed words do not count. Colleagues say in the chat what they make of it. They know only what everybody at the company knows, so they can be wrong. In the shared office the people judge, and bots keep voting only on what they saw.
 - **Help:** on Easy, bot colleagues pin some clues; on Normal and Hard they only speak in meetings. They never solve the case.
 - **Infiltration is won only with the flag:** parity and reputation do not count there.
 - **Difficulty** changes the weaknesses, how often bots forget to lock, the bot hacker's knowledge and pace, and how closely bot defenders look.

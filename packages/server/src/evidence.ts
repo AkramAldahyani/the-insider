@@ -27,6 +27,8 @@ export interface EvidenceItem {
   /** Where it came from: "FIN-LT-07 screen", "CAM-04", "Badge log". */
   title: string;
   text: string;
+  /** Screen text without the lines its pinner typed: what the PC itself showed. For the judges (judge.ts), never sent. */
+  shown?: string;
   /** Game time it was pinned. */
   time: number;
   /** Who pinned it (name for everybody; player id for the debrief, never sent). */
@@ -40,6 +42,8 @@ export interface EvidenceItem {
 interface Seen {
   /** Recent screen text (output, prompts and what they typed), whitespace squeezed. */
   screen: string;
+  /** Lines they typed lately, whitespace squeezed. */
+  typed: string[];
   shots: Set<string>;
   lines: Set<string>;
 }
@@ -60,7 +64,7 @@ export class EvidenceBoard {
 
   private of(clientId: string): Seen {
     let s = this.seen.get(clientId);
-    if (!s) this.seen.set(clientId, (s = { screen: '', shots: new Set(), lines: new Set() }));
+    if (!s) this.seen.set(clientId, (s = { screen: '', typed: [], shots: new Set(), lines: new Set() }));
     return s;
   }
 
@@ -73,6 +77,22 @@ export class EvidenceBoard {
   /** The player typed a line (as it appears on their screen: stars for a password). */
   noteTyped(clientId: string, text: string): void {
     this.noteScreen(clientId, text);
+    const s = this.of(clientId);
+    s.typed.push(squeeze(text));
+    if (s.typed.length > 500) s.typed.shift();
+  }
+
+  /**
+   * A pinned text without its pinner's own words: lines that are part of
+   * something they typed (`echo "it was Sara"` and its output), and prompts
+   * with a typed command behind them.
+   */
+  withoutOwnWords(clientId: string, text: string): string {
+    const typed = (this.seen.get(clientId)?.typed ?? []).filter((t) => t.length >= 2);
+    return text.split('\n').filter((raw) => {
+      const line = squeeze(raw);
+      return !typed.some((t) => t.includes(line) || line.endsWith(`$ ${t}`) || line.endsWith(`# ${t}`));
+    }).join('\n');
   }
 
   noteShot(clientId: string, snapshotId: string): void {
@@ -106,9 +126,8 @@ export class EvidenceBoard {
   /** Adds an item (already checked by the caller). */
   add(item: Omit<EvidenceItem, 'id'>): EvidenceItem | null {
     if (this.items.length >= MAX_ITEMS) return null;
-    const lines = item.text.split('\n').map((l) => l.trimEnd());
-    const text = lines.slice(0, MAX_LINES).join('\n').slice(0, MAX_TEXT).trim();
-    const full: EvidenceItem = { ...item, text, id: `E${++this.counter}` };
+    const cut = (t: string) => t.split('\n').map((l) => l.trimEnd()).slice(0, MAX_LINES).join('\n').slice(0, MAX_TEXT).trim();
+    const full: EvidenceItem = { ...item, text: cut(item.text), ...(item.shown === undefined ? {} : { shown: cut(item.shown) }), id: `E${++this.counter}` };
     this.items.push(full);
     return full;
   }

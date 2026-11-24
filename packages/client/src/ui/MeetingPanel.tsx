@@ -48,6 +48,12 @@ function AccuseForm({ ui }: { ui: UiState }) {
   return (
     <form className="accuse" data-testid="accuse-form" onSubmit={(e) => { e.preventDefault(); store.send('meeting.accuse', { suspect, evidence: picked }); }}>
       <div className="meeting-label">Accuse someone (needs 3 or more pieces of evidence)</div>
+      {ui.solo && (
+        <div className="meeting-muted">
+          Your colleagues vote too. At least two pieces must point at the person (account, name, PC, address, badge, or a picture of
+          them in the act), and one of those must show something out of the ordinary.
+        </div>
+      )}
       <select value={suspect} onChange={(e) => setSuspect(e.target.value)} aria-label="Suspect" data-testid="accuse-suspect">
         <option value="">Who?</option>
         {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}

@@ -495,6 +495,16 @@ Start with `pnpm dev` (the defaults; about 15 minutes) or quicker with `TIME_SPE
 6. *Shared office*: two tabs meet in the same office, as before; **Back to the menu** above the employees works. Join as the hacker, win, then **Play again** in both tabs: they meet again in a new match, without restarting the server.
 7. Stop the server and press a button in the menu: an error with **Back to the menu**.
 
+## AI. Phase 5a, part B: evidence that convinces
+
+Start an investigation as SOC analyst (`MEETING_SECONDS=40,25,5` makes meetings shorter).
+
+1. Sit down, log in, pin the output of `hostname`, `whoami` and `pwd`. Call a meeting and accuse anybody: a colleague writes in the chat that none of it says anything about that person. Vote for them: nobody is fired, the others voted "skip".
+2. Your second meeting: collect a real trail first (section AG, steps 2-4). Now a colleague names the pieces that point at the person and says they are convinced; most colleagues vote with you.
+3. Two ordinary login lines and a DHCP lease about a colleague: "they only show ordinary work", nobody is fired.
+4. `echo "severity=high user=s.alharbi"` and pin the output: it does not count.
+5. In the shared office nothing changed: bots who saw nothing do not vote.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -526,7 +536,7 @@ the outstanding manual check of password masking at a real interactive keyboard.
 pnpm test
 ```
 
-Expected: `Test Files 46 passed (46)` and `Tests 529 passed (529)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
+Expected: `Test Files 47 passed (47)` and `Tests 554 passed (554)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
 
 On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent workers. This passed the complete suite during Phase 5F validation after three existing long-running tests timed out with unrestricted workers.
 

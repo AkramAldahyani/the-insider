@@ -26,6 +26,7 @@ import { Random } from './bots/random';
 import { Cctv } from './cctv';
 import { Debrief } from './debrief';
 import { EvidenceBoard } from './evidence';
+import { comment, judgeAccusation, type Judge, type Verdict } from './judge';
 import { DEFAULT_MEETING_TIMES, Meetings, type MeetingTimes } from './meeting';
 import { checkMapAgainstScenario } from './mapCheck';
 import { TaskBoard } from './tasks';
@@ -354,6 +355,7 @@ export class OfficeGame {
         const evidence = Array.isArray(data.evidence) ? data.evidence.filter((x): x is string => typeof x === 'string').slice(0, 20) : [];
         const error = this.meetings.accuse(avatar.playerId, String(data.suspect ?? ''), evidence, new Set(this.board.items.map((i) => i.id)), this.living());
         if (error) return this.send(avatar.clientId, 'notice', { text: error });
+        this.planComment();
         return this.sendMeeting();
       }
       case 'meeting.vote': {
@@ -552,7 +554,7 @@ export class OfficeGame {
     if (data.kind === 'screen' && typeof data.text === 'string') {
       if (!avatar.seatedAt) return no('Sit at a PC to pin something from its screen.');
       if (!this.board.sawText(avatar.clientId, data.text)) return no('Only text your screen really showed can be pinned. Select it in the terminal.');
-      item = this.board.add({ ...base, kind: 'screen', title: `${avatar.seatedAt} screen`, text: data.text });
+      item = this.board.add({ ...base, kind: 'screen', title: `${avatar.seatedAt} screen`, text: data.text, shown: this.board.withoutOwnWords(avatar.clientId, data.text) });
     } else if (data.kind === 'snapshot' && typeof data.snapshot === 'string') {
       const shot = this.cctv.find(data.snapshot);
       if (!shot || !this.board.sawShot(avatar.clientId, data.snapshot)) return no('You can pin a camera picture you are looking at on the monitors.');
@@ -837,6 +839,57 @@ export class OfficeGame {
     this.botMeeting = { phase: 'discussion', elapsed: 0, speak, vote: [] };
   }
 
+  // ─────── Judging accusations (Phase 5a, part B; solo matches only) ───────
+
+  /** What everybody at the company could know, for judging evidence (see judge.ts). */
+  private judge(): Judge {
+    return {
+      staff: this.world.players.map((p) => ({
+        id: p.id, name: p.name, account: p.account, desk: p.desk,
+        ip: this.world.hosts[p.desk]?.ip ?? '',
+        uid: this.uidOf(p.account),
+        badge: this.world.badges.holders[p.account]?.id ?? '',
+        it: p.role === 'sysadmin' || p.role === 'helpdesk',
+      })),
+      today: new Date(this.world.time).toISOString().slice(0, 10),
+      roomAt: (x, y) => roomAt(this.map, x, y),
+    };
+  }
+
+  private uidOf(account: string): number {
+    const index = this.scenario.accounts.findIndex((a) => a.username === account);
+    return this.scenario.accounts[index]?.uid ?? 1001 + index; // as the engine numbers them (core/world.ts)
+  }
+
+  /** The verdict on everybody accused in this meeting (the best accusation, if several name the same person). */
+  private verdicts(): Map<string, Verdict> {
+    const out = new Map<string, Verdict>();
+    const judge = this.judge();
+    for (const a of this.meetings.current?.accusations ?? []) {
+      const verdict = judgeAccusation(this.board.items.filter((i) => a.evidence.includes(i.id)), a.suspectId, judge);
+      const old = out.get(a.suspectId);
+      if (!old || (verdict.convincing && !old.convincing) || (verdict.convincing === old.convincing && verdict.pointing.length > old.pointing.length)) out.set(a.suspectId, verdict);
+    }
+    return out;
+  }
+
+  /** Somebody was just accused: a few seconds later one colleague says what they make of the evidence. */
+  private planComment(): void {
+    const m = this.meetings.current;
+    const plan = this.botMeeting;
+    const a = m?.accusations.at(-1);
+    if (!this.soloPlayer || !this.bots || !plan || !a) return;
+    const bots = this.bots;
+    const speakers = m!.voters.filter((id) => bots.isPresent(id) && id !== a.suspectId && id !== a.accuserId && this.living().has(id));
+    if (speakers.length === 0) return;
+    const items = this.board.items.filter((i) => a.evidence.includes(i.id));
+    const text = comment(judgeAccusation(items, a.suspectId, this.judge()), this.nameOf(a.suspectId));
+    const total = this.meetings.times.discussionMs;
+    const at = Math.min(total - 1, plan.elapsed + (0.04 + this.talk.next() * 0.05) * total);
+    plan.speak.push({ id: this.talk.pick(speakers), at, lines: [text] });
+    plan.speak.sort((x, y) => x.at - y.at);
+  }
+
   /** Bots say their piece during the discussion and vote during the vote, at human-like moments. */
   private tickBotMeeting(realMs: number): void {
     const m = this.meetings.current;
@@ -863,8 +916,10 @@ export class OfficeGame {
     } else if (m.phase === 'voting') {
       const accused = [...new Set(m.accusations.map((a) => a.suspectId))];
       let voted = false;
+      // In a solo match the bots judge the evidence. In the shared office the people do, and bots vote only on what they saw.
+      const verdicts = this.soloPlayer ? this.verdicts() : undefined;
       for (const v of plan.vote.filter((x) => x.at <= plan.elapsed)) {
-        const choice = bots.ballot(v.id, accused);
+        const choice = bots.ballot(v.id, accused, verdicts);
         if (choice && this.meetings.vote(v.id, choice) === '') voted = true;
       }
       plan.vote = plan.vote.filter((x) => x.at > plan.elapsed);
