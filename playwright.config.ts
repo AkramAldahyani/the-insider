@@ -12,8 +12,8 @@ import { defineConfig } from '@playwright/test';
  * That server runs with BOTS=0: these tests walk to particular desks and
  * expect to find them free, which a bot sitting at its own desk would break.
  * The bots are tested in packages/server/test (and by hand: TESTING.md).
- * One file, match.spec.ts, plays a whole match against a bot hacker. It has a
- * server of its own (2578/5184) with the bots on, game time four times as
+ * One file, match.spec.ts, plays a whole solo match against a bot hacker. It has a
+ * server of its own (2578/5184) with a fixed seed, game time four times as
  * fast, and an anti-stall alert every game minute.
  * Screenshots are written to e2e/screenshots/.
  */
@@ -46,6 +46,6 @@ export default defineConfig({
   ],
   webServer: [
     server(GAME_PORT, PAGE_PORT, { BOTS: '0', MEETING_SECONDS: '8,6,3' }),
-    server(MATCH_GAME_PORT, MATCH_PAGE_PORT, { BOTS: '1', BOT_HACKER: '1', TIME_SPEED: '4', STALL_MINUTES: '1', MEETING_SECONDS: '20,15,5' }),
+    server(MATCH_GAME_PORT, MATCH_PAGE_PORT, { SEED: '1', TIME_SPEED: '4', STALL_MINUTES: '1', MEETING_SECONDS: '20,15,5' }),
   ],
 });

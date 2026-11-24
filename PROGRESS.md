@@ -74,7 +74,55 @@ Update it at the end of every part.
 | 3 Living office | done, pushed by the owner |
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
-| 5 Investigation & social deduction | **done**: Parts A-J. Next is 5a (solo modes), after the owner's OK of a plan |
+| 5 Investigation & social deduction | **done**: Parts A-J |
+| 5a Solo modes | **in progress**: Part A done; B (evidence that convinces) next |
+
+## Phase 5a plan (solo modes): APPROVED by the owner on 2026-11-24, with all five defaults
+
+Goal (DESIGN.md section 15): "One human can finish an Investigation match and an Infiltration match against bots, each
+with debrief." After each part: all tests, this file, commit locally (never push), then wait for the owner's yes.
+
+| Part | What | State |
+|---|---|---|
+| A | Start menu and private matches: mode, role, difficulty; own room, new random seed; play again, back to menu; the server checks every choice | **done** |
+| B | Evidence that convinces: bots judge whether the pins point at the accused (account, PC, address, camera picture) and vote on that; never the hidden truth | next |
+| C | Investigation mode: role choice, three difficulty levels, a rating in the debrief (proven case / lucky guess), browser test. Investigation playable | |
+| D | Bots notice more: `ps aux`, `ss -tnp`, USB events, people at the wrong desk; they pin what they find | |
+| E | Bot SOC analyst (reads the SIEM, follows addresses) and guard (cameras, patrols; detains only on strong evidence) | |
+| F | Infiltration mode: bots call meetings, accuse with evidence and vote; the hacker's start and end screens. Infiltration playable | |
+| G | Scenario ladder: five levels in the existing office, each with a briefing; progress kept in the browser | |
+| H | Balance, soak test of both modes, browser tests, docs | |
+
+Defaults (accepted):
+1. Weak evidence: at least two of the three pins must point at the accused, otherwise the bots vote "skip". A correct
+   accusation with good evidence wins.
+2. Emergency meetings: two per player in solo matches.
+3. Help in Investigation: on Easy bot colleagues pin some clues; on Normal and Hard they only speak in meetings. They
+   never solve the case.
+4. Infiltration is won only by handing in the flag (parity and reputation wins off there).
+5. Difficulty changes the weaknesses, how often bots forget to lock, the bot hacker's EXISTING knowledge and pace, and how
+   closely bot defenders look. No new attack behaviour for the bot hacker ("stealth" in DESIGN section 1a = pace only).
+
+### Part A: what exists now
+
+- `shared/src/solo.ts`: `SoloChoice {mode, role, difficulty}`, the allowed values, `parseSoloChoice` (the only thing the
+  server accepts from a browser about a match; unknown values = refused, extra fields = dropped). Only the mode
+  `investigation` is listed; Part F adds `infiltration` (the menu shows it as not ready).
+- `server/src/solo.ts` `soloGameOptions(base, choice, seed)`: bots and bot hacker always on, the chosen difficulty,
+  two meetings, the employee (picked by the match's seed among the role's people; own random sequence), and
+  `botOptions.hackerNot` so the hacker is never the player. Part C adds the rest of the difficulty here.
+- `OfficeRoom.ts` `soloRoom`: Colyseus room type `solo`, private, one browser, disposed when it leaves; a new random seed
+  per match unless SEED is set (tests); at most SOLO_LIMIT (20) at a time, more get "The server is full".
+  `OfficeGameOptions.soloPlayer`: the player is put in the office on connecting; `choose` is ignored.
+- A finished match locks its room, so the next player of the shared office gets a new match (before, everybody had to leave).
+- Client: `ui/StartMenu.tsx`; the page opens on the menu and connects only after a choice. Store: `enterOffice`,
+  `startSolo`, `leave`, `playAgain`, `reset` (one START state; messages of a left match are ignored). HUD: mode and
+  difficulty, **Leave** (asks once). Match-over box: Play again, Back to the menu.
+- Tests: `server/test/solo.test.ts` (10; also over a real connection). Browser: `e2e/helpers/menu.ts` `openOffice`;
+  `match.spec.ts` now plays a solo match from the menu, then Play again, then Leave.
+- The shared office is unchanged otherwise (its seed is still 1 unless SEED is set).
+- For Part C: a human sysadmin makes the weakness `careless-admin` meaningless (it only affects that bot).
+- 529 Vitest tests in 46 files, 12 Playwright.
 
 ## Phase 5 status: DONE (Parts A-J; plan approved by the owner, defaults 1-6 accepted)
 

@@ -4,6 +4,9 @@ Normal browser matches now include a simulated bot hacker. For the earlier offic
 set `BOT_HACKER=0` (PowerShell: `$env:BOT_HACKER=0`) before starting the server so it does not finish the
 match during unrelated checks. The Phase 5 F section below explicitly turns it back on. `BOTS=0` disables all bots.
 
+The page opens on a **start menu**. Every check below except AG and AH plays in the **Shared office**: press **Enter the
+office** first, also after a reload, then choose the employee.
+
 Manual checks for the current state of the game. Two parts:
 
 - **Phase 2 — the office in the browser** (about ten minutes)
@@ -472,7 +475,7 @@ Start with `BOT_HACKER=0` and `VULNS=plaintext-password` (PowerShell: `$env:BOT_
 
 ## AG. Phase 5, part J: a whole match against the bot hacker
 
-Start with `pnpm dev` (the defaults; about 15 minutes) or quicker with `TIME_SPEED=3` (PowerShell: `$env:TIME_SPEED='3'; pnpm dev`). Play Huda (SOC analyst).
+Start with `pnpm dev` (the defaults; about 15 minutes) or quicker with `TIME_SPEED=3` (PowerShell: `$env:TIME_SPEED='3'; pnpm dev`). In the menu choose *SOC analyst*, *Normal*, **Start the investigation**: you are Huda.
 
 1. Sit down and log in. For the first minutes nothing happens: the hacker is working like everybody else. `siem source=alert` is empty.
 2. Repeat `siem source=alert` now and then, or wait for the banner. When a HIGH row appears, take its `src_ip` and pin the row (select it, **Pin selection**).
@@ -481,6 +484,16 @@ Start with `pnpm dev` (the defaults; about 15 minutes) or quicker with `TIME_SPE
 5. Walk to the meeting room, press `E` at the red button, accuse that person with the three pins, vote. You win, and the debrief shows the rest.
 6. Again, doing nothing: after `rule=flag-read` the hacker still needs some minutes of ordinary work before it wins.
 7. `BOT_HACKER_PACE=fast`: the same match is over within minutes.
+
+## AH. Phase 5a, part A: the start menu and solo matches
+
+1. `pnpm dev`: the page shows the menu; *Infiltration* is greyed out. Choose *Security guard* and *Hard*, **Start the investigation**: you are Tariq, with the onboarding card open, and the top bar says *Investigation · Hard*. No list of employees appears.
+2. Open a second tab and start an investigation there too: it is another match (the first tab does not see anybody appear).
+3. **Leave** in the bottom bar asks; click again within 3 seconds: the menu. Not clicking again: nothing happens.
+4. Start *Employee* a few times: not always the same person. The briefing for hackers never appears.
+5. Finish a match (or `BOT_HACKER_PACE=fast` and wait): the box has **Play again** and **Back to the menu**. Play again starts at 09:00 with an empty evidence board.
+6. *Shared office*: two tabs meet in the same office, as before; **Back to the menu** above the employees works. Join as the hacker, win, then **Play again** in both tabs: they meet again in a new match, without restarting the server.
+7. Stop the server and press a button in the menu: an error with **Back to the menu**.
 
 ## T. What you must NOT be able to see
 
@@ -513,7 +526,7 @@ the outstanding manual check of password masking at a real interactive keyboard.
 pnpm test
 ```
 
-Expected: `Test Files 45 passed (45)` and `Tests 519 passed (519)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
+Expected: `Test Files 46 passed (46)` and `Tests 529 passed (529)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
 
 On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent workers. This passed the complete suite during Phase 5F validation after three existing long-running tests timed out with unrestricted workers.
 
@@ -521,7 +534,7 @@ On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent
 pnpm e2e
 ```
 
-Expected: `12 passed` (7 to 10 minutes). Playwright starts its own games (ports 2577 and 5183: no bots, only the plaintext-password weakness; ports 2578 and 5184: a match against the bot hacker at four times the speed), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
+Expected: `12 passed` (7 to 10 minutes). Playwright starts its own games (ports 2577 and 5183: no bots, only the plaintext-password weakness; ports 2578 and 5184: a solo match against the bot hacker at four times the speed), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
 
 For stability verification, run `pnpm e2e --retries=0` ten times consecutively; each must report 12 passes.
 Retries also default to zero. All PC-sitting steps share a helper that waits for the hostname's hint,

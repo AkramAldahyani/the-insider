@@ -58,6 +58,16 @@ The game has three modes that share the same engine, office, bots, tools and evi
 - Optional **scenario ladder**: a series of fixed scenarios with increasing difficulty (fewer vulnerabilities, more careful bots, more cameras), each with a short briefing and a debrief.
 - Depends on the hacker toolkit (§5).
 
+### Decided for the solo modes (Phase 5a)
+- **A solo match is private.** It has its own room for one browser, and a new random office and hacker each time. The browser may ask only for a mode, a job and a difficulty from fixed lists; the server decides everything else. Leaving ends it.
+- **The player is never the hacker** in Investigation, and cannot switch to somebody else.
+- **Two emergency meetings** per player (the shared office: one).
+- **Evidence has to convince:** at least two of an accusation's three pieces must point at the accused, otherwise the bots vote "skip" (part B).
+- **Help:** on Easy, bot colleagues pin some clues; on Normal and Hard they only speak in meetings. They never solve the case.
+- **Infiltration is won only with the flag:** parity and reputation do not count there.
+- **Difficulty** changes the weaknesses, how often bots forget to lock, the bot hacker's knowledge and pace, and how closely bot defenders look.
+- **Play again** works everywhere: a finished match takes no new players, so whoever joins next gets a new one.
+
 ### The Insider (multiplayer)
 - The full game as described in §1–§12: humans and bots, secret roles, one or more hackers, meetings, evidence and voting.
 

@@ -1,5 +1,6 @@
 /** Visual integration checks: real clients, unchanged public state and keyboard inputs. */
 import { expect, test, type Page } from '@playwright/test';
+import { openOffice } from './helpers/menu';
 
 async function publicBody(page: Page, id: string) {
   return page.evaluate(async (playerId) => {
@@ -13,7 +14,7 @@ async function publicBody(page: Page, id: string) {
 test('task toggles keep canvas and camera sizing stable', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/');
+  await openOffice(page);
   await page.getByTestId('employee-p1').click();
   await expect(page.getByTestId('card')).toBeVisible();
   await page.keyboard.press('c');
@@ -53,13 +54,13 @@ test('task toggles keep canvas and camera sizing stable', async ({ page }) => {
 test('office presentation stays readable and follows two clients', async ({ page, context }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto('/');
+  await openOffice(page);
   await page.getByTestId('employee-p1').click();
   await expect(page.getByTestId('card')).toBeVisible();
   await page.keyboard.press('c');
   const second = await context.newPage();
   second.on('pageerror', (e) => errors.push(e.message));
-  await second.goto('/');
+  await openOffice(second);
   await second.getByTestId('employee-p2').click();
   await expect(second.getByTestId('card')).toBeVisible();
   await second.keyboard.press('c');

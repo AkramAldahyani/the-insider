@@ -3,3 +3,4 @@ export * from './constants';
 export * from './map';
 export * from './messages';
 export * from './path';
+export * from './solo';

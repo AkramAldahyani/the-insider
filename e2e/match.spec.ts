@@ -1,6 +1,6 @@
 /**
- * A whole match in a real browser (Phase 5, part J; the goal of Phase 5 in
- * DESIGN.md section 15: "a full match as defender vs a bot hacker, with debrief").
+ * A whole solo match in a real browser, from the start menu to the debrief and
+ * "play again" (Phase 5 part J and Phase 5a part A).
  *
  * Huda, the SOC analyst, plays against a full office of bots, one of them the
  * hacker. The test does not know who that is: it waits for a HIGH alert in the
@@ -42,8 +42,13 @@ async function pin(page: Page, text: string, number: number): Promise<string> {
 
 test('a defender follows the evidence to the bot hacker, has them voted out, and reads the debrief', async ({ page }) => {
   test.setTimeout(8 * 60_000);
+  // 0. The start menu: an investigation as the SOC analyst. There is no employee to choose: she starts right away.
   await page.goto('/');
-  await page.getByTestId('employee-p11').click();
+  await page.getByTestId('role-soc').check();
+  await page.getByTestId('difficulty-normal').check();
+  await page.screenshot({ path: `${SHOTS}/21-start-menu.png` });
+  await page.getByTestId('menu-investigation').click();
+  await expect(page.getByTestId('mode')).toHaveText('Investigation · Normal');
   const password = await page.getByTestId('card-password').innerText();
   await page.keyboard.press('c');
   await walkAndSit(page, 'SOC-WS-01');
@@ -73,7 +78,7 @@ test('a defender follows the evidence to the bot hacker, has them voted out, and
   // 3. Call a meeting, accuse, vote.
   const button = await page.evaluate(() => window.__insider!.button());
   await walkTo(page, button.x, button.y, 24);
-  await expect(page.getByTestId('hint')).toContainText('call an emergency meeting');
+  await expect(page.getByTestId('hint')).toContainText('call an emergency meeting (2 left)');
   await page.keyboard.press('e');
   await expect(page.getByTestId('meeting')).toBeVisible();
   await page.getByTestId('accuse-suspect').selectOption(suspect.id);
@@ -92,4 +97,24 @@ test('a defender follows the evidence to the bot hacker, has them voted out, and
   await expect(page.getByTestId('debrief-meetings')).toContainText('Huda Rahman');
   await expect(debrief).not.toContainText('Handed in the flag');
   await page.screenshot({ path: `${SHOTS}/20-match-debrief.png` });
+
+  // 5. Play again: a new match of the same kind, with nothing left over from the last one.
+  await page.getByRole('button', { name: 'Close debrief' }).click();
+  await page.getByTestId('play-again').click();
+  await expect(page.getByTestId('match-over')).toBeHidden();
+  await expect(page.getByTestId('mode')).toHaveText('Investigation · Normal');
+  await expect(page.getByTestId('card')).toBeVisible();
+  await expect(page.getByTestId('board-button')).toContainText('Evidence (0)');
+  await expect(page.getByTestId('hud-debrief')).toBeHidden();
+  await expect(page.getByTestId('clock')).toContainText('09:00');
+  await page.keyboard.press('c');
+  await walkAndSit(page, 'SOC-WS-01'); // walking and the terminal work in the new match too
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('terminal')).toBeHidden();
+
+  // 6. Leaving asks once, and goes back to the menu.
+  await page.getByTestId('leave').click();
+  await expect(page.getByTestId('leave')).toContainText('Click again');
+  await page.getByTestId('leave').click();
+  await expect(page.getByTestId('menu')).toBeVisible();
 });

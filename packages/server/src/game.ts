@@ -55,6 +55,11 @@ export interface OfficeGameOptions {
    * re-scored as a HIGH alert (default 10; 0 switches it off).
    */
   escalationMinutes?: number;
+  /**
+   * A solo match: the one human plays this employee. They are put in the office
+   * as soon as they connect, and cannot choose anybody else or the hacker role.
+   */
+  soloPlayer?: string;
   /** Enables the developer messages (dev.*). MUST be false in production. */
   dev?: boolean;
   /** Dev only: saves a world dump and returns where it went. The game itself never touches the disk. */
@@ -121,6 +126,7 @@ export class OfficeGame {
   private readonly eyes: Random;
   readonly dev: boolean;
   speed: number;
+  private readonly soloPlayer: string | null;
 
   private readonly scenario: Scenario;
   private readonly mapName: string;
@@ -153,6 +159,7 @@ export class OfficeGame {
     this.doors = new Doors(this.world, this.map, this.collision.solid, this.world.mission.onePersonDoors);
     this.speed = options.speed ?? 1;
     this.dev = options.dev ?? false;
+    this.soloPlayer = options.soloPlayer ?? null;
     this.writeDump = options.writeDump;
     this.cctv = new Cctv(this.world, this.map);
     this.meetings = new Meetings({ ...DEFAULT_MEETING_TIMES, ...options.meetingTimes });
@@ -247,6 +254,7 @@ export class OfficeGame {
   connect(clientId: string): void {
     this.clients.add(clientId);
     this.sendLobby(clientId);
+    if (this.soloPlayer) this.choose(clientId, { playerId: this.soloPlayer });
   }
 
   /** The bodies controlled by a browser. */
@@ -286,7 +294,7 @@ export class OfficeGame {
     const data = isRecord(payload) ? payload : {};
     const avatar = this.avatars.get(clientId);
 
-    if (type === 'choose') return this.choose(clientId, data);
+    if (type === 'choose') return this.soloPlayer ? undefined : this.choose(clientId, data);
     // Fired players watching: they may only talk to each other.
     if (this.ghosts.has(clientId)) {
       if (type === 'chat.send') this.chat(clientId, data);
@@ -370,7 +378,7 @@ export class OfficeGame {
   }
 
   private choose(clientId: string, data: Record<string, unknown>): void {
-    if (this.over) return this.send(clientId, 'notice', { text: 'The match is over. Start a new match after everyone leaves.' });
+    if (this.over) return this.send(clientId, 'notice', { text: 'The match is over. Go back to the menu to start a new one.' });
     if (this.avatars.has(clientId)) return; // already playing
     const player = this.world.players.find((p) => p.id === data.playerId);
     if (!player) return this.send(clientId, 'notice', { text: 'That employee does not exist.' });

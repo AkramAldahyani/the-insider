@@ -1,12 +1,13 @@
 /**
- * The page: connecting -> start screen -> the office.
+ * The page: start menu -> connecting -> (choose an employee) -> the office.
  * All data comes from the store (game/store.ts); this file only chooses what to show.
  */
-import { Suspense, lazy, useEffect, useSyncExternalStore } from 'react';
+import { Suspense, lazy, useSyncExternalStore } from 'react';
 import { PhaserView } from './game/PhaserView';
 import { store } from './game/store';
 import { BoardPanel } from './ui/BoardPanel';
 import { DebriefPanel } from './ui/DebriefPanel';
+import { StartMenu } from './ui/StartMenu';
 import { FiredPanel, MeetingPanel } from './ui/MeetingPanel';
 import { MonitorsPanel } from './ui/MonitorsPanel';
 import { TerminalOverlay } from './ui/TerminalOverlay';
@@ -20,10 +21,7 @@ const DevPanel = import.meta.env.DEV ? lazy(() => import('./ui/DevPanel')) : nul
 export function App() {
   const ui = useSyncExternalStore(store.subscribe, store.getUi);
 
-  useEffect(() => {
-    void store.connect();
-  }, []);
-
+  if (ui.phase === 'menu') return <StartMenu />;
   if (ui.phase === 'connecting') return <div className="center">Connecting to the office…</div>;
   if (ui.phase === 'error') {
     return (
@@ -31,7 +29,7 @@ export function App() {
         <div className="error">
           <strong>Something went wrong</strong>
           <p>{ui.error}</p>
-          <button type="button" onClick={() => window.location.reload()}>Try again</button>
+          <button type="button" onClick={() => store.leave()}>Back to the menu</button>
         </div>
       </div>
     );

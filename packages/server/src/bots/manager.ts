@@ -66,6 +66,8 @@ export interface BotOptions {
   /** An unclaimed employee is the simulated hacker by default. False keeps an ordinary office. */
   hacker?: boolean;
   hackerDifficulty?: HackerDifficulty;
+  /** This employee must not be the simulated hacker (a solo player who chose to defend). */
+  hackerNot?: string;
   /** How fast the simulated hacker plays. Default: the pace that belongs to its difficulty. */
   hackerPace?: HackerPace;
   /** Probability that a bot leaves its desk without locking the screen (default 0.25). */
@@ -157,8 +159,9 @@ export class BotManager {
       this.hackerDifficulty === 'easy' ? [] : host.world.mission.weaknesses);
     for (const player of host.world.players) this.schedule(player.id);
     if (options.hacker !== false && host.world.mission.flag && !host.world.mission.hacker) {
-      const employees = host.world.players.filter((p) => p.role === 'employee');
-      const pool = employees.length ? employees : host.world.players;
+      const others = host.world.players.filter((p) => p.id !== options.hackerNot);
+      const employees = others.filter((p) => p.role === 'employee');
+      const pool = employees.length ? employees : others;
       // Use a separate match-seeded draw: neither weaknesses nor their recipients influence identity.
       const selected = new Random(seed ^ 0x4ac4e2).pick(pool);
       if (selected) setHacker(host.world, selected.id);

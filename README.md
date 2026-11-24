@@ -2,7 +2,7 @@
 
 A multiplayer social-deduction game that teaches real Linux forensics. The full design is in [DESIGN.md](DESIGN.md).
 
-**Current state: Phase 5 (done) — investigation.** Roles are in (each player's card shows their role and what it allows, and the office has a SOC analyst), the SOC analyst's PC has a SIEM search over every machine's logs (`siem`), the security office's monitors show the camera recordings and the badge log, findings can be pinned to a shared evidence board (`B`), the emergency button in the meeting room starts a meeting with chat, accusations backed by evidence, and a vote, the guard can detain someone caught in the act (`X`), and the helpdesk's PC has a console to lock any PC remotely and reset passwords (`helpdesk`). Bot employees check their own PCs, remember what they saw, tell meetings about it, and vote only on what they know. Phase 4 parts A-H are complete, including the simulated remote tools, phishing, log cleaner, and CLI hacker support. Phase 5 H adds parity, reputation loss, and anti-stall escalation. Phase 5 F is complete: a simulated bot hacker now plays by default. After a match, the debrief shows every step of the hacker, the evidence it left, what was found or missed, and the MITRE ATT&CK technique (Phase 5 I). The bot hacker plays at a human pace, and whole matches are tested (Phase 5 J). Phase 5a, the solo modes, is next.
+**Current state: Phase 5 (done) — investigation; Phase 5a (solo modes) in progress.** The page opens on a start menu: a private Investigation match against bots (choose a job and a difficulty), or the shared office. Roles are in (each player's card shows their role and what it allows, and the office has a SOC analyst), the SOC analyst's PC has a SIEM search over every machine's logs (`siem`), the security office's monitors show the camera recordings and the badge log, findings can be pinned to a shared evidence board (`B`), the emergency button in the meeting room starts a meeting with chat, accusations backed by evidence, and a vote, the guard can detain someone caught in the act (`X`), and the helpdesk's PC has a console to lock any PC remotely and reset passwords (`helpdesk`). Bot employees check their own PCs, remember what they saw, tell meetings about it, and vote only on what they know. Phase 4 parts A-H are complete, including the simulated remote tools, phishing, log cleaner, and CLI hacker support. Phase 5 H adds parity, reputation loss, and anti-stall escalation. Phase 5 F is complete: a simulated bot hacker now plays by default. After a match, the debrief shows every step of the hacker, the evidence it left, what was found or missed, and the MITRE ATT&CK technique (Phase 5 I). The bot hacker plays at a human pace, and whole matches are tested (Phase 5 J). 
 
 **A living office.** You walk around an office full of bot employees, sit at any PC and use its simulated Linux shell. Bots work, write mail, browse and take breaks, so evidence accumulates even while you stand still. The hacker has a private toolkit, a USB stick (hold `U` at an unlocked PC) and shoulder surfing. Reading the server's flag and submitting it from the briefing ends the match. See [visual upgrade notes](docs/design/visual-upgrade.md) for the current procedural art and [progress](PROGRESS.md) for each completed part.
 
@@ -96,7 +96,7 @@ Other commands:
 | `BOT_HACKER_PACE=fast pnpm dev` | a bot hacker without pauses, for demonstrations (PowerShell: `$env:BOT_HACKER_PACE='fast'; pnpm dev`) |
 | `pnpm map` | regenerate `maps/office-small.json` from `maps/build-office.ts` (overwrites edits made in Tiled) |
 
-Server settings are environment variables: `GAME_PORT` (2567), `SCENARIO` (`nexora-small`), `MAP` (`office-small`), `SEED` (1), `TIME_SPEED` (game seconds per real second, 1), `BOTS` (`0` = an empty office with no bot employees), `MEETING_SECONDS` (meeting discussion, voting and result lengths, `90,45,8`), `STALL_MINUTES` (anti-stall: every N game minutes one of the hacker's actions is flagged HIGH in the SIEM, `10`, `0` = off), `VULNS` (today's weaknesses: `random` by default, `none`, or a list such as `extra-sudo,tailgate`), and `NODE_ENV=production` to switch the developer tools off.
+Server settings are environment variables: `GAME_PORT` (2567), `SCENARIO` (`nexora-small`), `MAP` (`office-small`), `SEED` (the shared office uses 1 unless it is set; every solo match gets a new one unless it is set), `SOLO_LIMIT` (how many solo matches may run at the same time, 20), `TIME_SPEED` (game seconds per real second, 1), `BOTS` (`0` = an empty office with no bot employees), `MEETING_SECONDS` (meeting discussion, voting and result lengths, `90,45,8`), `STALL_MINUTES` (anti-stall: every N game minutes one of the hacker's actions is flagged HIGH in the SIEM, `10`, `0` = off), `VULNS` (today's weaknesses: `random` by default, `none`, or a list such as `extra-sudo,tailgate`), and `NODE_ENV=production` to switch the developer tools off.
 
 With bots enabled, one eligible employee is chosen uniformly using the match seed, independently of weaknesses
 and who received mistaken sudo. It starts its mission after several game minutes of
@@ -171,13 +171,13 @@ pnpm test
 pnpm typecheck
 ```
 
-519 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay), the server (movement, sitting, doors and badges, bots, bot hacker fairness, difficulty, fallback matches and interruptions, job tasks, CCTV, a three-hour soak run, whole matches against the bot hacker, map checks, and the visibility rule), and CLI mission startup and completion.
+529 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay), the server (movement, sitting, doors and badges, bots, bot hacker fairness, difficulty, fallback matches and interruptions, job tasks, CCTV, a three-hour soak run, whole matches against the bot hacker, map checks, and the visibility rule), and CLI mission startup and completion.
 
 ```bash
 pnpm e2e
 ```
 
-Twelve Playwright tests drive real Chromium clients through the game. Eleven use their own server without bots (ports 2577 and 5183), so they never share an office with a game you have open; the twelfth plays a whole match against the bot hacker on a second one (2578 and 5184). They cover the existing interactions plus two-client movement, responsive HUD layout, and stable canvas/camera sizing after repeated task-panel toggles. Screenshots go to `e2e/screenshots/` and `test-results/design/`. The first time, download the browser with:
+Twelve Playwright tests drive real Chromium clients through the game. Eleven use their own server without bots (ports 2577 and 5183), so they never share an office with a game you have open; the twelfth plays a whole solo match against the bot hacker on a second one (2578 and 5184). They cover the existing interactions plus two-client movement, responsive HUD layout, and stable canvas/camera sizing after repeated task-panel toggles. Screenshots go to `e2e/screenshots/` and `test-results/design/`. The first time, download the browser with:
 
 ```bash
 pnpm exec playwright install chromium
@@ -208,7 +208,7 @@ packages/server/      the game server (Colyseus)
 packages/client/      the browser game
   src/game/store.ts   connection + the data React, Phaser and xterm share
   src/game/           Phaser scene (map, players, monitors) and keyboard
-  src/ui/             terminal window, line editor, HUD, start screen, card, dev panel
+  src/ui/             terminal window, line editor, HUD, start menu, start screen, card, dev panel
 packages/engine/      the simulation: pure TypeScript, no I/O, no Node APIs
   src/core/           clock, background noise, random numbers, scenario format, world builder
   src/fs/             virtual filesystem and permission checks

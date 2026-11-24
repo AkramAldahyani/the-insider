@@ -12,8 +12,8 @@ import { fileURLToPath } from 'node:url';
 import { Server } from '@colyseus/core';
 import { WebSocketTransport } from '@colyseus/ws-transport';
 import { ALL_WEAKNESSES, type Scenario, type WeaknessChoice } from '@insider/engine';
-import { ROOM_NAME, type TiledMap } from '@insider/shared';
-import { officeRoom } from './OfficeRoom';
+import { ROOM_NAME, SOLO_ROOM_NAME, type TiledMap } from '@insider/shared';
+import { officeRoom, soloRoom } from './OfficeRoom';
 import type { OfficeGameOptions } from './game';
 import { parseHackerDifficulty } from './bots/hacker-knowledge';
 import { parseHackerPace } from './bots/hacker-pace';
@@ -43,6 +43,8 @@ export interface AppOptions {
   meetingSeconds?: string;
   /** Anti-stall: game minutes between two re-scored hacker actions (default 10, 0 = off). */
   stallMinutes?: number;
+  /** How many solo matches may run at the same time (default 20). */
+  soloLimit?: number;
 }
 
 /** "random" / "none" / "extra-sudo,tailgate" -> what the game expects. Unknown names stop the server. */
@@ -90,9 +92,11 @@ export function loadGameOptions(options: AppOptions = {}): OfficeGameOptions {
   };
 }
 
-/** Creates a Colyseus server with the office room defined. Call `.listen(port)` on the result. */
+/** Creates a Colyseus server with the shared office and the solo matches defined. Call `.listen(port)` on the result. */
 export function createGameServer(options: AppOptions = {}): Server {
   const server = new Server({ transport: new WebSocketTransport(), greet: false });
-  server.define(ROOM_NAME, officeRoom(loadGameOptions(options)));
+  const game = loadGameOptions(options);
+  server.define(ROOM_NAME, officeRoom(game));
+  server.define(SOLO_ROOM_NAME, soloRoom(game, { seed: options.seed, limit: options.soloLimit }));
   return server;
 }

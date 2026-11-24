@@ -1,8 +1,9 @@
 /** The small React pieces around the map: start screen, HUD and onboarding card. */
 import type { EmployeeChoice, OnboardingCard as Card } from '@insider/shared';
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { store, type UiState } from '../game/store';
 import { characterPortrait, departmentColor } from '../game/characterArt';
+import { DIFFICULTY_TEXT, MODE_TEXT } from './StartMenu';
 
 function Portrait({ id, department }: { id: string; department: string }) {
   return <span className="portrait" style={{ '--department': departmentColor(department) } as CSSProperties}>
@@ -31,6 +32,7 @@ export function StartScreen({ ui }: { ui: UiState }) {
         <h1>THE INSIDER</h1>
         <p className="start-intro">An ordinary office. An extraordinary amount of evidence.</p>
         <p className="start-sub">{ui.scenarioName} — choose who you are today</p>
+        <button type="button" className="start-back" data-testid="back-to-menu" onClick={() => store.leave()}>Back to the menu</button>
         {[...byDepartment].map(([department, people]) => (
           <section key={department}>
             <h2>{department}</h2>
@@ -89,6 +91,7 @@ export function Hud({ ui }: { ui: UiState }) {
         <span className="hud-brand"><span className="brand-mark" />THE INSIDER</span>
         <span className="hud-clock" data-testid="clock">{clockText(ui.clock)}</span>
         {ui.speed !== 1 && <span className="hud-speed">×{ui.speed}</span>}
+        {ui.solo && <span className="hud-mode" data-testid="mode">{MODE_TEXT[ui.solo.mode].name} · {DIFFICULTY_TEXT[ui.solo.difficulty].name}</span>}
         <span className="hud-room" data-testid="room">{ui.roomName || '—'}</span>
         <span className="hud-reputation" data-testid="reputation" title="Company reputation: it drops each time an innocent person is fired">Reputation {store.room?.state.reputation ?? 100}%</span>
         <span className="hud-spacer" />
@@ -101,6 +104,7 @@ export function Hud({ ui }: { ui: UiState }) {
         <button type="button" onClick={() => store.set({ tasksOpen: !ui.tasksOpen })}><kbd>T</kbd> Tasks</button>
         <button type="button" data-testid="board-button" onClick={() => store.set({ boardOpen: !ui.boardOpen })}><kbd>B</kbd> Evidence ({ui.board.length})</button>
         {ui.debrief && <button type="button" data-testid="hud-debrief" onClick={() => store.set({ debriefOpen: true })}>Debrief</button>}
+        <LeaveButton ui={ui} />
         {ui.dev && <span className="dev-shortcut"><kbd>`</kbd> Dev</span>}
       </div>
       <PlayerRoster ui={ui} />
@@ -135,6 +139,21 @@ export function Hud({ ui }: { ui: UiState }) {
         </div>
       )}
     </>
+  );
+}
+
+/** Leaving ends a solo match, so the first click only asks. */
+function LeaveButton({ ui }: { ui: UiState }) {
+  const [asked, setAsked] = useState(false);
+  useEffect(() => {
+    if (!asked) return;
+    const timer = window.setTimeout(() => setAsked(false), 3000);
+    return () => window.clearTimeout(timer);
+  }, [asked]);
+  return (
+    <button type="button" data-testid="leave" onClick={() => (asked || ui.matchOver || ui.debrief ? store.leave() : setAsked(true))}>
+      {asked ? <strong>Leave the match? Click again</strong> : 'Leave'}
+    </button>
   );
 }
 
@@ -226,9 +245,11 @@ export function MatchOver({ ui }: { ui: UiState }) {
         <div className="eyebrow">MATCH OVER · {clockText(o.at)}</div>
         <h2>{title}</h2>
         <p>{o.reason} The hacker was <strong data-testid="match-over-hacker">{o.hacker}</strong>.</p>
-        <p className="start-note">The debrief shows everything they did, the evidence it left, and what was found or missed. Reload the page once everybody has left to start a new match.</p>
+        <p className="start-note">The debrief shows everything they did, the evidence it left, and what was found or missed.</p>
         <div className="match-over-buttons">
           {ui.debrief && <button type="button" data-testid="open-debrief" onClick={() => store.set({ debriefOpen: true })}>See the debrief</button>}
+          <button type="button" data-testid="play-again" onClick={() => void store.playAgain()}>Play again</button>
+          <button type="button" data-testid="to-menu" onClick={() => store.leave()}>Back to the menu</button>
           <button type="button" onClick={() => store.set({ matchOver: null })}>Look around the office</button>
         </div>
       </div>
