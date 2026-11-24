@@ -73,14 +73,22 @@ export class Mover {
     this.door = null;
   }
 
-  private plan(): boolean {
+  /** Is there a way to this point, with this badge? (Asking changes nothing.) */
+  canReach(x: number, y: number): boolean {
+    return this.route({ x, y }) !== null;
+  }
+
+  private route(target: Point): Point[] | null {
     const { map } = this.world;
-    const target = this.target!;
     // Restricted doors this badge does not open count as walls, unless we are
     // already behind one (then it is the way out, which is always allowed).
     const refuses = map.doors.filter((d) => d.restricted && !this.world.mayEnter(this.body, d) && !this.isBehind(d));
     const avoid = (col: number, row: number) => refuses.some((d) => distanceToRect(d, (col + 0.5) * map.tile, (row + 0.5) * map.tile) === 0);
-    const path = findPath(map, this.body.x, this.body.y, target.x, target.y, avoid);
+    return findPath(map, this.body.x, this.body.y, target.x, target.y, avoid);
+  }
+
+  private plan(): boolean {
+    const path = this.route(this.target!);
     if (!path) {
       this.state = 'failed';
       this.failure = 'no-route';

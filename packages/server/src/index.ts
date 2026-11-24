@@ -13,6 +13,7 @@
  *   BOTS=0              an empty office: no bot employees
  *   BOT_HACKER=0        keep employee bots but disable the automated hacker
  *   BOT_HACKER_DIFFICULTY=normal  easy (rumours), normal (some facts), hard (all facts)
+ *   BOT_HACKER_PACE=normal  how fast the bot hacker plays: normal (by difficulty) or fast (tests, demonstrations)
  *   MEETING_SECONDS=90,45,8  meeting discussion, voting and result lengths
  *   STALL_MINUTES=10    anti-stall: every N game minutes one hacker action is flagged HIGH (0 = off)
  *   VULNS=random        today's weaknesses: random (2-4 from the seed), none, or a list like extra-sudo,tailgate
@@ -30,6 +31,7 @@ const options: AppOptions = {
   bots: process.env.BOTS === undefined ? undefined : process.env.BOTS !== '0',
   botHacker: process.env.BOT_HACKER === undefined ? undefined : process.env.BOT_HACKER !== '0',
   botHackerDifficulty: process.env.BOT_HACKER_DIFFICULTY,
+  botHackerPace: process.env.BOT_HACKER_PACE,
   weaknesses: process.env.VULNS,
   meetingSeconds: process.env.MEETING_SECONDS,
   stallMinutes: process.env.STALL_MINUTES ? Number(process.env.STALL_MINUTES) : undefined,

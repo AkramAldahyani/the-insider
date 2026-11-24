@@ -2,7 +2,7 @@
 
 A multiplayer social-deduction game that teaches real Linux forensics. The full design is in [DESIGN.md](DESIGN.md).
 
-**Current state: Phase 5 (in progress) — investigation.** Roles are in (each player's card shows their role and what it allows, and the office has a SOC analyst), the SOC analyst's PC has a SIEM search over every machine's logs (`siem`), the security office's monitors show the camera recordings and the badge log, findings can be pinned to a shared evidence board (`B`), the emergency button in the meeting room starts a meeting with chat, accusations backed by evidence, and a vote, the guard can detain someone caught in the act (`X`), and the helpdesk's PC has a console to lock any PC remotely and reset passwords (`helpdesk`). Bot employees check their own PCs, remember what they saw, tell meetings about it, and vote only on what they know. Phase 4 parts A-H are complete, including the simulated remote tools, phishing, log cleaner, and CLI hacker support. Phase 5 H adds parity, reputation loss, and anti-stall escalation. Phase 5 F is complete: a simulated bot hacker now plays by default. After a match, the debrief shows every step of the hacker, the evidence it left, what was found or missed, and the MITRE ATT&CK technique (Phase 5 I); Phase 5 J (whole-match tests and balance) is next.
+**Current state: Phase 5 (done) — investigation.** Roles are in (each player's card shows their role and what it allows, and the office has a SOC analyst), the SOC analyst's PC has a SIEM search over every machine's logs (`siem`), the security office's monitors show the camera recordings and the badge log, findings can be pinned to a shared evidence board (`B`), the emergency button in the meeting room starts a meeting with chat, accusations backed by evidence, and a vote, the guard can detain someone caught in the act (`X`), and the helpdesk's PC has a console to lock any PC remotely and reset passwords (`helpdesk`). Bot employees check their own PCs, remember what they saw, tell meetings about it, and vote only on what they know. Phase 4 parts A-H are complete, including the simulated remote tools, phishing, log cleaner, and CLI hacker support. Phase 5 H adds parity, reputation loss, and anti-stall escalation. Phase 5 F is complete: a simulated bot hacker now plays by default. After a match, the debrief shows every step of the hacker, the evidence it left, what was found or missed, and the MITRE ATT&CK technique (Phase 5 I). The bot hacker plays at a human pace, and whole matches are tested (Phase 5 J). Phase 5a, the solo modes, is next.
 
 **A living office.** You walk around an office full of bot employees, sit at any PC and use its simulated Linux shell. Bots work, write mail, browse and take breaks, so evidence accumulates even while you stand still. The hacker has a private toolkit, a USB stick (hold `U` at an unlocked PC) and shoulder surfing. Reading the server's flag and submitting it from the briefing ends the match. See [visual upgrade notes](docs/design/visual-upgrade.md) for the current procedural art and [progress](PROGRESS.md) for each completed part.
 
@@ -93,13 +93,14 @@ Other commands:
 | `BOTS=0 pnpm dev` | an empty office without bot employees (PowerShell: `$env:BOTS=0; pnpm dev`) |
 | `BOT_HACKER=0 pnpm dev` | ordinary employee bots without an automated hacker (PowerShell: `$env:BOT_HACKER=0; pnpm dev`) |
 | `BOT_HACKER_DIFFICULTY=easy pnpm dev` | bot knowledge: `easy`, `normal` (default), or `hard` (PowerShell: `$env:BOT_HACKER_DIFFICULTY='easy'; pnpm dev`) |
+| `BOT_HACKER_PACE=fast pnpm dev` | a bot hacker without pauses, for demonstrations (PowerShell: `$env:BOT_HACKER_PACE='fast'; pnpm dev`) |
 | `pnpm map` | regenerate `maps/office-small.json` from `maps/build-office.ts` (overwrites edits made in Tiled) |
 
 Server settings are environment variables: `GAME_PORT` (2567), `SCENARIO` (`nexora-small`), `MAP` (`office-small`), `SEED` (1), `TIME_SPEED` (game seconds per real second, 1), `BOTS` (`0` = an empty office with no bot employees), `MEETING_SECONDS` (meeting discussion, voting and result lengths, `90,45,8`), `STALL_MINUTES` (anti-stall: every N game minutes one of the hacker's actions is flagged HIGH in the SIEM, `10`, `0` = off), `VULNS` (today's weaknesses: `random` by default, `none`, or a list such as `extra-sudo,tailgate`), and `NODE_ENV=production` to switch the developer tools off.
 
 With bots enabled, one eligible employee is chosen uniformly using the match seed, independently of weaknesses
-and who received mistaken sudo. It starts its mission after two game minutes of
-ordinary work following arrival and uses only the simulated tools and movement rules. Its actions leave logs
+and who received mistaken sudo. It starts its mission after several game minutes of
+ordinary work following arrival (how long depends on the difficulty), pauses between its steps, and uses only the simulated tools and movement rules. Its actions leave logs
 and physical evidence; meetings interrupt it, and the guard or a vote can stop it. `BOT_HACKER=0` disables this
 controller while leaving employee bots active. Human hacker selection remains available: taking over the bot
 hacker's employee preserves that role, while explicitly choosing another hacker stops the previous controller.
@@ -110,6 +111,10 @@ simulated terminals. **Normal** (default) knows a seeded subset of enabled weakn
 knowledge. Normal confirms half, rounded down, or uses a seeded 50% confirmation chance when only one weakness
 is enabled. Failed attempts leave normal evidence and lead to other routes, including physical observation.
 The developer panel's **mission** view shows the setting. Restart the server to change it; invalid values fail startup.
+
+The difficulty also sets the bot's pace. If nobody stops it, a match usually takes 16 to 29 game minutes on Easy, 12 to 23 on
+Normal and 8 to 14 on Hard; after it has read the flag (a HIGH alert) it still works normally for a few minutes before handing
+it in. `BOT_HACKER_PACE=fast` removes the pauses. On a day without a direct way in, it waits for a chance and can take hours.
 
 ## Run the CLI
 
@@ -166,13 +171,13 @@ pnpm test
 pnpm typecheck
 ```
 
-488 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay), the server (movement, sitting, doors and badges, bots, bot hacker fairness, difficulty, fallback matches and interruptions, job tasks, CCTV, a three-hour soak run, map checks, and the visibility rule), and CLI mission startup and completion.
+519 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay), the server (movement, sitting, doors and badges, bots, bot hacker fairness, difficulty, fallback matches and interruptions, job tasks, CCTV, a three-hour soak run, whole matches against the bot hacker, map checks, and the visibility rule), and CLI mission startup and completion.
 
 ```bash
 pnpm e2e
 ```
 
-Eleven Playwright tests drive real Chromium clients through the game (on their own server, ports 2577 and 5183, without bots, so they never share an office with a game you have open). They cover the existing interactions plus two-client movement, responsive HUD layout, and stable canvas/camera sizing after repeated task-panel toggles. Screenshots go to `e2e/screenshots/` and `test-results/design/`. The first time, download the browser with:
+Twelve Playwright tests drive real Chromium clients through the game. Eleven use their own server without bots (ports 2577 and 5183), so they never share an office with a game you have open; the twelfth plays a whole match against the bot hacker on a second one (2578 and 5184). They cover the existing interactions plus two-client movement, responsive HUD layout, and stable canvas/camera sizing after repeated task-panel toggles. Screenshots go to `e2e/screenshots/` and `test-results/design/`. The first time, download the browser with:
 
 ```bash
 pnpm exec playwright install chromium

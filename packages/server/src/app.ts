@@ -16,6 +16,7 @@ import { ROOM_NAME, type TiledMap } from '@insider/shared';
 import { officeRoom } from './OfficeRoom';
 import type { OfficeGameOptions } from './game';
 import { parseHackerDifficulty } from './bots/hacker-knowledge';
+import { parseHackerPace } from './bots/hacker-pace';
 
 export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
@@ -34,6 +35,8 @@ export interface AppOptions {
   botHacker?: boolean;
   /** easy / normal (default) / hard: how much the bot knows before investigating. */
   botHackerDifficulty?: string;
+  /** normal (default: depends on the difficulty) / fast (no pauses, for tests and demonstrations). */
+  botHackerPace?: string;
   /** Today's weaknesses: "random" (default), "none", or a comma-separated list of weakness ids. */
   weaknesses?: string;
   /** Meeting lengths in seconds, "discussion,voting,result" (default 90,45,8). */
@@ -70,7 +73,7 @@ export function loadGameOptions(options: AppOptions = {}): OfficeGameOptions {
   return {
     scenario, map, mapName, dev,
     bots: options.bots ?? true,
-    botOptions: { hacker: options.botHacker ?? true, hackerDifficulty: parseHackerDifficulty(options.botHackerDifficulty) },
+    botOptions: { hacker: options.botHacker ?? true, hackerDifficulty: parseHackerDifficulty(options.botHackerDifficulty), hackerPace: parseHackerPace(options.botHackerPace) },
     weaknesses: parseWeaknesses(options.weaknesses),
     meetingTimes: parseMeetingSeconds(options.meetingSeconds),
     escalationMinutes: options.stallMinutes,

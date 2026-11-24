@@ -285,7 +285,7 @@ Decided in Phase 5 (part G):
 Decided in Phase 5 (part F, completed after G/H):
 
 - **A bot hacker by default.** With bots enabled, one seeded employee has the hacker role and starts pursuing
-  the mission after two game minutes of ordinary work following arrival. Its game-specific routes use existing
+  the mission after some minutes of ordinary work following arrival (see part J). Its game-specific routes use existing
   simulated commands and physical actions, obey their checks, and leave the same evidence as a human.
 - **Observed information.** The controller learns new secrets from its terminal output or physically observed
   partial input. It cannot read the credential store, private files or the master log directly. Failed routes
@@ -294,6 +294,15 @@ Decided in Phase 5 (part F, completed after G/H):
   Choosing a different human hacker stops the previous bot controller; disconnecting hands control back to a bot.
 - **Practice switch.** `BOT_HACKER=0` retains ordinary employee bots but disables automated hacking. `BOTS=0`
   disables both. Meetings pause the controller, and the existing detention/voting/flag rules decide the winner.
+
+Decided in Phase 5 (part J):
+
+- **The bot hacker has a job too.** It works normally for a while after arriving (easy 6-9 game minutes, normal 5-8,
+  hard 4-6), thinks between terminal lines, goes back to ordinary work after a failure or a meeting, and works for a few
+  minutes between reading the flag and handing it in (easy 4-6, normal 3-5, hard 2-3). Reading the flag raises a HIGH
+  alert, so this is the defenders' last chance. Harder hackers are faster as well as better informed.
+- **Target length** of a match nobody interferes with: about 20 game minutes on easy, 15 on normal, 11 on hard. A day
+  without a direct weakness can take far longer; the anti-stall alerts then hand the defenders the trail.
 
 Decided in Phase 5 (part H):
 

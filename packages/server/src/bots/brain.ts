@@ -189,6 +189,8 @@ function rhythm(role: string): { work: [number, number]; away: [number, number] 
 function chooseBreak(b: BotSubject): { spot: Point | null; room: string } {
   const { random, world, persona } = b;
   const room = (name: string) => ({ spot: world.spotIn(name), room: name });
+  // Not a desk behind a door this badge does not open (the helpdesk and the security office).
+  const reachable = (hosts: string[]) => hosts.filter((h) => { const at = world.spotAtDesk(h); return at !== null && b.mover.canReach(at.x, at.y); });
   const desk = (hostname: string | undefined) => (hostname ? { spot: world.spotAtDesk(hostname), room: `desk ${hostname}` } : room('Corridor'));
   if (b.mind.errand) return room(b.mind.errand); // a task sends the bot somewhere
   const roll = random.next();
@@ -196,12 +198,12 @@ function chooseBreak(b: BotSubject): { spot: Point | null; room: string } {
     // A patrol: mostly the corridor and the public rooms.
     return room(random.pick(['Corridor', 'Corridor', 'Reception', 'Cafeteria / meeting room', 'Printer room', 'Storage']));
   }
-  if (persona.role === 'helpdesk' && roll < 0.6) return desk(random.pick(world.otherDesks())); // "have you tried turning it off and on?"
+  if (persona.role === 'helpdesk' && roll < 0.6) return desk(random.pick(reachable(world.otherDesks()))); // "have you tried turning it off and on?"
   if (persona.role === 'sysadmin' && roll < 0.3) return room('Server room');
   if (roll < 0.45) return room('Cafeteria / meeting room');
   if (roll < 0.7) return room('Bathrooms');
   if (roll < 0.88) return room('Printer room');
-  return desk(random.pick(world.colleagueDesks()));
+  return desk(random.pick(reachable(world.colleagueDesks())));
 }
 
 // ───────────────────────────── The steps (leaves of the tree) ─────────────────────────────

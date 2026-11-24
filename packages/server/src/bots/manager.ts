@@ -38,6 +38,7 @@ import { Random } from './random';
 import type { TaskBoard } from '../tasks';
 import { HackerBrain, type HackerPlan } from './hacker';
 import { hackerKnowledge, type HackerDifficulty, type HackerKnowledge } from './hacker-knowledge';
+import { paceFor, type HackerPace } from './hacker-pace';
 
 /** What the bots need from the game (kept small, so bots cannot reach into things they should not). */
 export interface BotHost extends Omit<MoverWorld, 'mayEnter'> {
@@ -65,6 +66,8 @@ export interface BotOptions {
   /** An unclaimed employee is the simulated hacker by default. False keeps an ordinary office. */
   hacker?: boolean;
   hackerDifficulty?: HackerDifficulty;
+  /** How fast the simulated hacker plays. Default: the pace that belongs to its difficulty. */
+  hackerPace?: HackerPace;
   /** Probability that a bot leaves its desk without locking the screen (default 0.25). */
   forgetLock?: number;
   /**
@@ -343,6 +346,7 @@ export class BotManager {
         ...(confirmed['weak-admin-password'] ? ['weak-password' as const] : []) ],
       admin: admin && desk ? { playerId: admin.id, account: admin.account, desk: admin.desk, chair: { x: desk.seatX, y: desk.seatY } } : undefined,
     };
+    const pace = this.options.hackerPace ?? paceFor(this.hackerDifficulty);
     return new HackerBrain(plan, {
       look: (hostname) => {
         const at = map.desks.find((d) => d.hostname === hostname);
@@ -352,7 +356,7 @@ export class BotManager {
       },
       usb: (hostname) => this.host.usb(b.body, hostname),
       submit: (text) => this.host.submit(b.body, text),
-    }, world.time + 120_000);
+    }, pace, world.time + b.random.between(...pace.coverMinutes) * 60_000);
   }
 
   private mayEnter(avatar: Avatar, door: MapDoor): boolean {
@@ -388,7 +392,7 @@ export class BotManager {
   }
 
   /** The brain's hands: each action is the game's own rule for a body, applied to this bot's body. */
-  private brainWorld(body: Avatar, random: Random): BrainWorld {
+  private brainWorld(body: Avatar, mover: Mover, random: Random): BrainWorld {
     const { host } = this;
     const { map, scenario } = host;
     const own = scenario.hosts.find((h) => h.hostname === host.world.players.find((p) => p.id === body.playerId)?.desk);
@@ -409,11 +413,12 @@ export class BotManager {
         if (rects.length === 0) return null;
         for (let attempt = 0; attempt < 20; attempt++) {
           const rect = random.pick(rects);
-          // The middle of a random tile of the room, if a person fits there.
+          // The middle of a random tile of the room, if a person fits there and there is a way to it
+          // (the inside of the toilet cubicles is free floor nobody can reach).
           const col = Math.floor((rect.x + random.next() * rect.width) / map.tile);
           const row = Math.floor((rect.y + random.next() * rect.height) / map.tile);
           const spot: Point = { x: (col + 0.5) * map.tile, y: (row + 0.5) * map.tile };
-          if (roomAt(map, spot.x, spot.y) === room && isFree(map, spot.x, spot.y, PLAYER_RADIUS)) return spot;
+          if (roomAt(map, spot.x, spot.y) === room && isFree(map, spot.x, spot.y, PLAYER_RADIUS) && mover.canReach(spot.x, spot.y)) return spot;
         }
         return null;
       },
@@ -454,7 +459,7 @@ export class BotManager {
       persona, body, mover, random: bot.random, checks,
       mailRandom: new Random([...player.id].reduce((h, ch) => Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0, world.seed ^ 0x6d61696c)),
       mind: newMind(world.time, bot.random, persona.taskEveryMs),
-      world: this.brainWorld(body, bot.random),
+      world: this.brainWorld(body, mover, bot.random),
     };
     bot.subject.mind.nextCheckAt = firstCheck(world.time, checks);
     this.host.addBody(body);

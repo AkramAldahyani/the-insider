@@ -2,6 +2,7 @@
 import type { FsNode, Scenario } from '@insider/engine';
 import { TAP_DISTANCE, TICK_RATE, nearestReaderDoor, type OfficeMap, type PublicState, type TiledMap } from '@insider/shared';
 import { loadGameOptions } from '../src/app';
+import { FAST_PACE } from '../src/bots/hacker-pace';
 import { OfficeGame, type OfficeGameOptions, type Outgoing } from '../src/game';
 
 const loaded = loadGameOptions({ dev: false });
@@ -29,8 +30,10 @@ export class Recorder {
   constructor(options: Partial<OfficeGameOptions> = {}) {
     // Tests get an empty office unless they ask for bots: other people walking about would make most checks unpredictable.
     this.game = new OfficeGame({ ...loaded, scenario: clone(scenario), map: clone(tiledMap), dev: false, bots: false, weaknesses: ['tailgate'], ...options,
-      botOptions: { hacker: false, ...options.botOptions },
-    }); // existing office tests opt out of the hacker; match tests enable it explicitly
+      // Office tests run without a bot hacker, and route tests with one that does not dawdle.
+      // Tests about whole matches and their pace pass their own options (hackerPace: undefined = as in a real game).
+      botOptions: { hacker: false, hackerPace: FAST_PACE, ...options.botOptions },
+    });
   }
 
   get map(): OfficeMap {

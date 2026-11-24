@@ -418,7 +418,7 @@ Use three tabs: Tariq (the guard), Dana (helpdesk) and Rami.
 
 1. Start a fresh room with `BOTS=1`, `BOT_HACKER=1`, `SEED=1`, `VULNS=plaintext-password`.
    Join as a defender such as the SOC analyst. The lobby does not mark which employee is the hacker.
-2. The selected bot arrives normally, does office work for two game minutes, then pursues the mission.
+2. The selected bot arrives normally, does office work for several game minutes (Part J, section AG), then pursues the mission.
    In a development server, the Bots/Mission views show its identity and progress. Those views are unavailable
    in production. Investigators use the ordinary SIEM, camera/badge records and evidence board instead.
 3. With no intervention, the bot must actually read the simulated flag and submit it before a hacker win is
@@ -438,7 +438,7 @@ Use three tabs: Tariq (the guard), Dana (helpdesk) and Rami.
 
 Automated coverage: `packages/server/test/hacker.test.ts` completes direct and physical routes, checks deterministic
 replay and several default seeds, verifies private data stays out of public state/messages, and exercises meetings,
-helpdesk interruption, recorder removal, human handoff, detention and voting. Phase 5 I's debrief is still pending.
+helpdesk interruption, recorder removal, human handoff, detention and voting.
 
 ## AD. Phase 5, part G: bots in meetings
 
@@ -469,6 +469,18 @@ Start with `BOT_HACKER=0` and `VULNS=plaintext-password` (PowerShell: `$env:BOT_
 4. *Became root on ADMIN-SRV-01 with su* is FOUND (green): open it to see the ATT&CK id T1078.003, the command, and *pinned by Huda Rahman*. *Read the flag* is MISSED (red). *Logged in ... with their own account* is ORDINARY (grey) and not counted.
 5. **Only what was not pinned** hides the found step. The same debrief is in both tabs, and no password appears anywhere in it.
 6. Close it, press *Look around the office*: the bottom bar has a **Debrief** button to open it again.
+
+## AG. Phase 5, part J: a whole match against the bot hacker
+
+Start with `pnpm dev` (the defaults; about 15 minutes) or quicker with `TIME_SPEED=3` (PowerShell: `$env:TIME_SPEED='3'; pnpm dev`). Play Huda (SOC analyst).
+
+1. Sit down and log in. For the first minutes nothing happens: the hacker is working like everybody else. `siem source=alert` is empty.
+2. Repeat `siem source=alert` now and then, or wait for the banner. When a HIGH row appears, take its `src_ip` and pin the row (select it, **Pin selection**).
+3. `siem source=dhcp ip=THAT_IP | tail 1` names the PC (`client=`). Pin it. The name is on that desk in the office.
+4. `siem source=auth host=ADMIN-SRV-01 action=login src_ip=THAT_IP | tail 1`: the account. Pin it.
+5. Walk to the meeting room, press `E` at the red button, accuse that person with the three pins, vote. You win, and the debrief shows the rest.
+6. Again, doing nothing: after `rule=flag-read` the hacker still needs some minutes of ordinary work before it wins.
+7. `BOT_HACKER_PACE=fast`: the same match is over within minutes.
 
 ## T. What you must NOT be able to see
 
@@ -501,7 +513,7 @@ the outstanding manual check of password masking at a real interactive keyboard.
 pnpm test
 ```
 
-Expected: `Test Files 44 passed (44)` and `Tests 488 passed (488)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, and a soak test that runs a full office of bots for three game hours.
+Expected: `Test Files 45 passed (45)` and `Tests 519 passed (519)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
 
 On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent workers. This passed the complete suite during Phase 5F validation after three existing long-running tests timed out with unrestricted workers.
 
@@ -509,9 +521,9 @@ On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent
 pnpm e2e
 ```
 
-Expected: `11 passed`. Playwright starts its own game (ports 2577 and 5183, no bots, only the plaintext-password weakness), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
+Expected: `12 passed` (7 to 10 minutes). Playwright starts its own games (ports 2577 and 5183: no bots, only the plaintext-password weakness; ports 2578 and 5184: a match against the bot hacker at four times the speed), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
 
-For stability verification, run `pnpm e2e --retries=0` ten times consecutively; each must report 11 passes.
+For stability verification, run `pnpm e2e --retries=0` ten times consecutively; each must report 12 passes.
 Retries also default to zero. All PC-sitting steps share a helper that waits for the hostname's hint,
 the server-confirmed stop, and the initial terminal screen. Movement uses state changes rather than
 fixed sleeps, and holds the key through server-opened automatic doors; Playwright result attachments

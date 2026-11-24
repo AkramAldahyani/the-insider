@@ -6,6 +6,7 @@
 import type { TerminalResult } from '@insider/engine';
 import type { Point } from '@insider/shared';
 import type { BotSubject } from './brain';
+import type { HackerPace } from './hacker-pace';
 
 export interface HackerPlan {
   flag: { host: string; path: string };
@@ -40,6 +41,10 @@ const quote = (value: string) => `'${value.replace(/'/g, `'"'"'`)}'`;
 export class HackerBrain {
   private started = false;
   private nextAt = 0;
+  /** Until this game time it does its ordinary job, like any other employee (see hacker-pace.ts). */
+  private coverUntil = 0;
+  /** A meeting just interrupted it: lie low for a while first. */
+  private interrupted = false;
   private mode: 'prepare' | 'script' | 'observe' | 'usb' | 'poll' | 'submit' | 'rest' = 'prepare';
   private queue: Step[] = [];
   private done: () => void = () => {};
@@ -53,14 +58,26 @@ export class HackerBrain {
   private pollUntil = 0;
   private readonly patterns = new Map<number, string[]>();
 
-  constructor(private readonly plan: HackerPlan, private readonly actions: HackerActions, private readonly startAt: number) {}
+  constructor(private readonly plan: HackerPlan, private readonly actions: HackerActions, private readonly pace: HackerPace, private readonly startAt: number) {}
 
   /** Meetings invalidate pending terminal steps, but not already observed information. */
   interrupt(): void {
     this.queue = [];
     this.mode = 'rest';
     this.nextAt = 0;
+    this.coverUntil = 0;
+    this.interrupted = this.started;
     this.flag = '';
+  }
+
+  /** Back to ordinary work for a while. Its body then follows the same routine as every other bot. */
+  private lieLow(b: BotSubject, [min, max]: readonly [number, number]): void {
+    this.coverUntil = b.world.now() + b.random.between(min, max) * 60_000;
+  }
+
+  /** The flag is known: close the remote shells first, then work normally for a while, then hand it in. */
+  private handInLater(b: BotSubject): void {
+    this.fromOwnDesk(b, [], () => { this.mode = 'submit'; this.lieLow(b, this.pace.handInMinutes); });
   }
 
   /** This receives only the visible characters, never the typed password. */
@@ -135,7 +152,7 @@ export class HackerBrain {
     // physical observation available; a failed guess never becomes a permanent terminal state.
     this.route = [...plan.preferred, ...possible].find((route) => !this.tried.has(route)) ?? 'physical';
     const own = () => b.persona.password;
-    const won = () => { this.mode = 'submit'; };
+    const won = () => this.handInLater(b);
     if (this.route === 'backup') {
       const readBackup = (path: string): Step => this.command(b.persona.account, plan.flag.host, `cat ${quote(path)}`, (s) => {
         this.rootPassword = /^ROOT_PW='([^'\r\n]+)'$/m.exec(s.output)?.[1] ?? '';
@@ -181,7 +198,7 @@ export class HackerBrain {
 
   private useAdmin(b: BotSubject): void {
     const user = this.plan.admin!.account;
-    this.fromOwnDesk(b, [...this.ssh(b, user, () => this.adminPassword), this.sudoRead(user, () => this.adminPassword)], () => { this.mode = 'submit'; });
+    this.fromOwnDesk(b, [...this.ssh(b, user, () => this.adminPassword), this.sudoRead(user, () => this.adminPassword)], () => this.handInLater(b));
   }
 
   private connectRecorder(b: BotSubject): void {
@@ -215,7 +232,7 @@ export class HackerBrain {
     b.mind.screen = null;
     b.mover.stop();
     this.mode = 'rest';
-    this.nextAt = b.world.now() + 30_000;
+    this.lieLow(b, this.pace.restMinutes);
   }
 
   /** False during its initial cover routine; true when the hacker controls its own body. */
@@ -226,6 +243,15 @@ export class HackerBrain {
       this.started = true;
       b.mover.stop();
       this.begin(b);
+    }
+    if (this.interrupted) {
+      this.interrupted = false;
+      this.lieLow(b, this.pace.restMinutes);
+    }
+    if (now < this.coverUntil) return false;
+    if (this.coverUntil > 0) {
+      this.coverUntil = 0;
+      b.mover.stop(); // wherever its ordinary routine was taking it
     }
     b.mind.doing = `hacker: ${this.route} / ${this.mode}`; // developer panel only
     if (now < this.nextAt) return true;
@@ -257,6 +283,8 @@ export class HackerBrain {
       if (!b.body.terminalId || !b.mind.screen || !step.accepts(b.mind.screen)) { this.fail(b); return true; }
       b.mind.screen = b.world.type(step.line());
       if (!step.then(b.mind.screen)) this.fail(b);
+      // Think before the next line; a question on the screen is answered at once, like anybody would.
+      else if (this.queue.length > 0 && !b.mind.screen.awaitingInput) this.nextAt = now + b.random.between(...this.pace.lineSeconds) * 1000;
     } else if (this.mode === 'observe') {
       if (this.adminPassword) { this.useAdmin(b); return true; }
       const admin = this.plan.admin!;

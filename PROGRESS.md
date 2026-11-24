@@ -74,9 +74,9 @@ Update it at the end of every part.
 | 3 Living office | done, pushed by the owner |
 | 3+ Owner's changes after Phase 3 | done (section below) |
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
-| 5 Investigation & social deduction | **in progress**: Parts A-I done; J (soak test, browser test, balance, docs) next |
+| 5 Investigation & social deduction | **done**: Parts A-J. Next is 5a (solo modes), after the owner's OK of a plan |
 
-## Phase 5 status: plan APPROVED by the owner (defaults 1-6 accepted); Parts A-H DONE; Part I next
+## Phase 5 status: DONE (Parts A-J; plan approved by the owner, defaults 1-6 accepted)
 
 **Part F (bot hacker) is now DONE (2026-11-17), following the owner's request to complete it.** A normal browser
 match has a simulated bot hacker by default. `BOT_HACKER=0` disables that controller while retaining employee bots;
@@ -189,7 +189,7 @@ match has a simulated bot hacker by default. `BOT_HACKER=0` disables that contro
   screen output and partial password observations. It has no filesystem, process, network, credential-store,
   master-event-log or direct flag-content access. All commands run through the existing simulated terminal.
 - Originally `BotManager` preferred the employee affected by extra-sudo; the fairness follow-up below removes that preference.
-  After arrival the bot follows its normal office routine for two game minutes before starting its mission.
+  After arrival the bot follows its normal office routine before starting its mission (two game minutes then; see Part J).
   It chooses a supported route from the enabled weaknesses, with an opportunistic physical fallback.
 - Implemented routes use the readable backup, the bot's own accidental sudo access, the fixed fictional-company
   weak-password guess, or actual shoulder observations / an unattended-PC USB hold and simulated recorder.
@@ -316,9 +316,38 @@ Anti-stall (DESIGN section 1, "Match length"):
 - Limits: bots' own checks count only as witness statements; evidence a person read but that scrolled in another format
   (e.g. SIEM `| count` or `| fields`) may not be recognised as seen; ATT&CK has no entry for shoulder surfing or
   tailgating (shown without an id); a client that connects after the end does not get the debrief.
-- FOR PART J (balance): in five bot-hacker matches (seeds 1, 2, 3, 5, 8; easy and hard) the hacker won every time after
+- Balance as found here (fixed in Part J): in five bot-hacker matches (seeds 1, 2, 3, 5, 8; easy and hard) the hacker won every time after
   3 to 7 game minutes. Measured: three game hours = 12,315 events, 6 ms to rebuild the steps.
 - 488 Vitest tests in 44 files (new: server `debrief.test.ts`), 11 Playwright (the hacker-wins test opens the debrief).
+
+### Part J: what exists now (whole matches: pace, soak test, browser test)
+
+- `server/src/bots/hacker-pace.ts`: how fast the bot hacker plays, by difficulty (`paceFor`): ordinary work before the
+  first attempt, pause between terminal lines (password questions are answered at once), ordinary work after a failure
+  or a meeting, and ordinary work between reading the flag and handing it in. `hacker.ts` only gained `lieLow` (its body
+  follows the employee routine until `coverUntil`) and `handInLater` (closes the remote shells first); its routes and
+  knowledge did not change. `botOptions.hackerPace` overrides it; `BOT_HACKER_PACE=fast` = `FAST_PACE` (as before Part J).
+  Test helper `Recorder` uses FAST_PACE unless a test passes its own (`hackerPace: undefined` = as in a real game).
+- Measured, 25 seeds per level, random weaknesses, nobody investigating (game minutes until the flag is handed in):
+  easy 16-29, normal 12-23, hard 8-14 (before: 3-7 for all). Two of the 25 days had no direct route (only
+  careless-admin with tailgate or extra-sudo): there the hacker waits for the administrator, 18 to 150 minutes, by luck.
+- A scripted SOC analyst who reacts ONLY to the flag-read alert (the last one) and follows alert > address > DHCP lease >
+  whose PC, then accuses: the defenders won 75 of 75 matches (25 seeds x 3 levels).
+- `server/test/match-soak.test.ts` (31 tests): 18 whole matches (3 levels x 6 seeds) checked for health (ends, no secret
+  before the end, debrief once and complete, nobody in a wall or with a failed walk, nothing after the end) and fairness
+  (cover time, hand-in time, duration, harder = faster); the SOC analyst above (9 matches); the guard detaining in that
+  time; the pace setting; a meeting after the flag was read makes the hacker lie low and read it again.
+- Bug found and fixed (older, Phase 3): bots picked break spots nobody can reach (the floor inside the toilet cubicles,
+  a desk behind a door their badge does not open) and stood there with a failed walk for a minute.
+  `Mover.canReach()` is now asked first (`spotIn` in bots/manager.ts, `chooseBreak` in bots/brain.ts).
+- Browser: `e2e/match.spec.ts`, Playwright project `match`, with its own server (ports 2578/5184; bots on, TIME_SPEED=4,
+  STALL_MINUTES=1): Huda waits for a HIGH alert, pins three rows, calls a meeting, accuses, votes, wins, reads the
+  debrief. About 3.5 minutes; it does not know who the hacker is. Screenshots 19 and 20. Alone:
+  `node_modules/.bin/playwright test --project=match`; the other tests are project `office`.
+- Known: `siem` takes the rest of the line only when it is the first command on it (`clear; siem a | tail 1` pipes in the
+  shell instead). A meeting makes the bot hacker forget a flag it read but did not hand in (as in Part F). The wait on
+  days without a direct route varies a lot.
+- 519 Vitest tests in 45 files, 12 Playwright (11 office, 1 match).
 
 ## Phase 5 plan (investigation & social deduction)
 
