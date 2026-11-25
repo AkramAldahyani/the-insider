@@ -50,6 +50,7 @@ test('three friends play a match to its end and start the next one from the same
   const flag = await steal(thief, card, password);
   await expect(thief.getByTestId('notice')).toContainText('Your contact takes it in 3 minutes');
   await thief.keyboard.press('Escape');
+  await expect(thief.getByTestId('terminal')).toBeHidden(); // the briefing is hidden while seated: asking for it too early would close it
   if (!(await thief.getByTestId('mission').isVisible())) await thief.keyboard.press('m');
   await thief.getByTestId('flag-input').fill(flag);
   await handIn(thief);

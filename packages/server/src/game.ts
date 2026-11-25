@@ -108,7 +108,11 @@ export class OfficeGame {
   readonly meetings: Meetings;
   /** Players voted out (humans and bots). They are out of the game for good. */
   readonly fired = new Set<string>();
-  /** Network id -> player id of fired HUMANS still watching. */
+  /**
+   * Network id -> player id of the PEOPLE who are out and still watching (Phase 6, part E). They have no body. They are
+   * sent what anybody could see or hear by standing in the office (every room's open chat, meetings, the board, alerts)
+   * and no secrets: not who the hackers are, no screens, no private chat. All they can send is chat to each other.
+   */
   private readonly ghosts = new Map<string, string>();
   /** Game time of the next anti-stall escalation (Infinity = off). */
   private nextEscalation: number;
@@ -320,6 +324,11 @@ export class OfficeGame {
     return [...this.avatars.values()].filter((a) => this.clients.has(a.clientId));
   }
 
+  /** Everybody who follows the match with a browser: the people in the office and those watching. */
+  private audience(): string[] {
+    return [...this.humans().map((a) => a.clientId), ...this.ghosts.keys()];
+  }
+
   /** Takes a body out of the office. Like standing up: its PC stays exactly as it was. */
   private removeBody(key: string): void {
     const avatar = this.avatars.get(key);
@@ -338,8 +347,12 @@ export class OfficeGame {
     this.mayWrite.delete(clientId);
     // The employee is not left empty: a bot comes to work in their place a little later (not if they were fired).
     if (avatar && !this.fired.has(avatar.playerId)) this.bots?.schedule(avatar.playerId, 20);
-    // People on the start screen see that employee become free again.
-    for (const other of this.clients) if (!this.avatars.has(other)) this.sendLobby(other);
+    this.updateLobby();
+  }
+
+  /** People on the start screen see who can still be picked. (Watchers are not on it.) */
+  private updateLobby(): void {
+    for (const other of this.clients) if (!this.avatars.has(other) && !this.ghosts.has(other)) this.sendLobby(other);
   }
 
   // ───────────────────────────── Messages from a browser ─────────────────────────────
@@ -353,12 +366,12 @@ export class OfficeGame {
     const data = isRecord(payload) ? payload : {};
     const avatar = this.avatars.get(clientId);
 
-    if (type === 'choose') return this.soloPlayer || this.assigned ? undefined : this.choose(clientId, data);
-    // Fired players watching: they may only talk to each other.
+    // People who are out watch. Whatever else their browser sends, they can only talk to each other (while the match runs).
     if (this.ghosts.has(clientId)) {
-      if (type === 'chat.send') this.chat(clientId, data);
+      if (type === 'chat.send' && !this.over) this.chat(clientId, data);
       return;
     }
+    if (type === 'choose') return this.soloPlayer || this.assigned ? undefined : this.choose(clientId, data);
     if (!avatar) return; // everything below needs a body in the office
     if (this.over && !type.startsWith('dev.')) return; // the match is over: nothing changes any more
     // During a meeting everybody stands at the table: talking, accusing and voting only.
@@ -442,6 +455,7 @@ export class OfficeGame {
     if (this.avatars.has(clientId)) return; // already playing
     const player = this.world.players.find((p) => p.id === data.playerId);
     if (!player) return this.send(clientId, 'notice', { text: 'That employee does not exist.' });
+    if (this.fired.has(player.id)) return this.send(clientId, 'notice', { text: `${player.name} is out of this match.` });
     if (this.humans().some((a) => a.playerId === player.id)) {
       this.send(clientId, 'notice', { text: `${player.name} is already being played.` });
       return this.sendLobby(clientId);
@@ -483,7 +497,7 @@ export class OfficeGame {
     this.send(clientId, 'tasks', taskList(this.tasks.view(player.id)));
     this.send(clientId, 'board', { items: this.board.view(player.id) });
     this.send(clientId, 'meeting', this.meetingView(player.id));
-    for (const other of this.clients) if (!this.avatars.has(other)) this.sendLobby(other);
+    this.updateLobby();
   }
 
   /**
@@ -677,13 +691,14 @@ export class OfficeGame {
   private pinForBot(avatar: Avatar, what: Pick<EvidenceItem, 'kind' | 'title' | 'text' | 'shown' | 'frame'>): void {
     const item = this.board.add({ time: this.world.time, pinnedBy: avatar.name, pinnedById: avatar.playerId, ...what });
     if (!item) return;
-    for (const a of this.humans()) this.send(a.clientId, 'notice', { text: `${avatar.name} pinned something to the evidence board (${item.id}).` });
+    for (const c of this.audience()) this.send(c, 'notice', { text: `${avatar.name} pinned something to the evidence board (${item.id}).` });
     this.sendBoard();
   }
 
-  /** Sends the board to every player (each sees which pins are their own). */
+  /** Sends the board to every player (each sees which pins are their own). Watchers read it; they cannot take down anything, so nothing is marked as theirs. */
   private sendBoard(): void {
     for (const a of this.humans()) this.send(a.clientId, 'board', { items: this.board.view(a.playerId) });
+    for (const c of this.ghosts.keys()) this.send(c, 'board', { items: this.board.view('') });
   }
 
   // ───────────────────────────── The security-office monitors (Phase 5, part B) ─────────────────────────────
@@ -843,12 +858,12 @@ export class OfficeGame {
     if (wasHacker) {
       this.world.mission.caught.push(target.playerId);
       if (activeHackers(this.world).length === 0) return this.endMatch('defenders', `${guard.name} caught ${target.name} in the act.`);
-      this.takeOut(target.playerId, 'You were detained. You can watch, and talk with others who are out.');
-      for (const a of this.humans()) this.send(a.clientId, 'notice', { text: `${guard.name} detained ${target.name}, who was a hacker. ${this.hackersLeft()}` });
+      this.takeOut(target.playerId, 'You were detained.');
+      for (const c of this.audience()) this.send(c, 'notice', { text: `${guard.name} detained ${target.name}, who was a hacker. ${this.hackersLeft()}` });
       return this.checkHackerWins();
     }
     this.detainLost.add(guard.playerId);
-    for (const a of this.humans()) this.send(a.clientId, 'notice', { text: `${guard.name} detained ${target.name}, who was not the hacker, and had to let them go. ${guard.name} can no longer detain anyone.` });
+    for (const c of this.audience()) this.send(c, 'notice', { text: `${guard.name} detained ${target.name}, who was not the hacker, and had to let them go. ${guard.name} can no longer detain anyone.` });
   }
 
   // ───────────────────────────── Meetings (Phase 5, part D) ─────────────────────────────
@@ -911,8 +926,8 @@ export class OfficeGame {
         this.sendMeeting();
         this.world.mission.caught.push(m.result.firedId);
         if (activeHackers(this.world).length === 0) return this.endMatch('defenders', `${this.nameOf(m.result.firedId)} was voted out. They were the ${this.several() ? 'last ' : ''}hacker.`);
-        this.takeOut(m.result.firedId, 'You were voted out at the meeting. You can watch, and talk with others who are out.');
-        for (const a of this.humans()) this.send(a.clientId, 'notice', { text: `${this.nameOf(m.result.firedId)} was a hacker. ${this.hackersLeft()}` });
+        this.takeOut(m.result.firedId, 'You were voted out at the meeting.');
+        for (const c of this.audience()) this.send(c, 'notice', { text: `${this.nameOf(m.result.firedId)} was a hacker. ${this.hackersLeft()}` });
         this.checkHackerWins();
       } else this.fire(m.result.firedId);
     }
@@ -922,7 +937,7 @@ export class OfficeGame {
   /** Voted out and innocent: out of the game for good, and the company looks bad. */
   private fire(playerId: string): void {
     this.reputation = Math.max(0, this.reputation - REPUTATION_PER_FIRING);
-    this.takeOut(playerId, 'You were voted out at the meeting. You can watch, and talk with other fired players.');
+    this.takeOut(playerId, 'You were voted out at the meeting.');
     this.checkHackerWins();
   }
 
@@ -934,6 +949,7 @@ export class OfficeGame {
       this.removeBody(body.clientId);
       this.ghosts.set(body.clientId, playerId);
       this.send(body.clientId, 'fired', { reason });
+      this.send(body.clientId, 'board', { items: this.board.view('') });
     } else this.bots?.remove(playerId);
   }
 
@@ -1026,15 +1042,20 @@ export class OfficeGame {
     const line = { channel, from: this.nameOf(fromId), fromId, text, time: this.world.time };
     this.chatLog.push(line);
     for (const c of this.listeners(channel, fromId)) this.send(c, 'chat', line);
+    if (channel !== 'room') return;
+    // People who are out hear every room, so they are told which one it was.
+    const speaker = [...this.avatars.values()].find((a) => a.playerId === fromId);
+    const room = (speaker && roomAt(this.map, speaker.x, speaker.y)) || 'Doorway';
+    for (const c of this.ghosts.keys()) this.send(c, 'chat', { ...line, room });
   }
 
-  /** Who hears a line. */
+  /** Who hears a line (open chat: also everybody watching, see postChat). */
   private listeners(channel: ChatChannel, fromId: string): string[] {
     switch (channel) {
       case 'fired': // nobody alive hears them
         return [...this.ghosts.keys()];
       case 'meeting': // people who are out listen too
-        return [...this.humans().map((a) => a.clientId), ...this.ghosts.keys()];
+        return this.audience();
       case 'hackers':
         return this.humans().filter((a) => isHacker(this.world, a.playerId)).map((a) => a.clientId);
       case 'room': {
@@ -1182,7 +1203,7 @@ export class OfficeGame {
     if (!fresh || this.world.time - this.lastBanner < ALERT_BANNER_GAP_MS) return;
     this.lastBanner = this.world.time;
     this.bots?.alarm();
-    for (const a of this.humans()) this.send(a.clientId, 'alert', { text: 'SECURITY ALERT: unusual activity was detected on the company network.' });
+    for (const c of this.audience()) this.send(c, 'alert', { text: 'SECURITY ALERT: unusual activity was detected on the company network.' });
   }
 
   /** The hacker read the flag file (in Infiltration that starts the wait for the contact). */

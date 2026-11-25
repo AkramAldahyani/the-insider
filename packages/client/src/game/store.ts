@@ -87,15 +87,18 @@ export interface UiState {
   chatOpen: boolean;
   chatSecret: boolean;
   muted: string[];
-  /** Why this player was fired ("" = still at the company). */
+  /** Why this player is out ("" = still at the company). Who is out watches: no body, a free view, and nothing they do reaches the match. */
   fired: string;
+  /** Watching: the person the view follows ("" = it moves freely), and how close it is (1 = normal). */
+  watch: string;
+  zoom: number;
   /** Standing at the emergency button. */
   nearButton: boolean;
   /** The nearest other person within detaining distance (for the guard's hint). */
   nearPerson: { id: string; name: string } | null;
   /** The guard pressed X once: press again within 3 s to detain this person. */
   detainArmed: { id: string; until: number } | null;
-  /** Fired players move the view with the arrow keys: the direction held. */
+  /** Watching: the view moves with the arrow keys; the direction held. */
   pan: { dx: number; dy: number };
   /** The hacker's private briefing (null for everybody else) and whether it is shown. */
   briefing: MissionBriefing | null;
@@ -129,13 +132,15 @@ type Listener = () => void;
 
 /** A page that has just been opened (or has just left a match). */
 const START: UiState = {
-  phase: 'menu', party: null, reveal: false, solo: null, ladder: {}, error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, debrief: null, debriefOpen: false, meeting: null, meetingAt: 0, chat: [], chatOpen: false, chatSecret: false, muted: [], fired: '', nearButton: false, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
+  phase: 'menu', party: null, reveal: false, solo: null, ladder: {}, error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, debrief: null, debriefOpen: false, meeting: null, meetingAt: 0, chat: [], chatOpen: false, chatSecret: false, muted: [], fired: '', watch: '', zoom: 1, nearButton: false, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
   clock: 0, speed: 1, roomName: '', nearDesk: '', nearDoor: '', nearDoorName: '', seatedAt: '', notice: '', tasks: [], tasksCompleted: 0, tasksOpen: true, devOpen: false, devLog: [],
 };
 
 export class Store {
   movement = new Movement();
   room: Room<RoomState> | null = null;
+  /** Where the middle of the map view is (written by the scene every frame; nobody else is told). */
+  view = { x: 0, y: 0, zoom: 1 };
   map: OfficeMap | null = null;
   /** The map file as Tiled wrote it (the scene reads the tile colours from it). */
   rawMap: TiledMap | null = null;
@@ -162,6 +167,26 @@ export class Store {
     if (keys.every((k) => this.ui[k] === patch[k])) return;
     this.ui = { ...this.ui, ...patch };
     for (const listener of this.listeners) listener();
+  }
+
+  /** Watching: follow somebody ("" = move freely). Only for people who are out; only this browser knows. */
+  follow(id: string): void {
+    if (this.ui.fired) this.set({ watch: id });
+  }
+
+  /** Watching: follow the next (1) or previous (-1) person in the office. */
+  followNext(step: 1 | -1): void {
+    const ids: string[] = [];
+    this.room?.state.players?.forEach((_p, id) => ids.push(id));
+    ids.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    if (ids.length === 0) return;
+    const at = ids.indexOf(this.ui.watch);
+    this.follow(ids[at < 0 ? (step > 0 ? 0 : ids.length - 1) : (at + step + ids.length) % ids.length]);
+  }
+
+  /** Watching: closer (more than 1) or further away. The scene keeps it within what makes sense for the map. */
+  zoomBy(factor: number): void {
+    if (this.ui.fired) this.set({ zoom: Math.min(2, Math.max(0.3, this.ui.zoom * factor)) });
   }
 
   private alertTimer = 0;
@@ -320,7 +345,11 @@ export class Store {
         this.set({ meeting, meetingAt: Date.now(), ...(fresh ? { chat: this.ui.chat.filter((l) => l.channel !== 'meeting'), chatOpen: false, boardOpen: false, monitors: null, cardOpen: false } : {}) });
       });
       on('chat', (line) => this.set({ chat: [...this.ui.chat.slice(-200), { ...line, heardAt: Date.now() }] }));
-      on('fired', ({ reason }) => this.set({ fired: reason, seatedAt: '' }));
+      on('fired', ({ reason }) => this.set({
+        // Everything that belongs to having a body goes away (the briefing stays known: it says which side this player was on).
+        fired: reason, seatedAt: '', watch: '', zoom: 1, cardOpen: false, tasksOpen: false, briefingOpen: false, chatOpen: false, devOpen: false,
+        monitors: null, monitorFrame: null, nearDesk: '', nearDoor: '', nearDoorName: '', nearMonitors: false, nearButton: false, nearPerson: null, detainArmed: null,
+      }));
       on('card', ({ card }) => this.set({ card }));
       on('monitors.frame', (frame) => this.set({ monitorFrame: frame })); 
       on('tasks', ({ tasks, completed }) => {

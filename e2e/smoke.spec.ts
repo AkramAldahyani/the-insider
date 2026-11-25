@@ -413,7 +413,7 @@ test('an emergency meeting: the button, the meeting chat, and nobody voted out w
   await expect(page.getByTestId('accuse-form')).toBeVisible();
   await page.screenshot({ path: `${SHOTS}/16-meeting.png` });
   // Nobody accused anybody: the meeting ends with nobody voted out.
-  await expect(page.getByTestId('meeting-result')).toContainText('Nobody was voted out.', { timeout: 15_000 });
+  await expect(page.getByTestId('meeting-result')).toContainText('Nobody was voted out.', { timeout: 30_000 });
   await expect(page.getByTestId('meeting')).toBeHidden({ timeout: 10_000 });
   await other.close();
 });

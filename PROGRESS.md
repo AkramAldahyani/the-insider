@@ -76,7 +76,7 @@ Update it at the end of every part.
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
 | 5 Investigation & social deduction | **done**: Parts A-J |
 | 5a Solo modes | **done**: Parts A-H |
-| 6 Multiplayer | **in progress**: Parts A-D (lobbies, secret roles, several hackers, chat) done; E (fired and watching) next |
+| 6 Multiplayer | **in progress**: Parts A-E (lobbies, secret roles, several hackers, chat, watching) done; F (reconnecting) next |
 
 ## Phase 6 plan (multiplayer): APPROVED by the owner on 2026-11-24, with all eight defaults
 
@@ -89,8 +89,8 @@ part all tests, this file, commit locally (never push), then wait for the owner'
 | B | Secret roles: jobs and hackers drawn at the start, private reveal; back to the same lobby after the match | **done** |
 | C | Several hackers (1-3) who know each other: win rules, briefing, detain, debrief, alerts | **done** |
 | D | Chat: same room, meetings, hackers' private chat, fired players; mute and length limits | **done** |
-| E | Fired and watching: free camera, affects nothing | next |
-| F | Reconnecting: the place is kept, a bot covers, the host role moves on. **Friends can play a full match here** | |
+| E | Fired and watching: free camera, affects nothing | **done** |
+| F | Reconnecting: the place is kept, a bot covers, the host role moves on. **Friends can play a full match here** | next |
 | G | Bots that fill up: difficulty and voting rules for mixed groups | |
 | H | Robustness: rate limits, message checks, load test with 30 players, one address for page and server, home network guide | |
 | I | Bigger offices for 15, 20-25 and 30 people (can be postponed) | |
@@ -194,8 +194,30 @@ Also accepted: bot hackers with partners use only their existing behaviour; no n
 - Messages: `chat` has `fromId`. Source files must not contain invisible characters: write them as escapes.
 - Tests: `server/test/chat.test.ts` (13), `e2e/chat.spec.ts`, the private tab in `e2e/party.spec.ts`.
 - 723 Vitest tests in 57 files, 18 Playwright (14 office, 4 match).
-- Not there: chat in the lobby itself and after the match; people who are out hear no open chat yet (Part E). Who writes in open chat
-  is obviously a person; bots are silent there.
+- Not there: chat in the lobby itself and after the match. Who writes in open chat is obviously a person; bots are silent there.
+
+### Part E: what exists now (fired and watching)
+
+- A person who is out (voted out, or a detained hacker) has no body: `ghosts` in game.ts. They can SEND only chat, heard by others
+  who are out (also during a meeting), and nothing at all after the match. Everything else from their browser is dropped before
+  any other rule looks at it (`handle`). Their view (camera, whom they follow) exists only in their own browser.
+- They RECEIVE what anybody standing in the office could see or hear: the public state, meetings, the evidence board (no pin is
+  marked as theirs), alerts, what is announced, and the open chat of EVERY room (`chat.room` says which). Not: who the hackers are,
+  screens, tasks, cards, the private chat (a caught hacker does not get it either). Use `audience()` for what everybody gets.
+- Fixed: somebody who was out could ask for another employee in the shared office and come back, and a browser could ask to
+  become an employee who was voted out; the watcher's clock stood still.
+- Client: `FiredPanel` in `ui/MeetingPanel.tsx` (takes the place of the task list, so it never covers the map), `follow/followNext/
+  zoomBy` in store.ts, `watchView/watchWithMouse` in OfficeScene.ts, `watchKey` in PhaserView.tsx. Keys: arrows or WASD or dragging
+  move the view, N and Shift+N follow the next or previous person, a click on somebody (map or list) follows them, the wheel or + and - zoom,
+  B the board, Enter the chat, Esc lets go. `store.view` and `window.__insider.view()` say where the view is.
+- Also in solo matches and the shared office; in solo there is nobody to talk to, so no chat.
+- Tests: `server/test/watching.test.ts` (10: one sends every message type there is, its type makes the list complete; one compares
+  a whole office with bots with a busy and a silent watcher), `e2e/watching.spec.ts`. The office e2e server now has meetings of
+  20, 12 and 3 seconds (8 was too short for three windows on a slow machine).
+- 733 Vitest tests in 58 files, 19 Playwright (15 office, 4 match). In the full run the lobby match failed once because the TEST pressed M
+  before standing up was confirmed; it waits now (2 reruns passed; the other 18 passed in the full run).
+- Not there: a watcher cannot go back to the lobby before the match is over (only leave). If everybody who plays is out or has left
+  and only bots are in the office, the match goes on until the bots end it: a question for the owner in Part F.
 
 ## Phase 5a plan (solo modes): APPROVED by the owner on 2026-11-24, with all five defaults
 

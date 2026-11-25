@@ -401,7 +401,7 @@ Shorter meetings make this quicker: start with `MEETING_SECONDS=30,20,5` (PowerS
 2. As Maha, walk to the red button in the meeting room: *Press E to call an emergency meeting (1 left)*. Press `E`. Everybody is brought to the table and the meeting screen opens for all three, with a countdown. Walking does nothing.
 3. Type in the meeting chat: everybody sees it.
 4. As Sara: choose *Omar Farouk*, tick the three items, **Accuse**. Everybody sees *Sara Alharbi accuses Omar Farouk: E1, E2, E3*. Trying with fewer than three items is refused.
-5. When voting starts, vote *Omar* as Sara and Maha, *Skip* as Omar. Result: *Omar Farouk was voted out. They were not the hacker.* Reputation drops to 75%. Omar's tab shows *YOU WERE FIRED*: arrows move his view; his chat reaches only other fired players.
+5. When voting starts, vote *Omar* as Sara and Maha, *Skip* as Omar. Result: *Omar Farouk was voted out. They were not the hacker.* Reputation drops to 75%. Omar's tab shows *YOU ARE OUT* (section AT): arrows move his view; his chat reaches only others who are out.
 6. Maha's button now says *0 left*. A meeting with no accusation ends with *Nobody was voted out.*
 7. If Omar had joined as the hacker, the vote ends the match: *The hacker was caught.*
 
@@ -609,6 +609,17 @@ Too easy or too hard? The numbers are in `packages/server/src/bots/hacker-pace.t
 7. Two hackers in a lobby's match: the chat has a tab *Partners (private)*, also in a meeting. The others do not have it.
 8. Somebody voted out reads the meeting chat, and only others who are out read theirs.
 
+## AT. Phase 6, part E: fired and watching
+
+1. Three windows in the shared office: Sara, Rami, Lina. Sara pins three lines, calls a meeting and accuses Rami; Sara and Lina vote for Rami.
+2. After the meeting Rami's window says **YOU ARE OUT**. The task list, the card and the chat panel are gone; `C`, `T`, `E`, `M`, `X` and `U` do nothing. The clock goes on.
+3. Arrow keys, `WASD` or dragging move the view. **N** follows the next person (Shift+N the previous one); so does a click on somebody on the map or in the list. An arrow key, *Let go* or Esc stops it. The wheel or `+` and `-` zoom, out to the whole office.
+4. Lina writes in HR, Sara in Finance: Rami reads both, with the room in front. What Rami writes reaches nobody alive.
+5. `B` shows the evidence board; Rami's own pins have no *Take down*.
+6. In the next meeting Rami reads along without a vote, and can write under *Those who are out*.
+7. With two people out, they read each other.
+8. Close Rami's window: nothing changes for the others, and no bot comes as Rami. Rami cannot be picked again.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -640,7 +651,7 @@ the outstanding manual check of password masking at a real interactive keyboard.
 pnpm test
 ```
 
-Expected: `Test Files 57 passed (57)` and `Tests 723 passed (723)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
+Expected: `Test Files 58 passed (58)` and `Tests 733 passed (733)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
 
 On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent workers. This passed the complete suite during Phase 5F validation after three existing long-running tests timed out with unrestricted workers.
 
@@ -648,9 +659,9 @@ On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent
 pnpm e2e
 ```
 
-Expected: `18 passed` (10 to 14 minutes). Playwright starts its own games (ports 2577 and 5183: no bots, only the plaintext-password weakness; ports 2578 and 5184: solo matches at four times the speed), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
+Expected: `19 passed` (10 to 14 minutes). Playwright starts its own games (ports 2577 and 5183: no bots, only the plaintext-password weakness; ports 2578 and 5184: solo matches at four times the speed), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
 
-For stability verification, run `pnpm e2e --retries=0` ten times consecutively; each must report 18 passes.
+For stability verification, run `pnpm e2e --retries=0` ten times consecutively; each must report 19 passes.
 Retries also default to zero. All PC-sitting steps share a helper that waits for the hostname's hint,
 the server-confirmed stop, and the initial terminal screen. Movement uses state changes rather than
 fixed sleeps, and holds the key through server-opened automatic doors; Playwright result attachments

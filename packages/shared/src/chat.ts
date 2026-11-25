@@ -5,6 +5,8 @@
  *   meeting   during a meeting: heard by everybody at the company
  *   hackers   private: only the hackers of this match (if there are several)
  *   fired     people who are out talk among themselves
+ *
+ * People who are out also listen to every room and to meetings. Nobody alive hears them.
  */
 export const CHAT_CHANNELS = ['room', 'meeting', 'hackers', 'fired'] as const;
 export type ChatChannel = (typeof CHAT_CHANNELS)[number];

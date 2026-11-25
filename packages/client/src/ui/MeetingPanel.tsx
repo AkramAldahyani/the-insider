@@ -1,5 +1,5 @@
 /**
- * The emergency meeting (DESIGN.md section 9), and the chat of fired players.
+ * The emergency meeting (DESIGN.md section 9), and the panel of people who are out.
  *
  * DISCUSSION: everybody talks in the meeting chat; anyone may accuse someone
  * by ticking 3 or more items of the evidence board. VOTING: one vote each,
@@ -85,7 +85,7 @@ export function MeetingPanel({ ui }: { ui: UiState }) {
                 ))}
                 {m.canVote && !m.myVote && <button type="button" onClick={() => store.send('meeting.vote', { target: 'skip' })} data-testid="vote-skip">Skip</button>}
                 {m.myVote && <div className="meeting-muted">You voted {m.myVote === 'skip' ? 'to skip' : `for ${m.accusations.find((a) => a.suspectId === m.myVote)?.suspect ?? m.myVote}`}.</div>}
-                {!m.canVote && <div className="meeting-muted">You cannot vote in this meeting.</div>}
+                {!m.canVote && <div className="meeting-muted">{ui.fired ? 'You are out: you watch, and have no vote.' : 'You cannot vote in this meeting.'}</div>}
               </div>
             )}
             {m.phase === 'result' && m.result && (
@@ -105,14 +105,28 @@ export function MeetingPanel({ ui }: { ui: UiState }) {
   );
 }
 
-/** Shown to a fired player: they watch, and can talk only with the other fired players. */
+/**
+ * Shown to somebody who is out: they watch and talk only with the others who
+ * are out. It stays there behind a meeting, so that the map keeps its size.
+ */
 export function FiredPanel({ ui }: { ui: UiState }) {
-  if (!ui.fired || ui.meeting?.active) return null;
+  if (!ui.fired) return null;
+  const followed = store.room?.state.players?.get(ui.watch)?.name;
   return (
     <div className="fired" data-testid="fired">
       <div className="meeting-head"><span>YOU ARE OUT</span></div>
-      <p>{ui.fired} Move the view with the arrow keys.</p>
-      <Chat ui={ui} channel="fired" />
+      <p>{ui.fired} You can watch everybody, but nothing you do reaches the match{ui.solo ? '.' : ', and only the others who are out can read what you write.'}</p>
+      <div className="meeting-label">View</div>
+      <div className="fired-follow" data-testid="watching">{followed ? <>Following <strong>{followed}</strong></> : 'Moving freely'}</div>
+      <div className="fired-buttons">
+        <button type="button" data-testid="watch-previous" onClick={() => store.followNext(-1)} aria-label="Follow the previous person">←</button>
+        <button type="button" data-testid="watch-next" onClick={() => store.followNext(1)} aria-label="Follow the next person">→</button>
+        <button type="button" data-testid="watch-free" disabled={!ui.watch} onClick={() => store.follow('')}>Let go</button>
+        <button type="button" data-testid="watch-closer" onClick={() => store.zoomBy(1.25)} aria-label="Closer">+</button>
+        <button type="button" data-testid="watch-further" onClick={() => store.zoomBy(0.8)} aria-label="Further away">−</button>
+      </div>
+      <p className="meeting-muted fired-help">Arrow keys or dragging move the view. <kbd>N</kbd> or a click on a person follows them. The wheel zooms. <kbd>B</kbd> is the evidence board.</p>
+      {!ui.matchOver && !ui.debrief && !ui.solo && !ui.meeting?.active && <Chat ui={ui} channel="fired" />}
     </div>
   );
 }

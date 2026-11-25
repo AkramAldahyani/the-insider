@@ -99,10 +99,12 @@ export function Hud({ ui }: { ui: UiState }) {
         <span className="hud-location">NEXORA HQ <span className="signal-dot" /></span>
       </div>
       <div className="hud-bottom">
-        <span><kbd>W A S D</kbd> / arrows <span className="key-caption">Move</span></span>
-        <span><kbd>E</kbd> <span className="key-caption">PC / badge</span></span>
-        <button type="button" onClick={() => store.set({ cardOpen: !ui.cardOpen })}><kbd>C</kbd> My card</button>
-        <button type="button" onClick={() => store.set({ tasksOpen: !ui.tasksOpen })}><kbd>T</kbd> Tasks</button>
+        <span><kbd>W A S D</kbd> / arrows <span className="key-caption">{ui.fired ? 'Move the view' : 'Move'}</span></span>
+        {ui.fired ? <span><kbd>N</kbd> <span className="key-caption">Follow somebody</span></span> : <>
+          <span><kbd>E</kbd> <span className="key-caption">PC / badge</span></span>
+          <button type="button" onClick={() => store.set({ cardOpen: !ui.cardOpen })}><kbd>C</kbd> My card</button>
+          <button type="button" onClick={() => store.set({ tasksOpen: !ui.tasksOpen })}><kbd>T</kbd> Tasks</button>
+        </>}
         <button type="button" data-testid="board-button" onClick={() => store.set({ boardOpen: !ui.boardOpen })}><kbd>B</kbd> Evidence ({ui.board.length})</button>
         {!ui.solo && !ui.fired && <button type="button" data-testid="chat-button" onClick={() => store.set({ chatOpen: !ui.chatOpen })}><kbd>Enter</kbd> Chat</button>}
         {ui.debrief && <button type="button" data-testid="hud-debrief" onClick={() => store.set({ debriefOpen: true })}>Debrief</button>}
@@ -178,7 +180,7 @@ function PlayerRoster({ ui }: { ui: UiState }) {
         const self = p.id === ui.playerId;
         const partner = ui.briefing?.partners.some((x) => x.id === p.id);
         return <button key={p.id} type="button" className={`roster-person ${self ? 'roster-self' : ''}`}
-          aria-pressed={(selected || ui.playerId) === p.id} onClick={() => setSelected(p.id)}
+          aria-pressed={(ui.fired ? ui.watch : selected || ui.playerId) === p.id} onClick={() => (ui.fired ? store.follow(p.id) : setSelected(p.id))}
           style={{ '--department': departmentColor(department) } as CSSProperties}>
           <Portrait id={p.id} department={department} />
           <span className="roster-copy"><span className="roster-name">{p.name}{self && <small> You</small>}</span>

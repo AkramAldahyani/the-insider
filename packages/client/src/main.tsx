@@ -18,6 +18,8 @@ declare global {
       doors(): { id: string; look: string; reader: boolean }[];
       /** Where to stand to use the security monitors (a point just in front of them). */
       monitors(): { x: number; y: number };
+      /** The middle of the map view, and whom a watcher follows. */
+      view(): { x: number; y: number; zoom: number; follows: string };
       /** Where to stand to press the emergency button. */
       button(): { x: number; y: number };
       desks(): { hostname: string; seatX: number; seatY: number; screen: string }[];
@@ -33,6 +35,9 @@ window.__insider = {
     const ui = store.getUi();
     const p = store.room?.state.players?.get(ui.playerId);
     return p ? { x: p.x, y: p.y, stopped: store.movement.isStopped(p), seatedAt: p.seatedAt, room: ui.roomName, nearDesk: ui.nearDesk, nearDoor: ui.nearDoor } : null;
+  },
+  view() {
+    return { ...store.view, follows: store.getUi().watch };
   },
   desks() {
     return (store.map?.desks ?? []).map((d) => ({

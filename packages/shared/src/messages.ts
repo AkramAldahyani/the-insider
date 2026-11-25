@@ -303,9 +303,12 @@ export interface ServerMessages {
   card: { card: OnboardingCard };
   /** The current meeting (or none), as this player sees it. */
   meeting: MeetingView;
-  /** A chat line this player hears (see chat.ts for the channels). `fromId` is the employee's id, for muting. */
-  chat: { channel: ChatChannel; from: string; fromId: string; text: string; time: number };
-  /** You were voted out: you can watch, and talk with other fired players. */
+  /**
+   * A chat line this player hears (see chat.ts for the channels). `fromId` is the employee's id, for muting.
+   * `room`: where an open line was said. Only people who are out get it: they hear every room.
+   */
+  chat: { channel: ChatChannel; from: string; fromId: string; text: string; time: number; room?: string };
+  /** You are out (voted out or detained): from now on you watch, and talk only with others who are out. */
   fired: { reason: string };
   /**
    * The security-office monitors (only for someone standing at them): what

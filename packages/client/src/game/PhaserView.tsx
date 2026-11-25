@@ -72,8 +72,8 @@ export function PhaserView() {
         dx += MOVE_KEYS[code][0];
         dy += MOVE_KEYS[code][1];
       }
-      // Fired players have no body: the arrows move their view instead.
-      if (store.getUi().fired) return store.set({ pan: { dx: Math.sign(dx), dy: Math.sign(dy) } });
+      // Who is out has no body: the arrows move their view instead (and nothing is sent).
+      if (store.getUi().fired) return store.set({ pan: { dx: Math.sign(dx), dy: Math.sign(dy) }, ...(dx || dy ? { watch: '' } : {}) });
       const key = `${Math.sign(dx)},${Math.sign(dy)}`;
       if (key === sent) return;
       sent = key;
@@ -95,6 +95,19 @@ export function PhaserView() {
       return store.getUi().seatedAt !== '' || tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
     };
 
+    /** The few keys of somebody who is out: looking around, the board, and talking to others who are out. */
+    const watchKey = (event: KeyboardEvent) => {
+      if (event.code === 'KeyN') store.followNext(event.shiftKey ? -1 : 1);
+      else if (event.key === '+' || event.key === '=') store.zoomBy(1.25);
+      else if (event.key === '-') store.zoomBy(0.8);
+      else if (event.code === 'KeyB') store.set({ boardOpen: !store.getUi().boardOpen });
+      else if (event.code === 'Escape') store.set({ boardOpen: false, watch: '' });
+      else if (event.code === 'Enter' && (event.target as HTMLElement | null)?.tagName !== 'BUTTON') {
+        document.querySelector<HTMLInputElement>('[data-testid="chat-input-fired"]')?.focus();
+        event.preventDefault();
+      }
+    };
+
     const down = (event: KeyboardEvent) => {
       if (busy(event)) return stop();
       if (event.ctrlKey || event.altKey || event.metaKey) return;
@@ -106,8 +119,9 @@ export function PhaserView() {
       }
       if (event.repeat) return;
       const ui = store.getUi();
+      if (ui.fired) return watchKey(event);
       // Enter starts a chat line (on a button it presses the button, as everywhere).
-      if (event.code === 'Enter' && (event.target as HTMLElement | null)?.tagName !== 'BUTTON' && !ui.solo && !ui.reveal && !ui.fired) {
+      if (event.code === 'Enter' && (event.target as HTMLElement | null)?.tagName !== 'BUTTON' && !ui.solo && !ui.reveal) {
         stop();
         store.set({ chatOpen: true });
         event.preventDefault();

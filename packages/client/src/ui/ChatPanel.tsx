@@ -13,7 +13,7 @@ const EMPTY: Record<ChatChannel, string> = {
   room: 'Nobody here has said anything.',
   meeting: 'Nobody has said anything yet.',
   hackers: 'Only you and your partners read this.',
-  fired: 'Nobody else who is out has said anything yet.',
+  fired: 'You hear every room, and the others who are out. Nobody has said anything yet.',
 };
 const PLACEHOLDER: Record<ChatChannel, string> = {
   room: 'Say something to this room',
@@ -25,10 +25,10 @@ const PLACEHOLDER: Record<ChatChannel, string> = {
 /** A hacker with partners has the private channel. */
 export const hasPartners = (ui: UiState): boolean => (ui.briefing?.partners.length ?? 0) > 0;
 
-/** Lines of one channel, without the people this player has muted. */
+/** Lines of one channel, without the people this player has muted. Who is out also hears the open chat of every room. */
 export function Lines({ ui, channel }: { ui: UiState; channel: ChatChannel }) {
   const box = useRef<HTMLDivElement>(null);
-  const lines = ui.chat.filter((l) => l.channel === channel && !ui.muted.includes(l.fromId));
+  const lines = ui.chat.filter((l) => (l.channel === channel || (channel === 'fired' && l.channel === 'room')) && !ui.muted.includes(l.fromId));
   const muted = [...new Map(ui.chat.filter((l) => ui.muted.includes(l.fromId)).map((l) => [l.fromId, l.from]))];
   // The newest line is always in view.
   useEffect(() => { if (box.current) box.current.scrollTop = box.current.scrollHeight; }, [lines.length]);
@@ -36,7 +36,8 @@ export function Lines({ ui, channel }: { ui: UiState; channel: ChatChannel }) {
     <div className="meeting-chat-lines" data-testid={`chat-${channel}`} ref={box}>
       {lines.length === 0 && <div className="meeting-muted">{EMPTY[channel]}</div>}
       {lines.map((l, i) => (
-        <div key={i} dir="auto">
+        <div key={i} dir="auto" className={channel === 'fired' && l.channel === 'room' ? 'chat-overheard' : ''}>
+          {l.room && <span className="chat-room">{l.room}</span>}
           {l.fromId === ui.playerId
             ? <strong>{l.from}:</strong>
             : <button type="button" className="chat-name" title={`Mute ${l.from}`} onClick={() => store.set({ muted: [...ui.muted, l.fromId] })}>{l.from}:</button>} {l.text}
@@ -78,23 +79,25 @@ export function ChatInput({ channel, focus = false, onEscape }: { channel: ChatC
 /** Tabs (only for a hacker with partners), lines and box. */
 export function Chat({ ui, channel }: { ui: UiState; channel: ChatChannel }) {
   const [secret, setSecret] = useState(false);
-  const tabs = hasPartners(ui) && ui.fired === '';
-  const shown: ChatChannel = tabs && secret ? 'hackers' : channel;
-  const canTalk = channel === 'fired' || ui.fired === '';
+  // Two channels at once: a hacker with partners has the private one, and who is out talks to the others beside a meeting.
+  const out = ui.fired !== '';
+  const other: ChatChannel | null = out ? (channel === 'meeting' && !ui.solo ? 'fired' : null) : hasPartners(ui) ? 'hackers' : null;
+  const shown: ChatChannel = other && secret ? other : channel;
+  const canTalk = shown === 'fired' ? !ui.solo : !out;
   return (
     <div className="meeting-chat">
-      {tabs && <Tabs open={channel} secret={secret} choose={setSecret} />}
+      {other && <Tabs open={channel} other={other} secret={secret} choose={setSecret} />}
       <Lines ui={ui} channel={shown} />
       {canTalk && <ChatInput key={shown} channel={shown} />}
     </div>
   );
 }
 
-function Tabs({ open, secret, choose }: { open: ChatChannel; secret: boolean; choose: (secret: boolean) => void }) {
+function Tabs({ open, other, secret, choose }: { open: ChatChannel; other: ChatChannel; secret: boolean; choose: (secret: boolean) => void }) {
   return (
     <div className="chat-tabs">
       <button type="button" aria-pressed={!secret} data-testid="chat-tab-open" onClick={() => choose(false)}>{open === 'meeting' ? 'Everybody' : 'This room'}</button>
-      <button type="button" aria-pressed={secret} data-testid="chat-tab-hackers" onClick={() => choose(true)}>Partners (private)</button>
+      <button type="button" aria-pressed={secret} data-testid={`chat-tab-${other}`} onClick={() => choose(true)}>{other === 'fired' ? 'Those who are out' : 'Partners (private)'}</button>
     </div>
   );
 }
@@ -132,7 +135,7 @@ export function ChatPanel({ ui }: { ui: UiState }) {
         <span>{channel === 'hackers' ? 'PARTNERS · PRIVATE' : `CHAT · ${ui.roomName || 'here'}`}</span>
         <button type="button" onClick={close} aria-label="Close chat">×</button>
       </div>
-      {hasPartners(ui) && <Tabs open="room" secret={ui.chatSecret} choose={(secret) => store.set({ chatSecret: secret })} />}
+      {hasPartners(ui) && <Tabs open="room" other="hackers" secret={ui.chatSecret} choose={(secret) => store.set({ chatSecret: secret })} />}
       <Lines ui={ui} channel={channel} />
       <ChatInput key={channel} channel={channel} focus onEscape={close} />
     </div>

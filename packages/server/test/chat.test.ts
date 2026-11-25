@@ -153,12 +153,12 @@ describe('meetings and people who are out', () => {
     expect(ears(r, 'no, Lina')).toEqual(['r']);
   });
 
-  it('open chat is not heard by people who are out', () => {
+  it('open chat is also heard by people who are out, wherever it is (see watching.test.ts)', () => {
     const r = match();
     (r.game as unknown as { takeOut(id: string, reason: string): void }).takeOut('p2', 'Out.');
     r.flush();
     say(r, 's', 'alone in Finance');
-    expect(ears(r, 'alone in Finance')).toEqual(['s']);
+    expect(ears(r, 'alone in Finance')).toEqual(['r', 's']);
   });
 });
 

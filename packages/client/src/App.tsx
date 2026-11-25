@@ -48,7 +48,7 @@ export function App() {
       <TaskList ui={ui} />
       {/* The briefing shares the right-hand side with the onboarding card: card first, then (after C) the briefing. */}
       {!ui.seatedAt && !ui.cardOpen && <MissionPanel ui={ui} />}
-      {!ui.seatedAt && !ui.cardOpen && <CasePanel ui={ui} />}
+      {!ui.seatedAt && !ui.cardOpen && !ui.fired && <CasePanel ui={ui} />}
       {ui.monitors && !ui.seatedAt && <MonitorsPanel ui={ui} />}
       {!ui.seatedAt && <BoardPanel ui={ui} />}
       <AlertBanner ui={ui} />

@@ -173,6 +173,8 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 
 /* Rail layout reserves real canvas space: UI never covers a followed character. */
 .game:not(:has(.tasks)) .map { left: 12px; }
+.game:has(.fired) .map { left: 274px; }
+.game:has(.fired) .map canvas { cursor: grab; }
 @media (max-width: 1100px) {
   .map { left: 248px; right: 12px; }
   .tasks { width: 224px; max-height: calc(55% - 70px); }
@@ -182,7 +184,7 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
   .hud-clock { font-size: 11px; }
   .tasks-seated { max-height: calc(100% - 120px); }
   .game:has(.tasks-seated) .term-window { margin-left: 236px; width: calc(100% - 260px); }
-  .game:not(:has(.tasks)) .map { left: 248px; }
+  .game:not(:has(.tasks)) .map, .game:has(.fired) .map { left: 248px; }
 }
 @media (max-width: 700px) {
   .hud-top { gap: 8px; padding: 0 10px; }
@@ -297,8 +299,27 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .votes { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .votes .meeting-label { flex-basis: 100%; }
 .meeting-verdict { font-size: 18px; font-weight: 700; margin: 8px 0; }
-.fired { position: absolute; right: 12px; bottom: 56px; z-index: 6; width: 320px; padding: 10px 12px; border-radius: 8px; background: rgba(20, 16, 24, 0.95); border: 1px solid #8b5cf6; font-size: 12.5px; }
-.fired .meeting-chat-lines { height: 140px; }
+/* Who is out watches: the panel takes the place of the task list, so it never covers the map. */
+.fired { position: absolute; left: 12px; top: 66px; bottom: 54px; z-index: 6; width: 250px; padding: 12px; display: flex; flex-direction: column; overflow: auto; border-radius: 8px; background: rgba(20, 16, 24, 0.95); border: 1px solid #8b5cf6; font-size: 12.5px; }
+.fired p { margin: 8px 0 0; }
+.fired .meeting-chat { flex: 1; min-height: 180px; display: flex; flex-direction: column; margin-top: 10px; }
+.fired .meeting-chat-lines { flex: 1; height: auto; min-height: 80px; }
+.fired-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.fired-buttons button:disabled { opacity: 0.45; }
+@media (max-width: 1100px) {
+  .fired { width: 224px; bottom: 30%; }
+  .fired .fired-help { display: none; }
+  .fired-buttons button { padding: 5px 7px; }
+  .fired .meeting-chat { min-height: 120px; }
+  .game:has(.fired) .roster { top: calc(70% + 8px); max-height: calc(30% - 62px); }
+}
+@media (max-width: 700px) {
+  .fired { left: 8px; right: 8px; top: auto; bottom: 54px; width: auto; max-height: 44%; }
+  .game:has(.fired) .roster { display: none; }
+  .game:has(.fired) .map { inset: 62px 8px 54px; }
+}
+.chat-overheard { color: #a9b6c6; }
+.chat-room { margin-right: 6px; font: 10px var(--mono); color: #b79df5; }
 
 /* The guard's detain hint sits above the other hints. */
 .hud-hint-detain { bottom: 114px; border-color: #e5484d; }

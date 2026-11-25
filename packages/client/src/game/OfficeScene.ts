@@ -86,6 +86,8 @@ export function createOfficeScene(store: Store): Phaser.Scene {
   let map: OfficeMap;
   let hudTimer = 0;
   let highlight: Phaser.GameObjects.Graphics;
+  /** Whom the camera follows now. */
+  let following = '';
 
   class OfficeScene extends Phaser.Scene {
     constructor() {
@@ -100,6 +102,55 @@ export function createOfficeScene(store: Store): Phaser.Scene {
       for (const desk of map.desks) this.drawDesk(desk);
       for (const door of map.doors) this.addDoor(door);
       highlight = this.add.graphics().setDepth(4);
+      this.watchWithMouse();
+    }
+
+    /** Watching with the mouse: drag moves the view, the wheel brings it closer, a click on somebody follows them. */
+    private watchWithMouse(): void {
+      const camera = this.cameras.main;
+      this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+        if (!store.getUi().fired || !pointer.isDown || pointer.getDistance() < 5) return;
+        if (store.getUi().watch) store.follow('');
+        this.followPerson('');
+        camera.scrollX -= (pointer.position.x - pointer.prevPosition.x) / camera.zoom;
+        camera.scrollY -= (pointer.position.y - pointer.prevPosition.y) / camera.zoom;
+      });
+      this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+        if (!store.getUi().fired || pointer.getDistance() >= 5) return;
+        const at = camera.getWorldPoint(pointer.x, pointer.y);
+        let nearest = '';
+        let best = 26;
+        for (const [id, view] of players) {
+          const d = Math.hypot(view.container.x - at.x, view.container.y - 8 - at.y);
+          if (d < best) [nearest, best] = [id, d];
+        }
+        if (nearest) store.follow(nearest);
+      });
+      this.input.on('wheel', (_p: unknown, _over: unknown, _dx: number, dy: number) => store.zoomBy(dy > 0 ? 0.9 : 1.1));
+    }
+
+    /** The camera follows this person, or nobody (""). */
+    private followPerson(id: string): void {
+      if (following === id) return;
+      const view = players.get(id);
+      following = view ? id : '';
+      if (view) this.cameras.main.startFollow(view.container, true, 0.15, 0.15);
+      else this.cameras.main.stopFollow();
+    }
+
+    /** The view of somebody who is out: it follows a person, or moves with the keys. Nothing of this is sent to the server. */
+    private watchView(deltaMs: number): void {
+      const camera = this.cameras.main;
+      const { watch, pan, zoom } = store.getUi();
+      // Never so far away that there is more edge than office.
+      camera.setZoom(Math.max(zoom, Math.min(1, camera.width / map.width, camera.height / map.height)));
+      if (watch && !players.has(watch)) store.follow(''); // they left
+      this.followPerson(players.has(watch) ? watch : '');
+      if (!following && (pan.dx || pan.dy)) {
+        const step = (0.6 * deltaMs) / camera.zoom;
+        camera.scrollX += pan.dx * step;
+        camera.scrollY += pan.dy * step;
+      }
     }
 
     /** A door (redrawn when it opens or closes) and, if it has one, its badge reader. */
@@ -121,7 +172,7 @@ export function createOfficeScene(store: Store): Phaser.Scene {
       const view = doors.get(door.id);
       if (!view || view.last === door.look) return;
       // A sound for doors close enough to hear (not on the very first draw).
-      const me = store.room?.state.players?.get(store.getUi().playerId);
+      const me = store.getUi().fired ? store.view : store.room?.state.players?.get(store.getUi().playerId);
       const audible = view.last !== '' && me && Math.hypot(me.x - (view.def.x + view.def.width / 2), me.y - (view.def.y + view.def.height / 2)) < 260;
       if (audible && door.look === 'denied') playSound('badge-denied');
       if (audible && door.look === 'open' && view.def.reader) playSound('badge-granted');
@@ -198,7 +249,7 @@ export function createOfficeScene(store: Store): Phaser.Scene {
       }
       const view = { container, sprite, busy, walkTime: 0, targetX: p.x, targetY: p.y };
       players.set(p.id, view);
-      if (self) this.cameras.main.startFollow(container, true, 0.15, 0.15);
+      if (self) this.followPerson(p.id);
       return view;
     }
 
@@ -243,6 +294,7 @@ export function createOfficeScene(store: Store): Phaser.Scene {
       });
       for (const [id, view] of players) {
         if (!alive.has(id)) {
+          if (following === id) this.followPerson('');
           view.container.destroy();
           players.delete(id);
         }
@@ -252,6 +304,9 @@ export function createOfficeScene(store: Store): Phaser.Scene {
       // Read the same existing proximity facts as the E-key prompt; never grant interaction here.
       highlight.clear();
       const ui = store.getUi();
+      if (ui.fired) this.watchView(deltaMs);
+      const { midPoint, zoom } = this.cameras.main;
+      store.view = { x: midPoint.x, y: midPoint.y, zoom };
       const target = ui.nearDesk ? map.desks.find((d) => d.hostname === ui.nearDesk) : map.doors.find((d) => d.code === ui.nearDoor);
       if (target && !ui.seatedAt) {
         highlight.lineStyle(2, 0x8fe3cd, 0.9).strokeRoundedRect(target.x - 3, target.y - 3, target.width + 6, target.height + 6, 4);
@@ -262,16 +317,9 @@ export function createOfficeScene(store: Store): Phaser.Scene {
       if (hudTimer < 120) return;
       hudTimer = 0;
       const me = state.players.get(selfId);
-      if (!me) {
-        // Fired: no body any more. The view moves with the arrow keys.
-        const pan = store.getUi().pan;
-        if (store.getUi().fired && (pan.dx || pan.dy)) {
-          this.cameras.main.stopFollow();
-          this.cameras.main.scrollX += pan.dx * 12;
-          this.cameras.main.scrollY += pan.dy * 12;
-        }
-        return;
-      }
+      const time = { clock: Math.floor(state.clock / 1000) * 1000, speed: state.speed };
+      // Out: no body any more. The room shown is the one in the middle of the view.
+      if (!me) return store.set(ui.fired ? { ...time, roomName: roomAt(map, store.view.x, store.view.y) } : time);
       // What E would do here, apart from sitting down. Nothing while a desk is within reach.
       const other = besidesDesk(map, me);
       const atDoor = me.seatedAt ? null : other.door;
@@ -301,8 +349,7 @@ export function createOfficeScene(store: Store): Phaser.Scene {
         nearPerson: nearest,
         nearDoor: atDoor?.code ?? '',
         nearDoorName: atDoor?.name ?? '',
-        clock: Math.floor(state.clock / 1000) * 1000,
-        speed: state.speed,
+        ...time,
         roomName: roomAt(map, me.x, me.y),
         // A moving client's last patch can be behind the server by more than a tick.
         // Only advertise a desk after the server acknowledged the latest stop.
