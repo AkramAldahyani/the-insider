@@ -1,17 +1,23 @@
 /**
- * Playing with friends (Phase 6, part A): the card on the start menu where a
- * lobby is created or joined, and the lobby itself. The server keeps the lobby;
+ * Playing with friends (Phase 6, parts A and B): the card on the start menu
+ * where a lobby is created or joined, the lobby itself, and the screen that
+ * tells each player their part when a match starts. The server keeps the lobby;
  * this file only shows it and sends what the player wants.
  */
-import { CODE_LENGTH, NAME_LENGTH, PARTY_MEETINGS, SOLO_DIFFICULTIES, cleanName, parseCode, type PartyMeetings, type PartyView, type SoloDifficulty } from '@insider/shared';
+import { CODE_LENGTH, NAME_LENGTH, PARTY_HACKERS, PARTY_HUMAN_HACKER, PARTY_MEETINGS, SOLO_DIFFICULTIES, cleanName, parseCode, type PartyHacker, type PartyMeetings, type PartyView, type SoloDifficulty } from '@insider/shared';
 import { useState } from 'react';
 import { invitedTo, inviteLink, readName, saveName } from '../game/playerName';
-import { store } from '../game/store';
+import { store, type UiState } from '../game/store';
 
 const DIFFICULTY_TEXT: Record<SoloDifficulty, string> = {
   easy: 'Easy: a computer hacker knows only rumours and takes its time',
   normal: 'Normal: a computer hacker knows some of the weaknesses',
   hard: 'Hard: a computer hacker knows all the weaknesses and is fast',
+};
+const HACKER_TEXT: Record<PartyHacker, string> = {
+  auto: `Drawn: one of you with ${PARTY_HUMAN_HACKER} or more people, otherwise anybody`,
+  human: 'Always one of you',
+  bot: 'Always the computer',
 };
 const MEETING_TEXT: Record<PartyMeetings, string> = {
   short: 'Short: 45 seconds to talk, 30 to vote',
@@ -73,7 +79,10 @@ export function PartyScreen({ party }: { party: PartyView }) {
           {party.members.map((m) => (
             <li key={m.id}>
               <span className="party-name">{m.name}{m.id === party.you && <small> you</small>}</span>
-              <span className={m.ready || m.id === party.hostId ? 'party-ready' : 'party-waiting'}>{m.id === party.hostId ? 'host' : m.ready ? 'ready' : 'not ready'}</span>
+              {m.away && <span className="party-waiting">in the last match</span>}
+              {m.id === party.hostId
+                ? <span className="party-ready">host</span>
+                : !m.away && <span className={m.ready ? 'party-ready' : 'party-waiting'}>{m.ready ? 'ready' : 'not ready'}</span>}
               {host && m.id !== party.you && <button type="button" data-testid={`remove-${m.name}`} onClick={() => store.send('party.remove', { id: m.id })}>Remove</button>}
             </li>
           ))}
@@ -84,6 +93,12 @@ export function PartyScreen({ party }: { party: PartyView }) {
           <label>
             <input type="checkbox" data-testid="party-bots" disabled={!host} checked={s.bots} onChange={(e) => store.send('party.settings', { bots: e.target.checked })} />
             <span>The computer plays every desk nobody takes</span>
+          </label>
+          <label>
+            <span>Hacker</span>
+            <select data-testid="party-hacker" disabled={!host || !s.bots} value={s.bots ? s.hacker : 'human'} onChange={(e) => store.send('party.settings', { hacker: e.target.value as PartyHacker })}>
+              {PARTY_HACKERS.map((h) => <option key={h} value={h}>{HACKER_TEXT[h]}</option>)}
+            </select>
           </label>
           <label>
             <span>Difficulty</span>
@@ -110,6 +125,27 @@ export function PartyScreen({ party }: { party: PartyView }) {
           <button type="button" className="start-back" data-testid="party-leave" onClick={() => store.leave()}>Leave the lobby</button>
           <span className="party-note" role="status" data-testid="party-note">{party.notYet || (host ? 'Everybody is ready.' : 'Waiting for the host to start.')}</span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** Right after the start: who this player is. Nobody else is told. */
+export function RoleReveal({ ui }: { ui: UiState }) {
+  if (!ui.reveal || !ui.card) return null;
+  const hacker = ui.briefing !== null;
+  return (
+    <div className="reveal" data-testid="reveal" role="dialog" aria-label="Your part">
+      <div className={`reveal-box ${hacker ? 'reveal-hacker' : ''}`}>
+        <div className="eyebrow">ONLY YOU SEE THIS</div>
+        <h2 data-testid="reveal-role">{hacker ? 'You are the hacker' : 'You are not the hacker'}</h2>
+        <p>You are <strong>{ui.card.name}</strong>, {ui.card.title} ({ui.card.role.toLowerCase()}).</p>
+        <p>
+          {hacker
+            ? 'Look like everybody else, get the flag off the admin server, and hand it in. Your private briefing is under M.'
+            : 'One of your colleagues is after a file on the admin server. Find out who, with evidence, before they hand it over.'}
+        </p>
+        <button type="button" className="menu-go" data-testid="reveal-close" autoFocus onClick={() => store.set({ reveal: false })}>Go to work</button>
       </div>
     </div>
   );

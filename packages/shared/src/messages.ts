@@ -327,6 +327,8 @@ export interface ClientMessages {
   'party.open': { open: boolean };
   'party.remove': { id: string };
   'party.start': Record<string, never>;
+  /** After a match: this player is in the lobby again. */
+  'party.back': Record<string, never>;
   /** Pick an employee on the start screen. */
   choose: { playerId: string; hacker?: boolean };
   /** Which way the player wants to walk: each of dx, dy is -1, 0 or 1. The SERVER decides the position. */

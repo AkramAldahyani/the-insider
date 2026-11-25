@@ -105,6 +105,7 @@ export function Hud({ ui }: { ui: UiState }) {
         <button type="button" onClick={() => store.set({ tasksOpen: !ui.tasksOpen })}><kbd>T</kbd> Tasks</button>
         <button type="button" data-testid="board-button" onClick={() => store.set({ boardOpen: !ui.boardOpen })}><kbd>B</kbd> Evidence ({ui.board.length})</button>
         {ui.debrief && <button type="button" data-testid="hud-debrief" onClick={() => store.set({ debriefOpen: true })}>Debrief</button>}
+        {ui.party && ui.debrief && <button type="button" data-testid="hud-back-to-party" onClick={() => store.backToParty()}>Back to the lobby</button>}
         <LeaveButton ui={ui} />
         {ui.dev && <span className="dev-shortcut"><kbd>`</kbd> Dev</span>}
       </div>
@@ -209,6 +210,12 @@ export function MissionPanel({ ui }: { ui: UiState }) {
         {ui.briefing.rumours.map((r) => <li key={r}>{r}</li>)}
       </ul>
       <FlagForm />
+      {ui.party && (
+        <p data-testid="mission-risk">
+          Everything you do leaves traces, and the others vote. Once you have read the flag your contact needs time:
+          hand it in <strong>{ui.briefing.handInMinutes ?? 0} game minutes after you first read it</strong>, or later.
+        </p>
+      )}
       {ui.solo && (
         <p data-testid="mission-risk">
           Everything you do leaves traces. Colleagues look at their own PCs, the SOC analyst follows addresses, the guard watches
@@ -254,14 +261,19 @@ export function MatchOver({ ui }: { ui: UiState }) {
       <div className="match-over-box">
         <div className="eyebrow">MATCH OVER · {clockText(o.at)}</div>
         <h2>{title}</h2>
-        <p>{o.reason} The hacker was <strong data-testid="match-over-hacker">{o.hacker}</strong>.</p>
+        <p>{o.reason} The hacker was <strong data-testid="match-over-hacker">{o.hacker}</strong>{ui.party && <> ({ui.party.cast.find((c) => c.hacker)?.name ?? 'played by the computer'})</>}.</p>
+        {ui.party && (
+          <ul className="cast" data-testid="cast">
+            {ui.party.cast.map((c) => <li key={c.employee}><strong>{c.name}</strong> was {c.employee}{c.hacker && ', the hacker'}</li>)}
+          </ul>
+        )}
         {ui.debrief?.rating && <p className="match-over-rating" data-testid="rating">{ui.debrief.rating.title}</p>}
         {ladderLevel(ui.solo?.level) && <p data-testid="lesson">{ladderLevel(ui.solo?.level)!.lesson}</p>}
         <p className="start-note">The debrief shows everything they did, the evidence it left, and what was found or missed.</p>
         <div className="match-over-buttons">
           {ui.debrief && <button type="button" className="match-over-main" data-testid="open-debrief" onClick={() => store.set({ debriefOpen: true })}>See the debrief</button>}
           {nextLevel && <button type="button" className="match-over-main" data-testid="next-level" onClick={() => void store.playAgain(levelChoice(nextLevel))}>Next: {LADDER[nextLevel - 1].name}</button>}
-          {/* The same lobby plays again from Phase 6, part B on; leaving it for another shared office would surprise its members. */}
+          {ui.party && <button type="button" className="match-over-main" data-testid="back-to-party" onClick={() => store.backToParty()}>Back to the lobby</button>}
           {!ui.party && <button type="button" data-testid="play-again" onClick={() => void store.playAgain()}>Play again</button>}
           <button type="button" data-testid="to-menu" onClick={() => store.leave()}>Back to the menu</button>
           <button type="button" onClick={() => store.set({ matchOver: null })}>Look around the office</button>

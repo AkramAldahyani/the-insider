@@ -1,5 +1,5 @@
 /**
- * Investigation: the player's case, shown after the onboarding card (M hides
+ * Investigation and lobbies: a defender's case, shown after the onboarding card (M hides
  * and shows it). It explains the goal, what convinces the colleagues, and where
  * this job finds things out. It knows nothing about the hacker.
  */
@@ -16,7 +16,7 @@ const JOB: Record<string, ReactNode> = {
 };
 
 export function CasePanel({ ui }: { ui: UiState }) {
-  if (!ui.solo || ui.briefing || !ui.briefingOpen || ui.meeting?.active) return null;
+  if ((!ui.solo && !ui.party) || ui.briefing || !ui.briefingOpen || ui.meeting?.active) return null;
   return (
     <div className="mission case" data-testid="case">
       <div className="mission-head">
@@ -26,8 +26,10 @@ export function CasePanel({ ui }: { ui: UiState }) {
       <p className="mission-goal">Find out which colleague is after the file on the admin server, before they hand it over.</p>
       <p>{JOB[ui.card?.role ?? ''] ?? JOB['Employee']}</p>
       <p>
-        Pin what you find (<kbd>B</kbd> shows the board), press the red button in the meeting room, and accuse with three pieces:
-        two about the person, one of them out of the ordinary. Your colleagues vote on what you show them.
+        Pin what you find (<kbd>B</kbd> shows the board), press the red button in the meeting room, and accuse with three pieces{ui.solo ? ': ' : '. '}
+        {ui.solo
+          ? <>two about the person, one of them out of the ordinary. Your colleagues vote on what you show them.</>
+          : <>Convince the others: everybody votes; colleagues played by the computer only on what they saw themselves.</>}
       </p>
       <p className="mission-sub">Meetings left: {ui.meeting?.usesLeft ?? 0}. Press <kbd>M</kbd> to show or hide this.</p>
     </div>

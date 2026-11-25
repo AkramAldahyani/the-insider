@@ -15,8 +15,14 @@ export const PARTY_ROOM_NAME = 'party';
 /** Connection close code: the host removed this player. */
 export const PARTY_REMOVED = 4100;
 
-/** At least this many people are needed to start. */
+/** At least this many people are needed to start... */
 export const PARTY_MIN = 2;
+/** ...and this many when one of them is the hacker: with two, the other one would know at once. */
+export const PARTY_MIN_HUMAN = 3;
+/** From this many people on the hacker is one of them, unless the host decides otherwise. */
+export const PARTY_HUMAN_HACKER = 4;
+/** A person who is the hacker waits this many game minutes between first reading the flag and handing it in. */
+export const PARTY_HAND_IN_MINUTES = 3;
 
 /**
  * Letters of a lobby code. Only consonants, so a random code never spells a
@@ -52,23 +58,29 @@ export function cleanName(value: unknown): string {
 export const PARTY_MEETINGS = ['short', 'normal', 'long'] as const;
 export type PartyMeetings = (typeof PARTY_MEETINGS)[number];
 
+/** Who may be the hacker: drawn (see PARTY_HUMAN_HACKER), always a person, or the computer. */
+export const PARTY_HACKERS = ['auto', 'human', 'bot'] as const;
+export type PartyHacker = (typeof PARTY_HACKERS)[number];
+
 /** What the host decides before the match. */
 export interface PartySettings {
   /** Desks nobody plays are filled by the computer. */
   bots: boolean;
+  hacker: PartyHacker;
   /** How much the computer's hacker knows, and how fast it is. */
   difficulty: SoloDifficulty;
   meetings: PartyMeetings;
 }
 
-export const DEFAULT_PARTY_SETTINGS: PartySettings = { bots: true, difficulty: 'normal', meetings: 'normal' };
+export const DEFAULT_PARTY_SETTINGS: PartySettings = { bots: true, hacker: 'auto', difficulty: 'normal', meetings: 'normal' };
 
 /** Takes the valid fields of a change from the host; everything else stays as it was. */
 export function changeSettings(old: PartySettings, change: unknown): PartySettings {
   if (typeof change !== 'object' || change === null) return old;
-  const { bots, difficulty, meetings } = change as Record<string, unknown>;
+  const { bots, hacker, difficulty, meetings } = change as Record<string, unknown>;
   return {
     bots: typeof bots === 'boolean' ? bots : old.bots,
+    hacker: PARTY_HACKERS.find((h) => h === hacker) ?? old.hacker,
     difficulty: SOLO_DIFFICULTIES.find((d) => d === difficulty) ?? old.difficulty,
     meetings: PARTY_MEETINGS.find((m) => m === meetings) ?? old.meetings,
   };
@@ -79,6 +91,17 @@ export interface PartyMember {
   id: string;
   name: string;
   ready: boolean;
+  /** Still in the match (or reading its debrief), not in the lobby. */
+  away: boolean;
+}
+
+/** Who played whom. Told only when a match is over. */
+export interface PartyCast {
+  /** The person's name in the lobby. */
+  name: string;
+  /** The employee they played. */
+  employee: string;
+  hacker: boolean;
 }
 
 /** The lobby as one of its members sees it. */
@@ -93,8 +116,10 @@ export interface PartyView {
   settings: PartySettings;
   /** False = the host has closed the lobby: nobody else may come in. */
   open: boolean;
-  /** Their match is running (or has ended). */
+  /** Their match is running. */
   playing: boolean;
+  /** The last match, when it is over: who was who. Empty before and during a match. */
+  cast: PartyCast[];
   /** Why the host cannot start yet ("" = they can). */
   notYet: string;
 }

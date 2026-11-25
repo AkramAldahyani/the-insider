@@ -8,7 +8,7 @@ import { store } from './game/store';
 import { BoardPanel } from './ui/BoardPanel';
 import { DebriefPanel } from './ui/DebriefPanel';
 import { CasePanel } from './ui/CasePanel';
-import { PartyScreen } from './ui/PartyScreen';
+import { RoleReveal, PartyScreen } from './ui/PartyScreen';
 import { StartMenu } from './ui/StartMenu';
 import { FiredPanel, MeetingPanel } from './ui/MeetingPanel';
 import { MonitorsPanel } from './ui/MonitorsPanel';
@@ -54,6 +54,7 @@ export function App() {
       <MeetingPanel ui={ui} />
       <FiredPanel ui={ui} />
       <MatchOver ui={ui} />
+      <RoleReveal ui={ui} />
       <DebriefPanel ui={ui} />
       {ui.cardOpen && ui.card && !ui.seatedAt && <OnboardingCard card={ui.card} />}
       {DevPanel && ui.dev && ui.devOpen && (

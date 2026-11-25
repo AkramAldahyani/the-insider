@@ -62,9 +62,13 @@ export interface OfficeGameOptions {
    * as soon as they connect, and cannot choose anybody else or the hacker role.
    */
   soloPlayer?: string;
+  /**
+   * A lobby's match: the server decides who plays whom (`seat`). Nobody can choose, and nothing on the way says which employees are people.
+   */
+  assigned?: boolean;
   /** Infiltration: that human is the hacker, wins only with the flag, and the bots try to catch them. */
   soloHacker?: boolean;
-  /** Infiltration: game minutes after first reading the flag before it can be handed in (default 0). */
+  /** Infiltration and lobbies: game minutes after first reading the flag before it can be handed in (default 0). */
   handInMinutes?: number;
   /** Enables the developer messages (dev.*). MUST be false in production. */
   dev?: boolean;
@@ -136,6 +140,7 @@ export class OfficeGame {
   speed: number;
   private readonly soloPlayer: string | null;
   private readonly soloHacker: boolean;
+  private readonly assigned: boolean;
   private readonly handInMs: number;
   /** When the hacker first read the flag (game time). */
   private flagReadAt: number | null = null;
@@ -173,6 +178,7 @@ export class OfficeGame {
     this.dev = options.dev ?? false;
     this.soloPlayer = options.soloPlayer ?? null;
     this.soloHacker = options.soloHacker ?? false;
+    this.assigned = options.assigned ?? false;
     this.handInMs = (options.handInMinutes ?? 0) * 60_000;
     this.writeDump = options.writeDump;
     this.cctv = new Cctv(this.world, this.map);
@@ -191,6 +197,7 @@ export class OfficeGame {
           walker: (a) => this.walker(a),
           addBody: (a) => void this.avatars.set(a.clientId, a),
           removeBody: (key) => this.removeBody(key),
+          cameIn: (a) => this.throughEntrance(a, 'IN'),
           bodies: () => [...this.avatars.values()],
           // A bot acts through the same functions as a human's messages: same checks, same logs.
           sit: (a, hostname) => this.sitBody(a, hostname),
@@ -253,7 +260,8 @@ export class OfficeGame {
   publicState(): PublicState {
     const players: PublicState['players'] = {};
     const occupants: Record<string, string> = {};
-    for (const avatar of this.avatars.values()) {
+    // In the order of their ids: the order of the bodies would tell the people (who came first) from the bots.
+    for (const avatar of [...this.avatars.values()].sort((a, b) => (a.playerId < b.playerId ? -1 : 1))) {
       players[avatar.playerId] = publicPlayer(avatar);
       if (avatar.seatedAt) occupants[avatar.seatedAt] = avatar.playerId;
     }
@@ -266,14 +274,15 @@ export class OfficeGame {
 
   private sendLobby(to: string): void {
     // "Taken" means: a HUMAN plays this employee, or they were fired. An employee played by a bot can still be picked.
-    const taken = new Set([...this.humans().map((a) => a.playerId), ...this.fired]);
+    // In a lobby's match that would say who is a person: there nobody chooses, so nobody is told.
+    const taken = new Set(this.assigned ? [] : [...this.humans().map((a) => a.playerId), ...this.fired]);
     this.send(to, 'lobby', {
       scenarioName: this.world.scenarioName,
       mapName: this.mapName,
       employees: employeeChoices(this.world, this.scenario, taken),
       dev: this.dev,
       // Everybody knows a match has one hacker; whether the role is still free is no secret. WHO it is, is.
-      hackerOpen: this.world.mission.flag !== null && !this.humans().some((a) => a.playerId === this.world.mission.hacker),
+      hackerOpen: !this.assigned && this.world.mission.flag !== null && !this.humans().some((a) => a.playerId === this.world.mission.hacker),
     });
   }
 
@@ -283,6 +292,17 @@ export class OfficeGame {
     this.clients.add(clientId);
     this.sendLobby(clientId);
     if (this.soloPlayer) this.choose(clientId, { playerId: this.soloPlayer, hacker: this.soloHacker });
+  }
+
+  /** A lobby's match: this browser plays this employee. */
+  seat(clientId: string, playerId: string, hacker: boolean): void {
+    this.connect(clientId);
+    this.choose(clientId, { playerId, hacker });
+  }
+
+  /** A lobby's match, after everybody was seated: the bots are at work too. */
+  everybodyIsIn(): void {
+    this.bots?.arriveAll();
   }
 
   /** The bodies controlled by a browser. */
@@ -322,7 +342,7 @@ export class OfficeGame {
     const data = isRecord(payload) ? payload : {};
     const avatar = this.avatars.get(clientId);
 
-    if (type === 'choose') return this.soloPlayer ? undefined : this.choose(clientId, data);
+    if (type === 'choose') return this.soloPlayer || this.assigned ? undefined : this.choose(clientId, data);
     // Fired players watching: they may only talk to each other.
     if (this.ghosts.has(clientId)) {
       if (type === 'chat.send') this.chat(clientId, data);

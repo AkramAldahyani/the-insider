@@ -40,9 +40,9 @@ describe('what a browser may send', () => {
   it('settings: only known fields with valid values', () => {
     const d = DEFAULT_PARTY_SETTINGS;
     expect(changeSettings(d, { difficulty: 'hard' })).toEqual({ ...d, difficulty: 'hard' });
-    expect(changeSettings(d, { bots: false, meetings: 'long', dev: true, seed: 4, weaknesses: [] })).toEqual({ ...d, bots: false, meetings: 'long' });
-    for (const bad of [null, 'hard', 7, [], { difficulty: 'impossible', meetings: 5, bots: 'no' }, { meetings: 'toString' }]) expect(changeSettings(d, bad)).toEqual(d);
-    expect(d).toEqual({ bots: true, difficulty: 'normal', meetings: 'normal' });
+    expect(changeSettings(d, { bots: false, hacker: 'human', meetings: 'long', dev: true, seed: 4, weaknesses: [], hackerId: 'p1' })).toEqual({ ...d, bots: false, hacker: 'human', meetings: 'long' });
+    for (const bad of [null, 'hard', 7, [], { difficulty: 'impossible', meetings: 5, bots: 'no' }, { meetings: 'toString' }, { hacker: 'p4' }]) expect(changeSettings(d, bad)).toEqual(d);
+    expect(d).toEqual({ bots: true, hacker: 'auto', difficulty: 'normal', meetings: 'normal' });
   });
 });
 
@@ -113,6 +113,29 @@ describe('the rules of a lobby', () => {
     expect(p.clients()).toEqual(['a', 'b', 'c']);
   });
 
+  it('after a match everybody comes back when they like, and the next one waits for them', () => {
+    const p = make('a', 'b', 'c');
+    for (const x of ['b', 'c']) p.setReady(x, true);
+    p.begin();
+    expect(p.view('a')).toMatchObject({ playing: true, cast: [] });
+    p.back('a'); // (a room does not pass this on during a match)
+    const cast = [{ name: 'a', employee: 'Sara', hacker: true }];
+    p.end(cast);
+    expect(p.view('b')).toMatchObject({ playing: false, cast, notYet: 'Waiting for b, c to come back from the last match.' });
+    p.setReady('b', true); // not from the debrief
+    p.back('b');
+    expect(p.view('b').members.map((m) => [m.name, m.away, m.ready])).toEqual([['a', false, false], ['b', false, false], ['c', true, false]]);
+    p.leave('c');
+    expect(p.notYet()).toBe('Waiting for b to be ready.');
+    p.setReady('b', true);
+    expect(p.notYet()).toBe('');
+    // New people may come in again, and the next match hides the old cast.
+    expect(p.join('d', 'd')).toBe('');
+    p.begin();
+    expect(p.view('a').cast).toEqual([]);
+    expect(p.join('e', 'e')).not.toBe('');
+  });
+
   it('what a member sees has no network ids', () => {
     const p = make('net-id-one', 'net-id-two');
     p.leave('net-id-two');
@@ -125,13 +148,14 @@ describe('the rules of a lobby', () => {
 
 describe('the match of a lobby', () => {
   const base = { scenario: clone(scenario), map: clone(tiledMap), mapName: 'office-small', dev: false, weaknesses: ['tailgate' as const], meetingTimes: { resultMs: 1000 } };
+  const draw = { hacker: 'p4', human: false };
 
   it('has what the host chose; the rest is the operator’s', () => {
-    const o = partyGameOptions(base, { bots: false, difficulty: 'hard', meetings: 'long' }, 9);
+    const o = partyGameOptions(base, { bots: false, hacker: 'auto', difficulty: 'hard', meetings: 'long' }, 9, draw);
     expect(o).toMatchObject({ seed: 9, bots: false, dev: false, weaknesses: ['tailgate'], botOptions: { hackerDifficulty: 'hard' }, meetingTimes: { discussionMs: 150_000, votingMs: 60_000, resultMs: 1000 } });
     expect(o.soloPlayer).toBeUndefined();
-    expect(partyGameOptions(base, DEFAULT_PARTY_SETTINGS, 9).meetingTimes).toEqual({ resultMs: 1000 });
-    const short = new Recorder({ ...partyGameOptions(base, { bots: true, difficulty: 'easy', meetings: 'short' }, 9) });
+    expect(partyGameOptions(base, DEFAULT_PARTY_SETTINGS, 9, draw).meetingTimes).toEqual({ resultMs: 1000 });
+    const short = new Recorder({ ...partyGameOptions(base, { bots: true, hacker: 'auto', difficulty: 'easy', meetings: 'short' }, 9, draw) });
     expect(short.game.bots).not.toBeNull();
     expect(base.meetingTimes).toEqual({ resultMs: 1000 });
   });
@@ -213,14 +237,17 @@ describe('over the network', () => {
     expect(match.dev).toBe(false);
     expect(match.world.seed).not.toBe(7);
     expect(match.bots).not.toBeNull();
-    // Both now see the employees of the same match and can play it.
-    for (const [who, playerId] of [[a, 'p1'], [b, 'p2']] as const) {
-      who.send('choose', { playerId });
+    // Both are told their own employee of the same match; choosing another does nothing.
+    const parts = new Set<string>();
+    for (const who of [a, b]) {
       for (let i = 0; i < 100 && !who.messages.some((m) => m.type === 'welcome'); i++) await wait(20);
-      expect(who.messages.filter((m) => m.type === 'lobby').length).toBeGreaterThan(0);
-      expect(who.messages.find((m) => m.type === 'welcome')!.payload).toMatchObject({ playerId });
+      who.send('choose', { playerId: 'p4', hacker: true });
+      parts.add((who.messages.find((m) => m.type === 'welcome')!.payload as { playerId: string }).playerId);
+      expect(who.messages.filter((m) => m.type === 'welcome')).toHaveLength(1);
     }
-    expect(Object.keys(match.publicState().players)).toEqual(expect.arrayContaining(['p1', 'p2']));
+    expect(parts.size).toBe(2);
+    expect(Object.keys(match.publicState().players)).toHaveLength(scenario.players.length);
+    expect(JSON.stringify(b.party())).not.toContain('Sara');
     // Starting again, or changing the lobby, does nothing now.
     a.send('party.start', {});
     a.send('party.settings', { difficulty: 'hard' });
@@ -290,6 +317,72 @@ describe('over the network', () => {
     b.send('party.start', {});
     await c.until((p) => p.playing);
     await leaveAll(b, c);
+  });
+
+  it('after the match the same lobby plays again, with a new draw and new people', async () => {
+    const a = await browser(null, 'Anna');
+    const b = await browser(a.room.roomId, 'Ben');
+    const code = a.room.roomId;
+    b.send('party.ready', { ready: true });
+    await a.until((p) => p.notYet === '');
+    a.send('party.start', {});
+    await b.until((p) => p.playing);
+    const first = game(code)!;
+    // During the match nothing about the parts is in the lobby's news, and nobody can be "back" already.
+    b.send('party.back', {});
+    await wait(100);
+    expect(b.party()).toMatchObject({ cast: [], playing: true });
+    expect(b.party().members.every((m) => m.away)).toBe(true);
+    // The match ends (as by force: how matches end is tested elsewhere).
+    (first as unknown as { endMatch(w: string, h: string, r: string): void }).endMatch('defenders', 'Nobody', 'Test.');
+    await b.until((p) => !p.playing);
+    const cast = b.party().cast;
+    expect(cast.map((c) => c.name)).toEqual(['Anna', 'Ben']);
+    for (const c of cast) expect(scenario.players.some((p) => p.name === c.employee)).toBe(true);
+    expect(b.messages.map((m) => m.type)).toContain('debrief');
+    // Somebody new comes in while Ben still reads the debrief.
+    const c = await browser(code, 'Cleo');
+    await c.until((p) => p.members.length === 3);
+    expect(c.messages.some((m) => m.type === 'welcome' || m.type === 'debrief')).toBe(false);
+    c.send('party.ready', { ready: true });
+    a.send('party.back', {});
+    a.send('party.start', {});
+    await a.until((p) => p.notYet === 'Waiting for Ben to come back from the last match.');
+    expect(game(code)).toBe(first);
+    b.send('party.back', {});
+    b.send('party.ready', { ready: true });
+    await a.until((p) => p.notYet === '');
+    a.send('party.start', {});
+    await c.until((p) => p.playing);
+    const second = game(code)!;
+    expect(second).not.toBe(first);
+    expect(second.world.seed).not.toBe(first.world.seed);
+    expect(second.over).toBeNull();
+    for (const who of [a, b, c]) {
+      for (let i = 0; i < 100 && who.messages.filter((m) => m.type === 'welcome').length < (who === c ? 1 : 2); i++) await wait(20);
+      expect(who.messages.filter((m) => m.type === 'welcome')).toHaveLength(who === c ? 1 : 2);
+      expect(who.party().cast).toEqual([]);
+    }
+    await expect(browser(code, 'Late')).rejects.toThrow('locked');
+    await leaveAll(a, b, c);
+  }, 20_000);
+
+  it('a lobby the host closed stays closed after the match', async () => {
+    const a = await browser(null, 'Anna');
+    const b = await browser(a.room.roomId, 'Ben');
+    b.send('party.ready', { ready: true });
+    a.send('party.open', { open: false });
+    await a.until((p) => p.notYet === '' && !p.open);
+    a.send('party.start', {});
+    await b.until((p) => p.playing);
+    (game(a.room.roomId) as unknown as { endMatch(w: string, h: string, r: string): void }).endMatch('hacker', 'Nobody', 'Test.');
+    await b.until((p) => !p.playing);
+    await expect(browser(a.room.roomId, 'Late')).rejects.toThrow('locked');
+    // The host can remove somebody who never comes back from the debrief.
+    a.send('party.back', {});
+    a.send('party.remove', { id: b.party().you });
+    await a.until((p) => p.members.length === 1);
+    await leaveAll(a);
   });
 
   it('a full server says so, and a lobby that is gone makes room', async () => {

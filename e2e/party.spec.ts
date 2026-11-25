@@ -1,6 +1,7 @@
 /**
- * Phase 6, part A: two browsers that know nothing of each other meet in a
- * lobby and go to the same office together.
+ * Phase 6, parts A and B: browsers that know nothing of each other meet in a
+ * lobby, are told their secret parts, and play in the same office.
+ * (party-match.spec.ts plays such a match to its end.)
  */
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
@@ -48,22 +49,33 @@ test('friends gather in a lobby with a code and start a match together', async (
   await expect(cleo.getByText('The host removed you from the lobby.')).toBeVisible();
   await expect(anna.getByTestId('party-members').locator('li')).toHaveCount(2);
 
+  // Without bots one of them is the hacker, and that takes three people.
+  await expect(anna.getByTestId('party-note')).toHaveText('When one of you is the hacker, at least 3 people are needed.');
+  const dora = await person(browser, 'Dora', link);
+  await dora.getByTestId('friends-join').click();
+  await dora.getByTestId('party-ready').click();
   await expect(anna.getByTestId('party-note')).toHaveText('Waiting for Ben to be ready.');
   await ben.getByTestId('party-ready').click();
   await expect(anna.getByTestId('party-start')).toBeEnabled();
   await anna.getByTestId('party-start').click();
 
-  // The same office for both.
-  await anna.getByTestId('employee-p1').click();
-  await expect(ben.getByTestId('employee-p1')).toBeDisabled();
-  await ben.getByTestId('employee-p4').click();
-  for (const page of [anna, ben]) {
+  // Each of them is told their own part, and only that. Nobody chooses.
+  const roles: string[] = [];
+  for (const page of [anna, ben, dora]) {
+    await expect(page.getByTestId('employee-p1')).toHaveCount(0);
+    roles.push((await page.getByTestId('reveal-role').textContent())!);
+    if (roles.at(-1) === 'You are the hacker') await page.screenshot({ path: 'e2e/screenshots/party-reveal.png' });
+    await page.getByTestId('reveal-close').click();
+    await expect(page.getByTestId('reveal')).toHaveCount(0);
+  }
+  expect(roles.sort()).toEqual(['You are not the hacker', 'You are not the hacker', 'You are the hacker']);
+  for (const page of [anna, ben, dora]) {
     await expect(page.getByTestId('party-hud')).toHaveText(`Lobby ${code}`);
-    await expect(page.getByTestId('roster').locator('.roster-person')).toHaveCount(2);
+    await expect(page.getByTestId('roster').locator('.roster-person')).toHaveCount(3);
   }
   // A lobby that is playing takes nobody else.
   await cleo.goto(`/?lobby=${code}`);
   await cleo.getByTestId('friends-join').click();
   await expect(cleo.getByText(`No open lobby has the code ${code}`)).toBeVisible();
-  for (const page of [anna, ben, cleo]) await page.context().close();
+  for (const page of [anna, ben, cleo, dora]) await page.context().close();
 });

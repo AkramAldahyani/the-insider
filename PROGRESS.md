@@ -76,7 +76,7 @@ Update it at the end of every part.
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
 | 5 Investigation & social deduction | **done**: Parts A-J |
 | 5a Solo modes | **done**: Parts A-H |
-| 6 Multiplayer | **in progress**: Part A (lobbies) done; B (secret roles, back to the lobby) next |
+| 6 Multiplayer | **in progress**: Parts A-B (lobbies, secret roles) done; C (several hackers) next |
 
 ## Phase 6 plan (multiplayer): APPROVED by the owner on 2026-11-24, with all eight defaults
 
@@ -86,8 +86,8 @@ part all tests, this file, commit locally (never push), then wait for the owner'
 | Part | What | State |
 |---|---|---|
 | A | Lobbies: create, join with a code, names, ready, host settings, close, remove, start | **done** |
-| B | Secret roles: jobs and hackers drawn at the start, private reveal; back to the same lobby after the match | next |
-| C | Several hackers (1-3) who know each other: win rules, briefing, detain, debrief, alerts | |
+| B | Secret roles: jobs and hackers drawn at the start, private reveal; back to the same lobby after the match | **done** |
+| C | Several hackers (1-3) who know each other: win rules, briefing, detain, debrief, alerts | next |
 | D | Chat: same room, meetings, hackers' private chat, fired players; mute and length limits | |
 | E | Fired and watching: free camera, affects nothing | |
 | F | Reconnecting: the place is kept, a bot covers, the host role moves on. **Friends can play a full match here** | |
@@ -126,14 +126,36 @@ Also accepted: bot hackers with partners use only their existing behaviour; no n
 - The match has a new random seed (unless SEED is set) and the operator's weaknesses. `difficulty` sets only what the bot
   hacker knows and its pace so far (Part G: more). Meetings: short 45/30 s, normal = the server's, long 150/60.
 - Client: `ui/PartyScreen.tsx` (menu card and lobby), `game/playerName.ts` (name in localStorage, `?lobby=CODE` link), store
-  `createParty/joinParty`, phase `party`. No "Play again" button in a lobby's match (Part B).
-- UNTIL PART B: after the start everybody still picks their employee, and the hacker role, on the old start screen. The
-  names typed in the lobby are not used in the match yet. The hand-in wait (default 2) is not switched on yet.
+  `createParty/joinParty`, phase `party`.
 - A settings checkbox changes when the server has answered, not at once (the server is the only truth).
 - Tests: `server/test/party.test.ts` (16, half of them over a real connection), `e2e/party.spec.ts` (three browsers).
 - 677 Vitest tests in 54 files, 15 Playwright (12 office, 3 match).
 - Not checked: two real computers on one network (Part H has the guide). With `pnpm dev` the developer panel also works in a
   lobby's match, so playing seriously needs NODE_ENV=production (Part H).
+
+### Part B: what exists now (secret parts, back to the lobby)
+
+- `server/src/deal.ts`: `deal()` draws, on the server only, when the host starts: everybody gets a different random employee;
+  the hacker is always an ordinary employee (role "employee"). `whoMayHack`: the new host setting `hacker` is auto (a person
+  from 4 people on, otherwise every ordinary employee is equally likely), human, or bot. Without bots, or with people at every
+  desk, it is a person. A person as the hacker needs at least 3 people (with two, the other one would know).
+- `OfficeGameOptions.assigned`: nobody can `choose`; the room calls `game.seat(client, player, hacker)` for everybody and
+  then `everybodyIsIn()`. `botOptions.hackerId` fixes a bot hacker. `handInMinutes` is 3 if the hacker is a person.
+- NOTHING TELLS PEOPLE FROM BOTS at the start (checked by tests): bots are at their desks from the first moment (`arriveAll`),
+  the entrance logs everybody at the same time, the `lobby` message never says "taken" or whether the hacker role is free, and
+  public state lists people by id, not in the order they came (this applies to every match).
+- Lobby names are not shown during a match (they would mark the people). When it is over, `PartyView.cast` says who played whom.
+- The match ends: the room unlocks again (if the host left it open), everybody reads the debrief as long as they like and goes
+  back with **Back to the lobby** (`party.back`). Until then they are `away`, and the host cannot start; the host can remove them.
+  The next match is a new OfficeGame in the same room, with a new seed and a new draw. New people may join between matches.
+- Client: `RoleReveal` (PartyScreen.tsx), the case panel for defenders in lobbies, the cast in the end box, `backToParty()`.
+- If a human hacker leaves during a match, the bot that takes the place goes on as the hacker, as in the shared office. (Their
+  leaving still shows that they were a person: Part F.)
+- Tests: `server/test/deal.test.ts` (10), three more in `party.test.ts`, `e2e/party-match.spec.ts` (three browsers, a whole match
+  and the start of the next one). `e2e/helpers/heist.ts` is what infiltration.spec.ts and it share.
+- 690 Vitest tests in 55 files, 16 Playwright (12 office, 4 match). On 2026-11-25 the machine was busy (everything took two to
+  three times as long, also on the previous commit): five office tests failed in the full run and passed when run again.
+- Not checked: how matches with human hackers balance (Part J), and a match with people and bots by hand.
 
 ## Phase 5a plan (solo modes): APPROVED by the owner on 2026-11-24, with all five defaults
 

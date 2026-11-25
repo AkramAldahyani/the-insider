@@ -12,8 +12,8 @@ import { defineConfig } from '@playwright/test';
  * That server runs with BOTS=0: these tests walk to particular desks and
  * expect to find them free, which a bot sitting at its own desk would break.
  * The bots are tested in packages/server/test (and by hand: TESTING.md).
- * match.spec.ts and infiltration.spec.ts play whole solo matches. They have a
- * server of its own (2578/5184) with a fixed seed, game time four times as
+ * match.spec.ts and infiltration.spec.ts play whole solo matches, and
+ * party-match.spec.ts one of a lobby. They have a server of their own (2578/5184) with a fixed seed, game time four times as
  * fast, and an anti-stall alert every game minute.
  * Screenshots are written to e2e/screenshots/.
  */
@@ -21,8 +21,8 @@ const GAME_PORT = '2577';
 const PAGE_PORT = '5183';
 const MATCH_GAME_PORT = '2578';
 const MATCH_PAGE_PORT = '5184';
-/** Files that play a solo match. */
-const MATCHES = ['match.spec.ts', 'infiltration.spec.ts'];
+/** Files that play whole matches. */
+const MATCHES = ['match.spec.ts', 'infiltration.spec.ts', 'party-match.spec.ts'];
 
 /** Starts a game server and a web page of its own. */
 const server = (gamePort: string, pagePort: string, env: Record<string, string>) => ({

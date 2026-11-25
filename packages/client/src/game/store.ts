@@ -46,6 +46,8 @@ export interface UiState {
   phase: 'menu' | 'connecting' | 'party' | 'lobby' | 'playing' | 'error';
   /** The lobby this player is in, also while its match runs (null = not in one). */
   party: PartyView | null;
+  /** A lobby's match has just started: the screen that tells this player their part. */
+  reveal: boolean;
   /** The solo match being played (null = the shared office or a lobby's match). */
   solo: SoloChoice | null;
   /** Levels of the scenario ladder won in this browser. */
@@ -123,7 +125,7 @@ type Listener = () => void;
 
 /** A page that has just been opened (or has just left a match). */
 const START: UiState = {
-  phase: 'menu', party: null, solo: null, ladder: {}, error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, debrief: null, debriefOpen: false, meeting: null, meetingAt: 0, chat: [], fired: '', nearButton: false, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
+  phase: 'menu', party: null, reveal: false, solo: null, ladder: {}, error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, debrief: null, debriefOpen: false, meeting: null, meetingAt: 0, chat: [], fired: '', nearButton: false, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
   clock: 0, speed: 1, roomName: '', nearDesk: '', nearDoor: '', nearDoorName: '', seatedAt: '', notice: '', tasks: [], tasksCompleted: 0, tasksOpen: true, devOpen: false, devLog: [],
 };
 
@@ -231,6 +233,16 @@ export class Store {
     await this.join(solo ? { kind: 'solo', choice: solo } : { kind: 'office' });
   }
 
+  /** After a lobby's match: back to the same lobby, without leaving the room. */
+  backToParty(): void {
+    const { party, ladder } = this.ui;
+    this.movement = new Movement();
+    this.termBacklog = [];
+    window.clearTimeout(this.alertTimer);
+    this.set({ ...START, ladder, party, phase: 'party' });
+    this.send('party.back', {});
+  }
+
   /** Forgets everything about the last match. */
   private reset(): void {
     this.room = null;
@@ -261,17 +273,17 @@ export class Store {
       const on = <T extends keyof ServerMessages>(type: T, handler: (payload: ServerMessages[T]) => void) =>
         room.onMessage(type, (payload: ServerMessages[T]) => { if (this.room === room) handler(payload); });
 
-      on('party', (party) => this.set({ party, ...(party.playing ? {} : { phase: 'party' }) }));
+      on('party', (party) => this.set({ party, ...(this.ui.phase === 'connecting' ? { phase: 'party' } : {}) }));
       on('lobby', (lobby) => {
         const file = Object.entries(MAP_FILES).find(([path]) => path.endsWith(`/${lobby.mapName}.json`));
         if (!file) return this.set({ phase: 'error', error: `This page does not have the map "${lobby.mapName}".` });
         // Some levels of the ladder have more cameras (the server records with the same ones).
         this.rawMap = withCameras(file[1], ladderLevel(this.ui.solo?.level)?.cameras);
         this.map = parseOfficeMap(this.rawMap);
-        this.set({ scenarioName: lobby.scenarioName, employees: lobby.employees, dev: lobby.dev, hackerOpen: lobby.hackerOpen, asHacker: this.ui.asHacker && lobby.hackerOpen, phase: this.ui.phase === 'playing' || this.ui.solo ? this.ui.phase : 'lobby' }); // solo: the server has already chosen; "welcome" follows
+        this.set({ scenarioName: lobby.scenarioName, employees: lobby.employees, dev: lobby.dev, hackerOpen: lobby.hackerOpen, asHacker: this.ui.asHacker && lobby.hackerOpen, phase: this.ui.phase === 'playing' || this.ui.solo || this.ui.party ? this.ui.phase : 'lobby' }); // solo and lobbies: the server has already chosen; "welcome" follows
       });
       on('welcome', ({ playerId, card, mission }) => {
-        this.set({ phase: 'playing', playerId, card, cardOpen: true, briefing: mission, briefingOpen: mission !== null || this.ui.solo !== null });
+        this.set({ phase: 'playing', playerId, card, cardOpen: true, briefing: mission, briefingOpen: mission !== null || this.ui.solo !== null || this.ui.party !== null, reveal: this.ui.party !== null });
         this.send('move', { dx: 0, dy: 0 });
       });
       on('move.ack', (reply) => this.movement.acknowledge(reply));

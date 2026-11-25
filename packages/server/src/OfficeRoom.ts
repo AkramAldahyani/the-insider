@@ -60,11 +60,15 @@ export abstract class OfficeRoom extends Room<OfficeState> {
     this.flush();
   }
 
+  /** Called again and again once the match is over. It takes no new players: whoever joins now gets a new room (and so a new match). */
+  protected finished(): void {
+    if (!this.locked) void this.lock();
+  }
+
   /** Publishes the public state and delivers queued messages to their one recipient each. */
   protected flush(): void {
     if (!this.game) return;
-    // A finished match takes no new players: whoever joins now gets a new room (and so a new match).
-    if (this.game.over && !this.locked) void this.lock();
+    if (this.game.over) this.finished();
     syncState(this.state, this.game.publicState());
     for (const message of this.game.drain()) {
       this.clients.getById(message.to)?.send(message.type, message.payload);

@@ -1,14 +1,18 @@
 /**
- * The Colyseus room of one lobby and its match (Phase 6, part A). Its room id
- * IS the code friends type. Before the match it only passes the party messages
- * to the rules in party.ts; after the start it is an ordinary office room.
+ * The Colyseus room of one lobby and its matches (Phase 6, parts A and B). Its
+ * room id IS the code friends type. Before a match it only passes the party
+ * messages to the rules in party.ts; during one it is an ordinary office room.
+ * After it everybody goes back to the lobby when they like, and the host can
+ * start the next match.
  *
  * The room is private: nobody is ever put into it without giving its code.
  */
 import { randomInt } from 'node:crypto';
 import { matchMaker, type Client } from '@colyseus/core';
-import { PARTY_REMOVED } from '@insider/shared';
+import { PARTY_REMOVED, type PartyCast } from '@insider/shared';
 import { OfficeRoom } from './OfficeRoom';
+import { Random } from './bots/random';
+import { deal } from './deal';
 import type { OfficeGameOptions } from './game';
 import { Party, newCode, partyGameOptions } from './party';
 
@@ -20,6 +24,8 @@ export function partyRoom(base: OfficeGameOptions, { seed, limit = 20 }: { seed?
   return class ConfiguredPartyRoom extends OfficeRoom {
     private party!: Party;
     private counted = false;
+    /** Who plays whom in the running match. SECRET until it is over. */
+    private cast: PartyCast[] = [];
 
     /** What the creating browser sent is not used here; its name arrives again in onJoin. */
     override onCreate(): void {
@@ -59,6 +65,10 @@ export function partyRoom(base: OfficeGameOptions, { seed, limit = 20 }: { seed?
         party.setReady(client.sessionId, field(payload, 'ready'));
         return this.sendParty();
       }
+      if (type === 'party.back') {
+        party.back(client.sessionId);
+        return this.sendParty();
+      }
       // The rest is only for the host.
       if (!party.isHost(client.sessionId)) return;
       switch (type) {
@@ -92,12 +102,28 @@ export function partyRoom(base: OfficeGameOptions, { seed, limit = 20 }: { seed?
     private start(): void {
       if (this.party.notYet()) return;
       // Built first, so that a problem with the match leaves the lobby as it was.
-      this.begin(partyGameOptions(base, this.party.settings, seed ?? randomInt(1, 2 ** 31)));
+      const { party } = this;
+      const matchSeed = seed ?? randomInt(1, 2 ** 31);
+      const dealt = deal(base.scenario.players, party.clients(), party.settings, new Random(matchSeed ^ 0xdea1));
+      this.begin(partyGameOptions(base, party.settings, matchSeed, dealt));
+      const game = this.game!;
+      const nameOf = (id: string) => base.scenario.players.find((p) => p.id === id)!.name;
+      this.cast = [...dealt.seats].map(([clientId, id]) => ({ name: party.nameOf(clientId), employee: nameOf(id), hacker: id === dealt.hacker }));
       void this.lock();
-      this.party.playing = true;
+      party.begin();
       this.sendParty();
-      for (const clientId of this.party.clients()) this.game!.connect(clientId);
+      for (const [clientId, id] of dealt.seats) game.seat(clientId, id, id === dealt.hacker);
+      // The computer's colleagues are at work from the first moment, like everybody else: who walks in later would be known to be one.
+      game.everybodyIsIn();
       this.flush();
+    }
+
+    /** The match is over: who was who may be told, and the lobby takes people again. */
+    protected override finished(): void {
+      if (!this.party.playing) return;
+      this.party.end(this.cast);
+      if (this.party.open) void this.unlock();
+      this.sendParty();
     }
 
     /** Tells every member how the lobby looks now. */

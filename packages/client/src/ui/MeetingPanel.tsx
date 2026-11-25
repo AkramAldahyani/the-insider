@@ -44,6 +44,7 @@ function AccuseForm({ ui }: { ui: UiState }) {
   const [picked, setPicked] = useState<string[]>([]);
   const people: { id: string; name: string }[] = [];
   store.room?.state.players?.forEach((p) => { if (p.id !== ui.playerId) people.push({ id: p.id, name: p.name }); });
+  people.sort((a, b) => a.name.localeCompare(b.name));
   const toggle = (id: string) => setPicked((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]));
   return (
     <form className="accuse" data-testid="accuse-form" onSubmit={(e) => { e.preventDefault(); store.send('meeting.accuse', { suspect, evidence: picked }); }}>

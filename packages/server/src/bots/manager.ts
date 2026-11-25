@@ -57,6 +57,8 @@ export interface BotHost extends Omit<MoverWorld, 'mayEnter'> {
   removeBody(key: string): void;
   /** Every body in the office, humans and bots. */
   bodies(): Avatar[];
+  /** The main entrance logs that this body came to work. */
+  cameIn(avatar: Avatar): void;
   /** The same actions a human has, with the same checks. */
   sit(avatar: Avatar, hostname: string): TerminalResult | string;
   stand(avatar: Avatar): void;
@@ -96,6 +98,8 @@ export interface BotOptions {
   hackerDifficulty?: HackerDifficulty;
   /** This employee must not be the simulated hacker (a solo player who chose to defend). */
   hackerNot?: string;
+  /** This employee is the hacker (a lobby's match, where the server has drawn already). If a human plays them, so be it. */
+  hackerId?: string;
   /** How fast the simulated hacker plays. Default: the pace that belongs to its difficulty. */
   hackerPace?: HackerPace;
   /** Bots put the clues they find on the evidence board themselves: at most this many in a match (default 0). */
@@ -219,7 +223,7 @@ export class BotManager {
       const employees = others.filter((p) => p.role === 'employee');
       const pool = employees.length ? employees : others;
       // Use a separate match-seeded draw: neither weaknesses nor their recipients influence identity.
-      const selected = new Random(seed ^ 0x4ac4e2).pick(pool);
+      const selected = others.find((p) => p.id === options.hackerId) ?? new Random(seed ^ 0x4ac4e2).pick(pool);
       if (selected) setHacker(host.world, selected.id);
     }
   }
@@ -537,6 +541,18 @@ export class BotManager {
         if ((fresh || f.pin) && f.line && this.mayPin(f.line)) host.pin(body, f.line);
       },
     };
+  }
+
+  /** Everybody who has not come to work yet appears next to their desk, as a human does. The entrance logs them, as it does for a human. */
+  arriveAll(): void {
+    for (const bot of this.bots.values()) {
+      if (bot.subject) continue;
+      this.arrive(bot);
+      const body = bot.subject!.body as Avatar;
+      const desk = this.host.world.players.find((p) => p.id === bot.playerId)!.desk;
+      Object.assign(body, this.host.map.spawns[desk] ?? this.host.map.defaultSpawn);
+      this.host.cameIn(body);
+    }
   }
 
   private arrive(bot: Bot): void {
