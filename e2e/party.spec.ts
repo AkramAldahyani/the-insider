@@ -112,11 +112,21 @@ test('two hackers: the one who is a person sees the partner, the others see noth
       await expect(page.getByTestId('mission-partners')).toContainText(partner);
       await expect(page.locator('.roster-person', { hasText: partner }).locator('.partner-tag')).toHaveText('partner');
       await expect(page.locator('.partner-tag')).toHaveCount(1);
+      // The private chat: only a hacker with partners has it.
+      await page.getByTestId('chat-button').click();
+      await page.getByTestId('chat-tab-hackers').click();
+      await page.getByTestId('chat-input-hackers').fill('hello partner');
+      await page.getByTestId('chat-input-hackers').press('Enter');
+      await expect(page.getByTestId('chat-hackers')).toContainText('hello partner');
       await page.screenshot({ path: 'e2e/screenshots/party-partner-office.png' });
     } else {
       expect(role).toBe('You are not a hacker');
       await expect(page.getByTestId('reveal')).toContainText('2 of your colleagues are after a file');
       await expect(page.locator('.partner-tag')).toHaveCount(0);
+      await page.getByTestId('reveal-close').click();
+      await page.getByTestId('chat-button').click();
+      await expect(page.getByTestId('chat-input-room')).toBeVisible();
+      await expect(page.getByTestId('chat-tab-hackers')).toHaveCount(0);
     }
   }
   expect(hackers).toBe(1);

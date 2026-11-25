@@ -81,8 +81,12 @@ export interface UiState {
   /** The meeting as the server last described it, and when that message arrived (for the countdown). */
   meeting: MeetingView | null;
   meetingAt: number;
-  /** Meeting chat and fired players' chat. */
-  chat: ServerMessages['chat'][];
+  /** Everything this player heard (all channels), and when it arrived. */
+  chat: (ServerMessages['chat'] & { heardAt: number })[];
+  /** The chat panel is open; a hacker with partners is looking at the private channel; people this player does not want to hear. */
+  chatOpen: boolean;
+  chatSecret: boolean;
+  muted: string[];
   /** Why this player was fired ("" = still at the company). */
   fired: string;
   /** Standing at the emergency button. */
@@ -125,7 +129,7 @@ type Listener = () => void;
 
 /** A page that has just been opened (or has just left a match). */
 const START: UiState = {
-  phase: 'menu', party: null, reveal: false, solo: null, ladder: {}, error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, debrief: null, debriefOpen: false, meeting: null, meetingAt: 0, chat: [], fired: '', nearButton: false, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
+  phase: 'menu', party: null, reveal: false, solo: null, ladder: {}, error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, debrief: null, debriefOpen: false, meeting: null, meetingAt: 0, chat: [], chatOpen: false, chatSecret: false, muted: [], fired: '', nearButton: false, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
   clock: 0, speed: 1, roomName: '', nearDesk: '', nearDoor: '', nearDoorName: '', seatedAt: '', notice: '', tasks: [], tasksCompleted: 0, tasksOpen: true, devOpen: false, devLog: [],
 };
 
@@ -313,9 +317,9 @@ export class Store {
       on('meeting', (meeting) => {
         // A new meeting closes everything else and starts a fresh chat.
         const fresh = meeting.active && (!this.ui.meeting?.active || this.ui.meeting.number !== meeting.number);
-        this.set({ meeting, meetingAt: Date.now(), ...(fresh ? { chat: this.ui.chat.filter((l) => l.channel === 'fired'), boardOpen: false, monitors: null, cardOpen: false } : {}) });
+        this.set({ meeting, meetingAt: Date.now(), ...(fresh ? { chat: this.ui.chat.filter((l) => l.channel !== 'meeting'), chatOpen: false, boardOpen: false, monitors: null, cardOpen: false } : {}) });
       });
-      on('chat', (line) => this.set({ chat: [...this.ui.chat.slice(-200), line] }));
+      on('chat', (line) => this.set({ chat: [...this.ui.chat.slice(-200), { ...line, heardAt: Date.now() }] }));
       on('fired', ({ reason }) => this.set({ fired: reason, seatedAt: '' }));
       on('card', ({ card }) => this.set({ card }));
       on('monitors.frame', (frame) => this.set({ monitorFrame: frame })); 

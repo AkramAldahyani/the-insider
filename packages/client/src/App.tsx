@@ -5,6 +5,7 @@
 import { Suspense, lazy, useSyncExternalStore } from 'react';
 import { PhaserView } from './game/PhaserView';
 import { store } from './game/store';
+import { ChatPanel } from './ui/ChatPanel';
 import { BoardPanel } from './ui/BoardPanel';
 import { DebriefPanel } from './ui/DebriefPanel';
 import { CasePanel } from './ui/CasePanel';
@@ -51,6 +52,7 @@ export function App() {
       {ui.monitors && !ui.seatedAt && <MonitorsPanel ui={ui} />}
       {!ui.seatedAt && <BoardPanel ui={ui} />}
       <AlertBanner ui={ui} />
+      <ChatPanel ui={ui} />
       <MeetingPanel ui={ui} />
       <FiredPanel ui={ui} />
       <MatchOver ui={ui} />

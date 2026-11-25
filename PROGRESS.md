@@ -76,7 +76,7 @@ Update it at the end of every part.
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
 | 5 Investigation & social deduction | **done**: Parts A-J |
 | 5a Solo modes | **done**: Parts A-H |
-| 6 Multiplayer | **in progress**: Parts A-C (lobbies, secret roles, several hackers) done; D (chat) next |
+| 6 Multiplayer | **in progress**: Parts A-D (lobbies, secret roles, several hackers, chat) done; E (fired and watching) next |
 
 ## Phase 6 plan (multiplayer): APPROVED by the owner on 2026-11-24, with all eight defaults
 
@@ -88,8 +88,8 @@ part all tests, this file, commit locally (never push), then wait for the owner'
 | A | Lobbies: create, join with a code, names, ready, host settings, close, remove, start | **done** |
 | B | Secret roles: jobs and hackers drawn at the start, private reveal; back to the same lobby after the match | **done** |
 | C | Several hackers (1-3) who know each other: win rules, briefing, detain, debrief, alerts | **done** |
-| D | Chat: same room, meetings, hackers' private chat, fired players; mute and length limits | next |
-| E | Fired and watching: free camera, affects nothing | |
+| D | Chat: same room, meetings, hackers' private chat, fired players; mute and length limits | **done** |
+| E | Fired and watching: free camera, affects nothing | next |
 | F | Reconnecting: the place is kept, a bot covers, the host role moves on. **Friends can play a full match here** | |
 | G | Bots that fill up: difficulty and voting rules for mixed groups | |
 | H | Robustness: rate limits, message checks, load test with 30 players, one address for page and server, home network guide | |
@@ -178,6 +178,24 @@ Also accepted: bot hackers with partners use only their existing behaviour; no n
 - Tests: `server/test/hackers.test.ts` (20). The shared office, solo modes and CLI still have exactly one hacker.
 - 710 Vitest tests in 56 files, 17 Playwright (13 office, 4 match).
 - Not there yet: a private chat for hackers (Part D); a hacker who leaves a match without bots (Part F: the match cannot end then).
+
+### Part D: what exists now (chat)
+
+- `shared/src/chat.ts`: the channels (room, meeting, hackers, fired), `cleanChat` (one line of any language, at most 300
+  characters, no invisible or direction-changing characters), and the limits.
+- WHO HEARS (`listeners` in game.ts; the server decides, a browser only asks for "room" or "hackers"): open chat is heard by the
+  people in the same room (in a doorway, outside all rooms, within 128 px); a meeting by everybody and by people who are out;
+  the private channel by the hackers still in the game, only in matches with several hackers, also during meetings;
+  people who are out only by each other. A request for a channel one may not use is ignored, not turned into open chat.
+- LIMIT: 5 lines at once, then one every 1.5 s of real time, all channels together, per person.
+- Open chat is also in the shared office; solo matches have only the meeting chat, as before. Bots neither hear nor answer it.
+- Client: `ui/ChatPanel.tsx`. Enter or the Chat button opens it, Esc closes it (at a PC the cursor goes back to the terminal);
+  closed, the last lines show for 12 seconds. A click on a name mutes that person in this browser until the match ends.
+- Messages: `chat` has `fromId`. Source files must not contain invisible characters: write them as escapes.
+- Tests: `server/test/chat.test.ts` (13), `e2e/chat.spec.ts`, the private tab in `e2e/party.spec.ts`.
+- 723 Vitest tests in 57 files, 18 Playwright (14 office, 4 match).
+- Not there: chat in the lobby itself and after the match; people who are out hear no open chat yet (Part E). Who writes in open chat
+  is obviously a person; bots are silent there.
 
 ## Phase 5a plan (solo modes): APPROVED by the owner on 2026-11-24, with all five defaults
 

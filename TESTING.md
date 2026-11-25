@@ -598,6 +598,17 @@ Too easy or too hard? The numbers are in `packages/server/src/bots/hacker-pace.t
 4. One hacker reads the flag and tells the other, who hands it in (after 3 game minutes): it counts.
 5. Catch the second one too: *Every hacker was caught.* The debrief shows for every step who did it.
 
+## AS. Phase 6, part D: chat
+
+1. Two windows in the shared office: Sara and Rami (both Finance). Press **Enter**, write, Enter: both see it. A third window as Lina (HR) does not. Walk Sara over to HR: now Lina hears her and Rami does not.
+2. While writing, letters do not walk, open panels or sit down. **Esc** closes the box.
+3. With the box closed, a new line shows at the bottom for about 12 seconds.
+4. Sit at a PC and press the **Chat** button: the line goes to the room, not to the PC. Esc goes back to the PC without standing up.
+5. Click a name: that person is muted and listed under *Muted*; click there to hear them again.
+6. Write quickly: after five lines the server says *You are writing too fast*.
+7. Two hackers in a lobby's match: the chat has a tab *Partners (private)*, also in a meeting. The others do not have it.
+8. Somebody voted out reads the meeting chat, and only others who are out read theirs.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -629,7 +640,7 @@ the outstanding manual check of password masking at a real interactive keyboard.
 pnpm test
 ```
 
-Expected: `Test Files 56 passed (56)` and `Tests 710 passed (710)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
+Expected: `Test Files 57 passed (57)` and `Tests 723 passed (723)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
 
 On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent workers. This passed the complete suite during Phase 5F validation after three existing long-running tests timed out with unrestricted workers.
 
@@ -637,9 +648,9 @@ On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent
 pnpm e2e
 ```
 
-Expected: `17 passed` (10 to 14 minutes). Playwright starts its own games (ports 2577 and 5183: no bots, only the plaintext-password weakness; ports 2578 and 5184: solo matches at four times the speed), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
+Expected: `18 passed` (10 to 14 minutes). Playwright starts its own games (ports 2577 and 5183: no bots, only the plaintext-password weakness; ports 2578 and 5184: solo matches at four times the speed), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
 
-For stability verification, run `pnpm e2e --retries=0` ten times consecutively; each must report 17 passes.
+For stability verification, run `pnpm e2e --retries=0` ten times consecutively; each must report 18 passes.
 Retries also default to zero. All PC-sitting steps share a helper that waits for the hostname's hint,
 the server-confirmed stop, and the initial terminal screen. Movement uses state changes rather than
 fixed sleeps, and holds the key through server-opened automatic doors; Playwright result attachments

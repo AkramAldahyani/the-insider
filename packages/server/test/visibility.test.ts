@@ -39,7 +39,7 @@ const ALLOWED_FIELDS: Record<string, string[]> = {
   'monitors.frame': ['camera', 'id', 'time', 'people'],
   board: ['items'],
   meeting: ['active', 'usesLeft', 'number', 'phase', 'calledBy', 'endsIn', 'accusations', 'voted', 'myVote', 'canVote', 'result'],
-  chat: ['channel', 'from', 'text', 'time'],
+  chat: ['channel', 'from', 'fromId', 'text', 'time'],
   fired: ['reason'],
 };
 

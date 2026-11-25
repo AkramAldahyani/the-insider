@@ -17,8 +17,8 @@ import {
   awaitingSecret, currentPrompt, escalate, glimpse, plugUsb, submitFlag, sendInput, serializeWorld, setHacker, shoulderSurf, switchUser, usbCooldown, type FsNode, type GameEvent, type OpenResult, type Scenario, type TerminalResult, type WeaknessChoice, type World,
 } from '@insider/engine';
 import {
-  ALERT_BANNER_GAP_MS, BUTTON_DISTANCE, DETAIN_DISTANCE, INTERACT_DISTANCE, MONITOR_SHOTS, PLAYER_RADIUS, REPUTATION_PER_FIRING, distanceToRect, isFree, PLAYER_SPEED, SURF_BEHIND, SURF_SIDE, USB_HOLD_MS, moveWithCollision, parseOfficeMap, roomAt,
-  type ClientMessages, type Facing, type MeetingView, type OfficeMap, type PublicState, type ServerMessages, type ServerMessageType, type TiledMap,
+  ALERT_BANNER_GAP_MS, BUTTON_DISTANCE, CHAT_BURST, CHAT_EARSHOT, CHAT_REFILL_MS, DETAIN_DISTANCE, INTERACT_DISTANCE, MONITOR_SHOTS, PLAYER_RADIUS, REPUTATION_PER_FIRING, distanceToRect, isFree, PLAYER_SPEED, SURF_BEHIND, SURF_SIDE, USB_HOLD_MS, cleanChat, moveWithCollision, parseOfficeMap, roomAt,
+  type ChatChannel, type ClientMessages, type Facing, type MeetingView, type OfficeMap, type PublicState, type ServerMessages, type ServerMessageType, type TiledMap,
 } from '@insider/shared';
 import { BotManager, type BotOptions } from './bots/manager';
 import { Doors, type Walker } from './doors';
@@ -131,7 +131,11 @@ export class OfficeGame {
   /** Random numbers for when bots talk and what filler they say (its own sequence). */
   private readonly talk: Random;
   /** Every chat line, for the debrief. */
-  readonly chatLog: { time: number; channel: 'meeting' | 'fired'; from: string; text: string }[] = [];
+  readonly chatLog: { time: number; channel: ChatChannel; from: string; fromId: string; text: string }[] = [];
+  /** Network id -> how many lines they may still write at once, and when that was last worked out (chat.ts). */
+  private readonly mayWrite = new Map<string, { lines: number; at: number }>();
+  /** Real milliseconds this game has been running. */
+  private realMs = 0;
   /** Where people stand during a meeting: the free tiles around the meeting table. */
   private readonly meetingSpots: { x: number; y: number; facing: Facing }[];
   /** The cameras' recordings (server only). */
@@ -331,6 +335,7 @@ export class OfficeGame {
     this.clients.delete(clientId);
     this.board.forget(clientId);
     this.ghosts.delete(clientId);
+    this.mayWrite.delete(clientId);
     // The employee is not left empty: a bot comes to work in their place a little later (not if they were fired).
     if (avatar && !this.fired.has(avatar.playerId)) this.bots?.schedule(avatar.playerId, 20);
     // People on the start screen see that employee become free again.
@@ -990,23 +995,59 @@ export class OfficeGame {
     for (const [clientId, playerId] of this.ghosts) this.send(clientId, 'meeting', this.meetingView(playerId));
   }
 
-  /** Meeting chat for everybody at a meeting; fired players talk only among themselves. */
+  /** A line somebody wrote: which channel it belongs to follows from where they are. */
   private chat(clientId: string, data: Record<string, unknown>): void {
-    const text = typeof data.text === 'string' ? data.text.trim().slice(0, 300) : '';
-    if (!text) return;
+    const text = cleanChat(data.text);
     const ghost = this.ghosts.get(clientId);
-    const from = ghost ? this.nameOf(ghost) : this.avatars.get(clientId)?.name;
-    if (!from) return;
-    if (!ghost && !this.meetings.current) return this.send(clientId, 'notice', { text: 'You can talk to everybody during a meeting.' });
-    this.postChat(ghost ? 'fired' : 'meeting', from, text);
+    const body = this.avatars.get(clientId);
+    const fromId = ghost ?? body?.playerId;
+    if (!text || !fromId) return;
+    let channel: ChatChannel = ghost ? 'fired' : this.meetings.current ? 'meeting' : 'room';
+    if (data.channel === 'hackers') {
+      // Only hackers who are still in the game, and only if there is somebody to talk to.
+      if (ghost || !this.several() || !isHacker(this.world, fromId)) return;
+      channel = 'hackers';
+    }
+    if (channel === 'room' && this.soloPlayer) return this.send(clientId, 'notice', { text: 'You can talk to everybody during a meeting.' });
+    if (!this.takeLine(clientId)) return this.send(clientId, 'notice', { text: 'You are writing too fast. Wait a moment.' });
+    this.postChat(channel, fromId, text);
   }
 
-  private postChat(channel: 'meeting' | 'fired', from: string, text: string): void {
-    const line = { channel, from, text, time: this.world.time };
+  /** A few lines at once, then one every moment: nobody can flood the chat. */
+  private takeLine(clientId: string): boolean {
+    const old = this.mayWrite.get(clientId) ?? { lines: CHAT_BURST, at: this.realMs };
+    const lines = Math.min(CHAT_BURST, old.lines + (this.realMs - old.at) / CHAT_REFILL_MS);
+    const allowed = lines >= 1;
+    this.mayWrite.set(clientId, { lines: allowed ? lines - 1 : lines, at: this.realMs });
+    return allowed;
+  }
+
+  private postChat(channel: ChatChannel, fromId: string, text: string): void {
+    const line = { channel, from: this.nameOf(fromId), fromId, text, time: this.world.time };
     this.chatLog.push(line);
-    // Fired players read the meeting, but nobody alive reads them.
-    const to = channel === 'fired' ? [...this.ghosts.keys()] : [...this.humans().map((a) => a.clientId), ...this.ghosts.keys()];
-    for (const c of to) this.send(c, 'chat', line);
+    for (const c of this.listeners(channel, fromId)) this.send(c, 'chat', line);
+  }
+
+  /** Who hears a line. */
+  private listeners(channel: ChatChannel, fromId: string): string[] {
+    switch (channel) {
+      case 'fired': // nobody alive hears them
+        return [...this.ghosts.keys()];
+      case 'meeting': // people who are out listen too
+        return [...this.humans().map((a) => a.clientId), ...this.ghosts.keys()];
+      case 'hackers':
+        return this.humans().filter((a) => isHacker(this.world, a.playerId)).map((a) => a.clientId);
+      case 'room': {
+        const speaker = [...this.avatars.values()].find((a) => a.playerId === fromId);
+        if (!speaker) return [];
+        const here = roomAt(this.map, speaker.x, speaker.y);
+        return this.humans().filter((a) => {
+          const there = roomAt(this.map, a.x, a.y);
+          // In a doorway, between two rooms, distance decides.
+          return here && there ? here === there : Math.hypot(a.x - speaker.x, a.y - speaker.y) <= CHAT_EARSHOT;
+        }).map((a) => a.clientId);
+      }
+    }
   }
 
   // ───────────────────────────── Bots in meetings (Phase 5, part G) ─────────────────────────────
@@ -1096,7 +1137,7 @@ export class OfficeGame {
         plan.accuse = undefined;
         const error = this.meetings.accuse(a.by, a.suspect, this.evidenceAgainst(a.suspect), new Set(this.board.items.map((i) => i.id)), this.living());
         if (!error) {
-          this.postChat('meeting', this.nameOf(a.by), `I called this meeting because of ${this.nameOf(a.suspect)}. Look at the evidence.`);
+          this.postChat('meeting', a.by, `I called this meeting because of ${this.nameOf(a.suspect)}. Look at the evidence.`);
           this.planComment();
           this.sendMeeting();
         }
@@ -1108,7 +1149,7 @@ export class OfficeGame {
         const verdict = s.about ? this.verdicts().get(s.about) : undefined;
         if (s.about && verdict) s.lines.push({ text: comment(verdict, this.nameOf(s.about)), suspect: '' });
         for (const { text, suspect } of s.lines) {
-          this.postChat('meeting', this.nameOf(s.id), text);
+          this.postChat('meeting', s.id, text);
           if (!s.about) this.testimony.push({ from: this.nameOf(s.id), text, suspect });
         }
       }
@@ -1172,6 +1213,7 @@ export class OfficeGame {
 
   /** Advances the match by `realMs` of real time: the game clock, then the players. */
   tick(realMs: number): void {
+    this.realMs += realMs;
     if (this.over) return;
     const gameMs = realMs * this.speed + this.carryMs;
     const whole = Math.floor(gameMs);

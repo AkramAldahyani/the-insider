@@ -106,6 +106,13 @@ export function PhaserView() {
       }
       if (event.repeat) return;
       const ui = store.getUi();
+      // Enter starts a chat line (on a button it presses the button, as everywhere).
+      if (event.code === 'Enter' && (event.target as HTMLElement | null)?.tagName !== 'BUTTON' && !ui.solo && !ui.reveal && !ui.fired) {
+        stop();
+        store.set({ chatOpen: true });
+        event.preventDefault();
+        return;
+      }
       if (event.code === 'KeyE' && ui.nearDesk) {
         stop();
         store.send('sit', { hostname: ui.nearDesk });

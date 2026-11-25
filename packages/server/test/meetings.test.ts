@@ -173,12 +173,10 @@ describe('accusing and voting', () => {
 });
 
 describe('chat and fired players', () => {
-  it('meeting chat reaches everybody; outside a meeting there is none', () => {
+  it('meeting chat reaches everybody, in whatever room they were', () => {
     const r = new Recorder({ meetingTimes: FAST });
     r.connect('s', 'p1');
     r.connect('m', 'p9');
-    r.send('s', 'chat.send', { text: 'hello?' });
-    expect(r.notice('s')).toBe('You can talk to everybody during a meeting.');
     toButton(r, 'm', 'p9');
     r.send('m', 'meeting.call');
     r.send('m', 'chat.send', { text: 'Who was at the server room door at 09:12?' });

@@ -12,6 +12,7 @@
  * the client has no way to receive it.
  */
 
+import type { ChatChannel } from './chat';
 import type { PartySettings, PartyView } from './party';
 
 // ───────────────────────────── State (sent as patches) ─────────────────────────────
@@ -302,8 +303,8 @@ export interface ServerMessages {
   card: { card: OnboardingCard };
   /** The current meeting (or none), as this player sees it. */
   meeting: MeetingView;
-  /** A chat line: in a meeting (everybody), or between fired players. */
-  chat: { channel: 'meeting' | 'fired'; from: string; text: string; time: number };
+  /** A chat line this player hears (see chat.ts for the channels). `fromId` is the employee's id, for muting. */
+  chat: { channel: ChatChannel; from: string; fromId: string; text: string; time: number };
   /** You were voted out: you can watch, and talk with other fired players. */
   fired: { reason: string };
   /**
@@ -370,8 +371,11 @@ export interface ClientMessages {
   'meeting.accuse': { suspect: string; evidence: string[] };
   /** Vote for an accused player's id, or "skip". */
   'meeting.vote': { target: string };
-  /** Say something in the meeting (or, when fired, to the other fired players). */
-  'chat.send': { text: string };
+  /**
+   * Say something. Without a channel, or with "room": at a meeting to everybody, when out of the game to the others who
+   * are out, otherwise to the room. "hackers": to the partners only (ignored from anybody else).
+   */
+  'chat.send': { text: string; channel?: 'room' | 'hackers' };
   /** The hacker hands in the flag (the text of the flag file). */
   'flag.submit': { text: string };
   /** One finished line typed at the PC. */

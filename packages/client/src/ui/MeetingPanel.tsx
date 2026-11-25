@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from 'react';
 import { store, type UiState } from '../game/store';
+import { Chat } from './ChatPanel';
 
 /** Seconds left in the phase, counting down from what the server said. */
 function useCountdown(endsIn: number, receivedAt: number): number {
@@ -17,26 +18,6 @@ function useCountdown(endsIn: number, receivedAt: number): number {
     return () => window.clearInterval(timer);
   }, []);
   return Math.max(0, Math.ceil((endsIn - (now - receivedAt)) / 1000));
-}
-
-function Chat({ ui, channel }: { ui: UiState; channel: 'meeting' | 'fired' }) {
-  const [text, setText] = useState('');
-  const lines = ui.chat.filter((l) => l.channel === channel);
-  const canTalk = channel === 'fired' ? ui.fired !== '' : ui.fired === '';
-  return (
-    <div className="meeting-chat">
-      <div className="meeting-chat-lines" data-testid={`chat-${channel}`}>
-        {lines.length === 0 && <div className="meeting-muted">{channel === 'fired' ? 'Nobody else has been fired yet.' : 'Nobody has said anything yet.'}</div>}
-        {lines.map((l, i) => <div key={i}><strong>{l.from}:</strong> {l.text}</div>)}
-      </div>
-      {canTalk && (
-        <form onSubmit={(e) => { e.preventDefault(); if (text.trim()) { store.send('chat.send', { text }); setText(''); } }}>
-          <input data-testid={`chat-input-${channel}`} value={text} onChange={(e) => setText(e.target.value)} placeholder={channel === 'fired' ? 'Talk to the other fired players' : 'Say something to everybody'} maxLength={300} />
-          <button type="submit">Send</button>
-        </form>
-      )}
-    </div>
-  );
 }
 
 function AccuseForm({ ui }: { ui: UiState }) {

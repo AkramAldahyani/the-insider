@@ -104,6 +104,7 @@ export function Hud({ ui }: { ui: UiState }) {
         <button type="button" onClick={() => store.set({ cardOpen: !ui.cardOpen })}><kbd>C</kbd> My card</button>
         <button type="button" onClick={() => store.set({ tasksOpen: !ui.tasksOpen })}><kbd>T</kbd> Tasks</button>
         <button type="button" data-testid="board-button" onClick={() => store.set({ boardOpen: !ui.boardOpen })}><kbd>B</kbd> Evidence ({ui.board.length})</button>
+        {!ui.solo && !ui.fired && <button type="button" data-testid="chat-button" onClick={() => store.set({ chatOpen: !ui.chatOpen })}><kbd>Enter</kbd> Chat</button>}
         {ui.debrief && <button type="button" data-testid="hud-debrief" onClick={() => store.set({ debriefOpen: true })}>Debrief</button>}
         {ui.party && ui.debrief && <button type="button" data-testid="hud-back-to-party" onClick={() => store.backToParty()}>Back to the lobby</button>}
         <LeaveButton ui={ui} />

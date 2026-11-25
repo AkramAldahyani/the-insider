@@ -30,11 +30,11 @@ describe('what a browser may send', () => {
     expect(cleanName('  Sara   Al-Harbi ')).toBe('Sara Al-Harbi');
     expect(cleanName('محمد')).toBe('محمد');
     expect(cleanName("Zoë O'Neil 2.0_x")).toBe("Zoë O'Neil 2.0_x");
-    expect(cleanName('a‮b​c\nd<e>\u0000')).toBe('abcde');
+    expect(cleanName('a\u202Eb\u200Bc\nd<e>\u0000')).toBe('abcde');
     expect(cleanName('🙂🙂')).toBe('');
-    expect(cleanName('e' + '́'.repeat(50)).length).toBeLessThanOrEqual(4);
+    expect(cleanName('e' + '\u0301'.repeat(50)).length).toBeLessThanOrEqual(4);
     expect(cleanName('x'.repeat(10_000))).toBe('x'.repeat(NAME_LENGTH));
-    for (const bad of [null, undefined, 5, {}, ['Sam'], '   ', '​']) expect(cleanName(bad)).toBe('');
+    for (const bad of [null, undefined, 5, {}, ['Sam'], '   ', '\u200B']) expect(cleanName(bad)).toBe('');
   });
 
   it('settings: only known fields with valid values', () => {
@@ -69,7 +69,7 @@ describe('the rules of a lobby', () => {
 
   it('nobody has the same name as somebody else, and everybody has one', () => {
     const p = make();
-    for (const [id, name] of [['1', 'Sam'], ['2', 'sam'], ['3', 'SAM'], ['4', '​']]) p.join(id, name);
+    for (const [id, name] of [['1', 'Sam'], ['2', 'sam'], ['3', 'SAM'], ['4', '\u200B']]) p.join(id, name);
     expect(names(p)).toEqual(['Sam', 'sam 2', 'SAM 3', 'Player']);
   });
 
