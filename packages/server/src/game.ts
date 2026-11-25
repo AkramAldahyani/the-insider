@@ -141,6 +141,8 @@ export class OfficeGame {
    * speaks and votes, in real milliseconds since the phase began.
    */
   private botMeeting: { phase: string; elapsed: number; speak: { id: string; at: number; lines: { text: string; suspect: string }[]; about?: string }[]; vote: { id: string; at: number }[]; accuse?: { by: string; suspect: string; at: number } } | null = null;
+  /** Do bots judge the evidence in the current meeting (see callMeeting)? */
+  private judging = false;
   /** What bots told meetings about what they saw themselves (the judges remember it). */
   private readonly testimony: Testimony[] = [];
   /** Random numbers for when bots talk and what filler they say (its own sequence). */
@@ -1014,6 +1016,11 @@ export class OfficeGame {
     const why = this.meetings.whyNot(avatar.playerId);
     if (why) return this.send(avatar.clientId, 'notice', { text: why });
     const meeting = this.meetings.call(avatar.playerId, this.world.time, [...this.living()]);
+    // Solo: the bots are the jury. In a lobby they help to judge only while people are fewer than half of those present
+    // (owner's rule, Phase 6 part G); otherwise people decide, and bots vote only on what they saw themselves.
+    // Who lost the connection still counts as a person: otherwise the rule in force would show that somebody is away.
+    const people = new Set([...this.humans().map((a) => a.playerId), ...this.absent.values()].filter((id) => meeting.voters.includes(id))).size;
+    this.judging = this.bots !== null && (this.soloPlayer !== null || (this.assigned && people * 2 < meeting.voters.length));
     this.planBotMeeting(meeting.voters);
     if (about && this.botMeeting) this.botMeeting.accuse = { by: avatar.playerId, suspect: about, at: (0.1 + this.talk.next() * 0.1) * this.meetings.times.discussionMs };
     // Everybody comes to the table. PCs stay exactly as they were left (unlocked ones too).
@@ -1113,13 +1120,15 @@ export class OfficeGame {
   private meetingView(playerId: string): MeetingView {
     const m = this.meetings.current;
     const usesLeft = this.meetings.usesLeft(playerId);
-    if (!m) return { active: false, usesLeft, number: 0, phase: '', calledBy: '', endsIn: 0, accusations: [], voted: [], myVote: '', canVote: false, result: null };
+    const { votesNeeded } = this.meetings.times;
+    if (!m) return { active: false, usesLeft, number: 0, phase: '', calledBy: '', endsIn: 0, accusations: [], voted: [], myVote: '', canVote: false, votesNeeded, judged: false, result: null };
     return {
       active: true, usesLeft, number: m.number, phase: m.phase, calledBy: this.nameOf(m.calledById), endsIn: Math.max(0, Math.round(m.leftMs)),
       accusations: m.accusations.map((a) => ({ id: a.id, accuser: this.nameOf(a.accuserId), suspectId: a.suspectId, suspect: this.nameOf(a.suspectId), evidence: [...a.evidence] })),
       voted: Object.keys(m.votes).map((id) => this.nameOf(id)),
       myVote: m.votes[playerId] ?? '',
       canVote: m.voters.includes(playerId) && !this.fired.has(playerId),
+      votesNeeded, judged: this.judging,
       result: m.result && {
         fired: m.result.firedId ? this.nameOf(m.result.firedId) : '',
         wasHacker: m.result.wasHacker,
@@ -1211,7 +1220,7 @@ export class OfficeGame {
     this.botMeeting = { phase: 'discussion', elapsed: 0, speak, vote: [] };
   }
 
-  // ─────── Judging accusations (Phase 5a, part B; solo matches only) ───────
+  // ─────── Judging accusations (Phase 5a, part B; solo matches, and lobbies with few people) ───────
 
   /** What everybody at the company could know, for judging evidence (see judge.ts). */
   private judge(): Judge {
@@ -1250,7 +1259,7 @@ export class OfficeGame {
     const m = this.meetings.current;
     const plan = this.botMeeting;
     const a = m?.accusations.at(-1);
-    if (!this.soloPlayer || !this.bots || !plan || !a) return;
+    if (!this.judging || !this.bots || !plan || !a) return;
     const bots = this.bots;
     const speakers = m!.voters.filter((id) => bots.isPresent(id) && id !== a.suspectId && id !== a.accuserId && this.living().has(id));
     if (speakers.length === 0) return;
@@ -1302,11 +1311,12 @@ export class OfficeGame {
     } else if (m.phase === 'voting') {
       const accused = [...new Set(m.accusations.map((a) => a.suspectId))];
       let voted = false;
-      // In a solo match the bots judge the evidence. In the shared office the people do, and bots vote only on what they saw.
-      const verdicts = this.soloPlayer ? this.verdicts() : undefined;
+      // Where the bots judge, they look at the evidence. Otherwise the people do, and bots vote only on what they saw.
+      const verdicts = this.judging ? this.verdicts() : undefined;
       for (const v of plan.vote.filter((x) => x.at <= plan.elapsed)) {
         const choice = bots.ballot(v.id, accused, verdicts);
         if (choice && this.meetings.vote(v.id, choice) === '') voted = true;
+        else this.meetings.pass(v.id);
       }
       plan.vote = plan.vote.filter((x) => x.at > plan.elapsed);
       if (voted) this.sendMeeting();

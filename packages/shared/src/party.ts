@@ -56,6 +56,9 @@ export function cleanName(value: unknown): string {
   return [...text].slice(0, NAME_LENGTH).join('').trim();
 }
 
+/** In a lobby's match nobody is voted out with fewer votes than this (owner's rule). */
+export const PARTY_VOTES_NEEDED = 2;
+
 /** How a match without bots ends when the hacker (or the last one) is gone. */
 export const HACKER_GONE = 'The hacker left the company.';
 export const HACKERS_GONE = 'The last hacker left the company.';

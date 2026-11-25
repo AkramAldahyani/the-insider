@@ -30,9 +30,9 @@ function AccuseForm({ ui }: { ui: UiState }) {
   return (
     <form className="accuse" data-testid="accuse-form" onSubmit={(e) => { e.preventDefault(); store.send('meeting.accuse', { suspect, evidence: picked }); }}>
       <div className="meeting-label">Accuse someone (needs 3 or more pieces of evidence)</div>
-      {ui.solo && (
-        <div className="meeting-muted">
-          Your colleagues vote too. At least two pieces must point at the person (account, name, PC, address, badge, or a picture of
+      {ui.meeting?.judged && (
+        <div className="meeting-muted" data-testid="accuse-judged">
+          {ui.solo ? 'Your colleagues vote too.' : 'You are few, so the colleagues played by the computer look at the evidence and vote too.'} At least two pieces must point at the person (account, name, PC, address, badge, or a picture of
           them in the act), and one of those must show something out of the ordinary.
         </div>
       )}
@@ -80,6 +80,7 @@ export function MeetingPanel({ ui }: { ui: UiState }) {
             {m.phase === 'voting' && (
               <div className="votes" data-testid="vote-buttons">
                 <div className="meeting-label">Vote {m.myVote ? '(done)' : ''} · voted so far: {m.voted.length}</div>
+                {m.votesNeeded > 1 && <div className="meeting-muted votes-needed" data-testid="votes-needed">Somebody is voted out with at least {m.votesNeeded} votes, more than anybody else and more than “skip”.</div>}
                 {m.canVote && !m.myVote && [...new Map(m.accusations.map((a) => [a.suspectId, a.suspect]))].map(([id, name]) => (
                   <button key={id} type="button" onClick={() => store.send('meeting.vote', { target: id })} data-testid={`vote-${id}`}>Vote {name}</button>
                 ))}
@@ -96,6 +97,7 @@ export function MeetingPanel({ ui }: { ui: UiState }) {
                 <div className="meeting-muted">
                   {m.result.tally.map((t) => `${t.name}: ${t.votes}`).join(' · ')}{m.result.tally.length ? ' · ' : ''}skip: {m.result.skips} · did not vote: {m.result.abstained}
                 </div>
+                {!m.result.fired && m.result.tally.some((t) => t.votes > m.result!.skips) && m.result.tally.every((t) => t.votes < m.votesNeeded) && <div className="meeting-muted">At least {m.votesNeeded} votes are needed.</div>}
               </div>
             )}
           </div>

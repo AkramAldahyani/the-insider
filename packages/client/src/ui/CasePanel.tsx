@@ -3,6 +3,7 @@
  * and shows it). It explains the goal, what convinces the colleagues, and where
  * this job finds things out. It knows nothing about the hacker.
  */
+import { PARTY_VOTES_NEEDED } from '@insider/shared';
 import type { ReactNode } from 'react';
 import { store, type UiState } from '../game/store';
 
@@ -29,7 +30,7 @@ export function CasePanel({ ui }: { ui: UiState }) {
         Pin what you find (<kbd>B</kbd> shows the board), press the red button in the meeting room, and accuse with three pieces{ui.solo ? ': ' : '. '}
         {ui.solo
           ? <>two about the person, one of them out of the ordinary. Your colleagues vote on what you show them.</>
-          : <>Convince the others: everybody votes; colleagues played by the computer only on what they saw themselves.</>}
+          : <>Convince the others: everybody votes, and it takes at least {PARTY_VOTES_NEEDED} votes. Colleagues played by the computer vote on what they saw themselves; while you are few (less than half of those at the meeting) they also judge the evidence: two pieces about the person, one of them out of the ordinary.</>}
       </p>
       <p className="mission-sub">Meetings left: {ui.meeting?.usesLeft ?? 0}. Press <kbd>M</kbd> to show or hide this.</p>
     </div>

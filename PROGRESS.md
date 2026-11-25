@@ -76,12 +76,13 @@ Update it at the end of every part.
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
 | 5 Investigation & social deduction | **done**: Parts A-J |
 | 5a Solo modes | **done**: Parts A-H |
-| 6 Multiplayer | **in progress**: Parts A-F (lobbies, secret roles, several hackers, chat, watching, reconnecting) done; G (bots that fill up) next |
+| 6 Multiplayer | **in progress**: Parts A-G (lobbies, secret roles, several hackers, chat, watching, reconnecting, bots that fill up) done; H (robustness) next |
 
 ## Phase 6 plan (multiplayer): APPROVED by the owner on 2026-11-24, with all eight defaults
 
 Goal (DESIGN.md section 15): "Friends on different computers finish a match together." Same way of working: after each
-part all tests, this file, commit locally (never push), then wait for the owner's yes.
+part all tests and this file, then wait for the owner's yes. SINCE 2026-11-26 (Part G) THE OWNER COMMITS AND PUSHES: never commit, never push;
+at the end of a part give the owner the exact git commands.
 
 | Part | What | State |
 |---|---|---|
@@ -91,7 +92,7 @@ part all tests, this file, commit locally (never push), then wait for the owner'
 | D | Chat: same room, meetings, hackers' private chat, fired players; mute and length limits | **done** |
 | E | Fired and watching: free camera, affects nothing | **done** |
 | F | Reconnecting: the place is kept, a bot covers, the host role moves on. **Friends can play a full match here** | **done** |
-| G | Bots that fill up: difficulty and voting rules for mixed groups | next |
+| G | Bots that fill up: difficulty and voting rules for mixed groups | **done** |
 | H | Robustness: rate limits, message checks, load test with 30 players, one address for page and server, home network guide | |
 | I | Bigger offices for 15, 20-25 and 30 people (can be postponed) | |
 | J | Whole matches with several browsers, long test, balance, docs | |
@@ -101,7 +102,7 @@ Defaults (accepted):
 2. Hand-in wait of 3 game minutes after first reading the flag, for human hackers in multiplayer too (measured in 5a: without it a burst always wins).
 3. Several hackers: voting out or detaining one removes that person; the defenders win when all are gone. The role of a detained or fired hacker is announced.
 4. Open chat is heard only in the same room; meetings are heard by everyone.
-5. Bots in multiplayer vote only on what they saw (as decided in Phase 5 G) and never investigate on their own.
+5. Bots in multiplayer vote only on what they saw (as decided in Phase 5 G) and never investigate on their own. (Voting changed by the owner in Part G: while people are few, bots also judge the evidence.)
 6. A place is held for 60 seconds after a lost connection, then a bot plays until the player returns.
 7. Runs on the owner's computer and home network. Internet server, accounts and chat reporting stay in Phase 8.
 8. Bigger offices have one wide floor instead of two or three. Department meetings for 20+ players belong to Part I.
@@ -246,6 +247,27 @@ Also accepted: bot hackers with partners use only their existing behaviour; no n
   `onStateChange`; the silence check looks at the office clock.
 - Not there: coming back after the TAB was closed or on another computer (the token is gone with the tab; no accounts until Phase 8);
   chat said while away is lost; a bot that covers somebody keeps no memory of what that person did.
+
+### Part G: what exists now (people and bots in one match)
+
+- WHY (measured, 24 seeds per level, three idle people): when the flag was read, bots knew enough to vote in 5 of 71 matches, so practically never;
+  one person could fire somebody alone with three meaningless pins; 2 of 72 matches had no way in and did not end in 90 minutes.
+- OWNER'S RULES (2026-11-26, lobbies only): (1) while people are FEWER THAN HALF of those present when the meeting is called, bots judge the
+  accusation's evidence as in solo (`judge.ts`): convinced = a vote for the accused, otherwise "skip"; with more people they vote only
+  on what they saw, as before (`judging` in game.ts, `callMeeting`). People whose connection is lost still count as people (else the rule would
+  show that somebody is away); who left or is out does not. (2) Nobody is voted out with fewer than two votes
+  (`PARTY_VOTES_NEEDED`, `MeetingTimes.votesNeeded`), with and without bots. A bot's vote counts.
+- DIFFICULTY of a lobby = the DEFENDERS' difficulty (`partyGameOptions`, the same `LEVELS` as Investigation): 2, 3 or 4 weaknesses, always one that
+  needs nobody's mistake; how often bots leave screens open; a computer hacker's knowledge and pace. Exactly the same for a person as
+  the hacker, so the office never tells. `careless-admin` only where a bot is the administrator. VULNS still comes first.
+- Bots pin nothing in a lobby (`pinClues: 0`): a bot's pin is announced with its name, a person's is not.
+- A vote no longer waits for bots without an opinion (`Meeting.passed`, never sent), also in the shared office.
+- Page: the meeting says whether bots judge and how many votes it takes (`MeetingView.judged`, `votesNeeded`); lobby texts; the host may choose the
+  difficulty also without bots.
+- After the change: 72 of 72 measured matches ended (median 21, 15.5 and 11.4 game minutes with nobody defending).
+- Tests: `server/test/mixed.test.ts` (18), the meeting in `e2e/party.spec.ts`.
+- 779 Vitest tests in 60 files, 21 Playwright (17 office, 4 match): all green in one full run.
+- Not there: balance with people as the hacker (Part J); bots cannot be told apart by votes alone, but they speak in set sentences at meetings, as before.
 
 ## Phase 5a plan (solo modes): APPROVED by the owner on 2026-11-24, with all five defaults
 

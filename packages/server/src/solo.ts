@@ -15,7 +15,7 @@ import { LADDER_SETTINGS } from './ladder';
  * What a difficulty level of INVESTIGATION means, besides what the bot hacker
  * knows and how fast it is (bots/hacker-knowledge.ts and hacker-pace.ts).
  */
-interface Level {
+export interface Level {
   /** How many weaknesses the office has today. More = more ways in. */
   weaknesses: number;
   /** How often bots leave their desk without locking (more open PCs, more false trails). */
@@ -23,7 +23,7 @@ interface Level {
   /** How many clues colleagues put on the board themselves. With 0 they only speak in meetings. */
   pinClues: number;
 }
-const LEVELS: Record<SoloDifficulty, Level> = {
+export const LEVELS: Record<SoloDifficulty, Level> = {
   easy: { weaknesses: 2, forgetLock: 0.15, pinClues: 3 },
   normal: { weaknesses: 3, forgetLock: 0.25, pinClues: 0 },
   hard: { weaknesses: 4, forgetLock: 0.4, pinClues: 0 },
@@ -60,15 +60,16 @@ const INFILTRATION_PINS = 40;
 
 /**
  * Weaknesses that give the hacker a way in without waiting for somebody's
- * mistake. A solo match always has one: without, the bot hacker waits beside
+ * mistake. A solo match (and a lobby's) always has one: without, the bot hacker waits beside
  * the administrator, and a match can take hours (Phase 5 part J).
  */
 const DIRECT: WeaknessId[] = ['plaintext-password', 'weak-admin-password'];
 
-function pickWeaknesses(scenario: Scenario, choice: SoloChoice, seed: number, count: number): WeaknessId[] {
+/** `botAdmin`: the administrator is played by the computer. */
+export function pickWeaknesses(scenario: Scenario, botAdmin: boolean, seed: number, count: number): WeaknessId[] {
   const random = new Random(seed ^ 0x3ea4);
-  // A careless administrator is a bot's habit: it means nothing when the player is the administrator.
-  const pool = chooseWeaknesses(scenario, seed, ALL_WEAKNESSES).filter((id) => !(id === 'careless-admin' && choice.role === 'sysadmin'));
+  // A careless administrator is a bot's habit: it means nothing when a person is the administrator.
+  const pool = chooseWeaknesses(scenario, seed, ALL_WEAKNESSES).filter((id) => !(id === 'careless-admin' && !botAdmin));
   const direct = pool.filter((id) => DIRECT.includes(id));
   const picked: WeaknessId[] = direct.length > 0 ? [random.pick(direct)] : [];
   const rest = pool.filter((id) => !picked.includes(id));
@@ -116,7 +117,7 @@ export function soloGameOptions(base: OfficeGameOptions, choice: SoloChoice, see
   if (choice.level !== undefined) return ladderGameOptions(base, choice.level);
   const playerId = pickPlayer(base, choice, seed);
   // The operator may force certain weaknesses (VULNS, for tests); otherwise the level decides how many.
-  const weaknesses = (count: number) => (Array.isArray(base.weaknesses) ? base.weaknesses : pickWeaknesses(base.scenario, { ...choice, role: roleOf(base, playerId) }, seed, count));
+  const weaknesses = (count: number) => (Array.isArray(base.weaknesses) ? base.weaknesses : pickWeaknesses(base.scenario, roleOf(base, playerId) !== 'sysadmin', seed, count));
   if (choice.mode === 'infiltration') {
     const level = INFILTRATION[choice.difficulty];
     return {

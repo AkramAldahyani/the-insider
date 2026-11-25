@@ -26,9 +26,11 @@ export interface MeetingTimes {
   cooldownMs: number;
   /** How often each player may press the emergency button in a match. */
   usesPerPlayer: number;
+  /** Nobody is voted out with fewer votes than this (lobbies: 2, owner's rule; otherwise 1). */
+  votesNeeded: number;
 }
 
-export const DEFAULT_MEETING_TIMES: MeetingTimes = { discussionMs: 90_000, votingMs: 45_000, resultMs: 8_000, cooldownMs: 60_000, usesPerPlayer: 1 };
+export const DEFAULT_MEETING_TIMES: MeetingTimes = { discussionMs: 90_000, votingMs: 45_000, resultMs: 8_000, cooldownMs: 60_000, usesPerPlayer: 1, votesNeeded: 1 };
 
 export interface Accusation {
   /** "A1" */
@@ -64,11 +66,13 @@ export interface Meeting {
   votes: Record<string, string>;
   /** Everyone alive when the meeting was called (only they may vote). */
   voters: string[];
+  /** Voters who will not vote (bots without an opinion): the vote does not wait for them. Never sent to anybody. */
+  passed: string[];
   result: MeetingResult | null;
 }
 
-/** Counts the votes. The single highest suspect wins if they have more votes than "skip"; otherwise nobody. */
-export function countVotes(votes: Record<string, string>, voters: string[]): Omit<MeetingResult, 'wasHacker'> {
+/** Counts the votes. The single highest suspect wins if they have more votes than "skip", and as many as are needed; otherwise nobody. */
+export function countVotes(votes: Record<string, string>, voters: string[], needed = 1): Omit<MeetingResult, 'wasHacker'> {
   const tally: Record<string, number> = {};
   let skips = 0;
   for (const voter of voters) {
@@ -79,7 +83,7 @@ export function countVotes(votes: Record<string, string>, voters: string[]): Omi
   }
   const ranked = Object.entries(tally).sort((a, b) => b[1] - a[1]);
   const [top, second] = ranked;
-  const firedId = top && top[1] > skips && (!second || second[1] < top[1]) ? top[0] : null;
+  const firedId = top && top[1] >= needed && top[1] > skips && (!second || second[1] < top[1]) ? top[0] : null;
   return { firedId, tally, skips, abstained: voters.filter((v) => votes[v] === undefined).length };
 }
 
@@ -110,7 +114,7 @@ export class Meetings {
     this.used.set(playerId, (this.used.get(playerId) ?? 0) + 1);
     this.current = {
       number: this.history.length + 1, calledById: playerId, startedAt: gameTime,
-      phase: 'discussion', leftMs: this.times.discussionMs, accusations: [], votes: {}, voters: [...voters], result: null,
+      phase: 'discussion', leftMs: this.times.discussionMs, accusations: [], votes: {}, voters: [...voters], passed: [], result: null,
     };
     this.history.push(this.current);
     return this.current;
@@ -140,6 +144,11 @@ export class Meetings {
     return '';
   }
 
+  /** This voter will not vote. */
+  pass(voterId: string): void {
+    this.current?.passed.push(voterId);
+  }
+
   /**
    * Advances the timers. Returns what happened: a phase change, the moment a
    * result is decided (so the game can fire someone), or the end.
@@ -151,7 +160,7 @@ export class Meetings {
     }
     const m = this.current;
     // Everybody has voted: no need to wait for the clock.
-    if (m.phase === 'voting' && m.voters.every((v) => m.votes[v] !== undefined)) m.leftMs = 0;
+    if (m.phase === 'voting' && m.voters.every((v) => m.votes[v] !== undefined || m.passed.includes(v))) m.leftMs = 0;
     m.leftMs -= realMs;
     if (m.leftMs > 0) return null;
     if (m.phase === 'discussion') {
@@ -169,7 +178,7 @@ export class Meetings {
 
   private decide(isHacker: (playerId: string) => boolean): 'decided' {
     const m = this.current!;
-    const counted = countVotes(m.votes, m.voters);
+    const counted = countVotes(m.votes, m.voters, this.times.votesNeeded);
     m.result = { ...counted, wasHacker: counted.firedId !== null && isHacker(counted.firedId) };
     m.phase = 'result';
     m.leftMs = this.times.resultMs;

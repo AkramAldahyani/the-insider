@@ -81,6 +81,10 @@ export interface MeetingView {
   myVote: string;
   /** May this player vote (they were at the company when the meeting was called and are not fired)? */
   canVote: boolean;
+  /** Nobody is voted out with fewer votes than this. */
+  votesNeeded: number;
+  /** Colleagues played by the computer judge the evidence of accusations (otherwise they vote only on what they saw). */
+  judged: boolean;
   result: { fired: string; wasHacker: boolean; tally: { id: string; name: string; votes: number }[]; skips: number; abstained: number } | null;
 }
 

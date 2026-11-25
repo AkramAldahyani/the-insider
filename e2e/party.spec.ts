@@ -4,6 +4,7 @@
  * (party-match.spec.ts plays such a match to its end.)
  */
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { walkTo } from './helpers/movement';
 
 /** A second browser with its own storage, like another computer. */
 async function person(browser: Browser, name: string, path = '/'): Promise<Page> {
@@ -37,6 +38,7 @@ test('friends gather in a lobby with a code and start a match together', async (
   await expect(ben.getByTestId('party-start')).toHaveCount(0);
   await anna.getByTestId('party-bots').click(); // (not uncheck(): the box changes when the server has answered)
   await expect(ben.getByTestId('party-bots')).not.toBeChecked();
+  await expect(anna.getByTestId('party-difficulty')).toBeEnabled(); // it is also about the office, not only about a computer hacker
   await anna.getByTestId('party-meetings').selectOption('short');
   await expect(ben.getByTestId('party-meetings')).toHaveValue('short');
   await anna.getByTestId('party-hackers').selectOption('3');
@@ -130,5 +132,15 @@ test('two hackers: the one who is a person sees the partner, the others see noth
     }
   }
   expect(hackers).toBe(1);
-  for (const page of [anna, ...others]) await page.context().close();
+
+  // Three people among eleven: at a meeting the colleagues played by the computer judge the evidence, and it takes two votes.
+  const [ben, cleo] = others;
+  for (const page of [ben, cleo]) await page.close();
+  await anna.getByTestId('chat-panel').locator('input').press('Escape'); // (typing into the chat does not walk)
+  const button = await anna.evaluate(() => window.__insider!.button());
+  await walkTo(anna, button.x, button.y, 24);
+  await anna.keyboard.press('e');
+  await expect(anna.getByTestId('accuse-judged')).toContainText('You are few, so the colleagues played by the computer look at the evidence and vote too.');
+  await anna.screenshot({ path: 'e2e/screenshots/party-meeting.png' });
+  await anna.context().close();
 });

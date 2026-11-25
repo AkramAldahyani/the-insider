@@ -453,3 +453,4 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .reconnecting-box button, .menu-place > button:last-child { padding: 7px 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: inherit; }
 .menu-place { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 14px 0; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--amber); background: #1c1a12; }
 .menu-place .menu-go { margin: 0; }
+.votes-needed { flex-basis: 100%; }

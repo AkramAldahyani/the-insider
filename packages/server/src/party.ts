@@ -5,12 +5,13 @@
  */
 import { randomInt } from 'node:crypto';
 import {
-  CODE_LENGTH, CODE_LETTERS, DEFAULT_PARTY_SETTINGS, PARTY_HAND_IN_MINUTES, PARTY_MIN, PARTY_MIN_HUMAN, changeSettings, cleanName, hackerCount,
+  CODE_LENGTH, CODE_LETTERS, DEFAULT_PARTY_SETTINGS, PARTY_HAND_IN_MINUTES, PARTY_MIN, PARTY_MIN_HUMAN, PARTY_VOTES_NEEDED, changeSettings, cleanName, hackerCount,
   type PartyCast, type PartyMeetings, type PartyMember, type PartySettings, type PartyView,
 } from '@insider/shared';
 import { whoMayHack, type Deal } from './deal';
 import type { OfficeGameOptions } from './game';
 import type { MeetingTimes } from './meeting';
+import { LEVELS, pickWeaknesses } from './solo';
 
 /** A random lobby code. `randomInt` gives numbers that cannot be predicted from earlier ones. */
 export function newCode(): string {
@@ -176,16 +177,27 @@ const MEETINGS: Record<PartyMeetings, Partial<MeetingTimes>> = {
  * The settings of a lobby's match. Everything the host did not choose comes
  * from the server operator. If a human hacker leaves, the bot that takes their
  * place goes on as the hacker, as in the shared office.
+ *
+ * The difficulty is the defenders': how many ways in the office has, how often
+ * colleagues leave their screens open, and how well a computer hacker plays.
+ * It means the same for a person as the hacker, so the office itself never
+ * tells whether the hacker is one.
  */
-export function partyGameOptions(base: OfficeGameOptions, settings: PartySettings, seed: number, { hackers, human }: Pick<Deal, 'hackers' | 'human'>): OfficeGameOptions {
+export function partyGameOptions(base: OfficeGameOptions, settings: PartySettings, seed: number, { hackers, human, seats }: Pick<Deal, 'hackers' | 'human'> & Partial<Pick<Deal, 'seats'>>): OfficeGameOptions {
+  const level = LEVELS[settings.difficulty];
+  const admin = base.scenario.players.find((p) => p.role === 'sysadmin')?.id ?? '';
+  const botAdmin = settings.bots && ![...(seats?.values() ?? [])].includes(admin);
   return {
     ...base,
     seed,
     bots: settings.bots,
-    botOptions: { ...base.botOptions, hacker: true, hackerDifficulty: settings.difficulty },
+    // (A clue a bot pins is announced with its name, which would tell who is played by the computer: bots pin nothing in a lobby.)
+    botOptions: { ...base.botOptions, hacker: true, hackerDifficulty: settings.difficulty, forgetLock: level.forgetLock, pinClues: 0 },
+    // The operator may force certain weaknesses (VULNS).
+    weaknesses: Array.isArray(base.weaknesses) ? base.weaknesses : pickWeaknesses(base.scenario, botAdmin, seed, level.weaknesses),
     assigned: true,
     hackers,
     handInMinutes: human ? PARTY_HAND_IN_MINUTES : undefined,
-    meetingTimes: { ...base.meetingTimes, ...MEETINGS[settings.meetings] },
+    meetingTimes: { ...base.meetingTimes, ...MEETINGS[settings.meetings], votesNeeded: PARTY_VOTES_NEEDED },
   };
 }

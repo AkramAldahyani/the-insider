@@ -10,9 +10,9 @@ import { invitedTo, inviteLink, readName, saveName } from '../game/playerName';
 import { store, type UiState } from '../game/store';
 
 const DIFFICULTY_TEXT: Record<SoloDifficulty, string> = {
-  easy: 'Easy: a computer hacker knows only rumours and takes its time',
-  normal: 'Normal: a computer hacker knows some of the weaknesses',
-  hard: 'Hard: a computer hacker knows all the weaknesses and is fast',
+  easy: 'Easy to defend: few ways in; a computer hacker takes its time',
+  normal: 'Normal',
+  hard: 'Hard to defend: many ways in, screens left open; a computer hacker is fast',
 };
 const HACKER_TEXT: Record<PartyHacker, string> = {
   auto: `Drawn: one of you with ${PARTY_HUMAN_HACKER} or more people, otherwise anybody`,
@@ -111,7 +111,7 @@ export function PartyScreen({ party }: { party: PartyView }) {
           </label>
           <label>
             <span>Difficulty</span>
-            <select data-testid="party-difficulty" disabled={!host || !s.bots} value={s.difficulty} onChange={(e) => store.send('party.settings', { difficulty: e.target.value as SoloDifficulty })}>
+            <select data-testid="party-difficulty" disabled={!host} value={s.difficulty} onChange={(e) => store.send('party.settings', { difficulty: e.target.value as SoloDifficulty })}>
               {SOLO_DIFFICULTIES.map((d) => <option key={d} value={d}>{DIFFICULTY_TEXT[d]}</option>)}
             </select>
           </label>
