@@ -72,6 +72,7 @@ export function readTracked(c: CmdCtx, path: string): string {
   let content: string;
   try {
     content = readFile(c.host, full, c.cred, c.world.time);
+    if (c.budget && (c.budget.left -= content.length) < 0) throw new FsError('ENOMEM');
   } catch (e) {
     // A refused read of a watched file (the password file, the flag) is recorded too: the audit log keeps failures.
     if (e instanceof FsError && e.code === 'EACCES' && watchedFile(c.world, c.host.hostname, full)) {

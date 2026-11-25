@@ -12,6 +12,7 @@
  * pipes and redirects correctly after the password prompt.
  */
 import { findUser, getCred } from '../auth/accounts';
+import { MAX_ARGS, MAX_PIPE, MAX_READ } from '../core/limits';
 import { topSession } from '../auth/sessions';
 import { dispatch } from '../commands/table';
 import type { CmdCtx, CmdResult } from '../commands/types';
@@ -27,6 +28,8 @@ export interface Run {
   world: World;
   terminal: Terminal;
   out: string[];
+  /** What this line may still read. */
+  budget?: { left: number };
 }
 
 interface FileTarget {
@@ -59,6 +62,7 @@ export function makeCtx(run: Run, session: Session, piped: boolean): CmdCtx {
     cred: getCred(host, session.user),
     piped,
     sudo: false,
+    budget: (run.budget ??= { left: MAX_READ }),
   };
 }
 
@@ -126,19 +130,21 @@ function startCommand(run: Run, session: Session, cmd: SimpleCommand, stdin: str
 
   const argv = cmd.words.flatMap((w) => expandWord(w, env));
   if (argv.length === 0) return { result: {}, redir };
+  if (argv.length > MAX_ARGS) return { result: { stderr: `bash: ${argv[0]}: Argument list too long\n`, exit: 126 }, redir };
   return { result: dispatch(c, argv, stdin), redir };
 }
 
 /** Sends a finished command's stderr/stdout to files if redirected. Returns what is left of stdout. */
 function finishCommand(run: Run, redir: Redir, r: CmdResult): string {
-  let stdout = r.stdout ?? '';
+  let stdout = (r.stdout ?? '').slice(0, MAX_PIPE);
   let stderr = r.stderr ?? '';
   const save = (t: FileTarget, text: string) => {
     const host = run.world.hosts[t.host];
     try {
       writeFile(host, t.path, text, getCred(host, t.user), run.world.time, true);
-    } catch {
-      /* the file was checked when the command started; nothing useful to report */
+    } catch (e) {
+      // The file was checked when the command started, but it may have become too large.
+      if (e instanceof FsError) run.out.push(`bash: ${t.path}: ${e.message}\n`);
     }
   };
   if (redir.err === 'merge') {

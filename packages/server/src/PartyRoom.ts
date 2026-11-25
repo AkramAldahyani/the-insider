@@ -131,7 +131,8 @@ export function partyRoom(base: OfficeGameOptions, { seed, limit = 20 }: { seed?
       const { party } = this;
       const matchSeed = seed ?? randomInt(1, 2 ** 31);
       const dealt = deal(base.scenario.players, party.clients(), party.settings, new Random(matchSeed ^ 0xdea1));
-      this.begin(partyGameOptions(base, party.settings, matchSeed, dealt));
+      // The developer panel shows everything: it is never there in a match with friends.
+      this.begin(partyGameOptions({ ...base, dev: false, writeDump: undefined }, party.settings, matchSeed, dealt));
       const game = this.game!;
       const nameOf = (id: string) => base.scenario.players.find((p) => p.id === id)!.name;
       this.cast = [...dealt.seats].map(([clientId, id]) => ({ name: party.nameOf(clientId), employee: nameOf(id), hacker: dealt.hackers.includes(id) }));

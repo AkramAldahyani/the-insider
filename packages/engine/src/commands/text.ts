@@ -1,4 +1,6 @@
 /** Text-processing commands: the ones you chain together with pipes. */
+import { MAX_CONTEXT } from '../core/limits';
+import { literal, pattern, type Matcher } from '../core/pattern';
 import { getNode, listDir } from '../fs/vfs';
 import type { CmdCtx, Handler } from './types';
 import { fail } from './types';
@@ -20,41 +22,36 @@ const echo: Handler = (_c, args) => {
 };
 
 /**
- * Builds a JavaScript regular expression from a grep pattern.
+ * Reads a grep pattern (see core/pattern.ts for why it is not a JavaScript RegExp).
  * Plain grep uses "basic" syntax where + ? | ( ) { } are ordinary characters
- * unless escaped; -E ("extended") is the same as JavaScript's syntax.
+ * unless escaped.
  */
-function grepRegex(pattern: string, opts: { fixed: boolean; extended: boolean; ignoreCase: boolean }): RegExp {
-  const flags = opts.ignoreCase ? 'i' : '';
-  const escapeAll = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  if (opts.fixed) return new RegExp(escapeAll(pattern), flags);
-  let source = pattern;
+function grepRegex(text: string, opts: { fixed: boolean; extended: boolean; ignoreCase: boolean }): Matcher {
+  if (opts.fixed) return literal(text, opts.ignoreCase);
+  let source = text;
   if (!opts.extended) {
     source = '';
-    for (let i = 0; i < pattern.length; i++) {
-      const ch = pattern[i];
-      const next = pattern[i + 1];
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      const next = text[i + 1];
       if (ch === '\\' && next !== undefined) {
         source += '+?|(){}'.includes(next) ? next : ch + next;
         i++;
       } else source += '+?|(){}'.includes(ch) ? `\\${ch}` : ch;
     }
   }
-  try {
-    return new RegExp(source, flags);
-  } catch {
-    return new RegExp(escapeAll(pattern), flags); // not a valid pattern: search for it literally
-  }
+  return pattern(source, opts.ignoreCase) ?? literal(text, opts.ignoreCase); // not a valid pattern: search for it literally
 }
 
 const grep: Handler = (c, args, stdin) => {
   const { flags, values, rest } = parseArgs(args, 'ABC');
-  const after = parseInt(values.A ?? values.C ?? '0', 10) || 0;
-  const before = parseInt(values.B ?? values.C ?? '0', 10) || 0;
+  const context = (v: string | undefined) => Math.min(MAX_CONTEXT, Math.max(0, parseInt(v ?? '0', 10) || 0));
+  const after = context(values.A ?? values.C);
+  const before = context(values.B ?? values.C);
   if (rest.length === 0) return fail("Usage: grep [OPTION]... PATTERNS [FILE]...\nTry 'grep --help' for more information.", 2);
-  const [pattern, ...targets] = rest;
+  const [wanted, ...targets] = rest;
   const recursive = flags.has('r') || flags.has('R');
-  const regex = grepRegex(pattern, { fixed: flags.has('F'), extended: flags.has('E'), ignoreCase: flags.has('i') });
+  const regex = grepRegex(wanted, { fixed: flags.has('F'), extended: flags.has('E'), ignoreCase: flags.has('i') });
   let err = '';
 
   // Work out the list of inputs: [label, text]

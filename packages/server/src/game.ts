@@ -86,6 +86,9 @@ export interface Outgoing {
 }
 
 const MAX_LINE = 2000;
+/** A text or a number from a browser; anything else is "" or NaN. (String() and Number() of a strange object can fail.) */
+const word = (v: unknown): string => (typeof v === 'string' ? v : typeof v === 'number' ? `${v}` : '');
+const amount = (v: unknown): number => (typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN);
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 
 export class OfficeGame {
@@ -524,16 +527,16 @@ export class OfficeGame {
       case 'meeting.call':
         return this.callMeeting(avatar);
       case 'detain':
-        return this.detain(avatar, String(data.target ?? ''));
+        return this.detain(avatar, word(data.target));
       case 'meeting.accuse': {
         const evidence = Array.isArray(data.evidence) ? data.evidence.filter((x): x is string => typeof x === 'string').slice(0, 20) : [];
-        const error = this.meetings.accuse(avatar.playerId, String(data.suspect ?? ''), evidence, new Set(this.board.items.map((i) => i.id)), this.living());
+        const error = this.meetings.accuse(avatar.playerId, word(data.suspect), evidence, new Set(this.board.items.map((i) => i.id)), this.living());
         if (error) return this.send(avatar.clientId, 'notice', { text: error });
         this.planComment();
         return this.sendMeeting();
       }
       case 'meeting.vote': {
-        const error = this.meetings.vote(avatar.playerId, String(data.target ?? ''));
+        const error = this.meetings.vote(avatar.playerId, word(data.target));
         if (error) return this.send(avatar.clientId, 'notice', { text: error });
         return this.sendMeeting();
       }
@@ -1513,19 +1516,19 @@ export class OfficeGame {
 
     switch (type) {
       case 'dev.speed': {
-        const m = Number(data.multiplier);
+        const m = amount(data.multiplier);
         if (!(m >= 0 && m <= 3600)) return reply('Speed must be between 0 and 3600.');
         this.speed = m;
         return reply(`Speed: ${m} game seconds per real second.`);
       }
       case 'dev.jump': {
-        const ms = parseDuration(String(data.duration ?? ''));
+        const ms = parseDuration(word(data.duration));
         if (ms === null || ms > 7 * 24 * 3600_000) return reply('Give a duration like +5m, +1h30m (at most 7 days).');
         advanceTime(this.world, ms);
         return reply(`Game time is now ${dateStamp(this.world.time)}.`);
       }
       case 'dev.events': {
-        const count = Math.min(200, Math.max(1, Number(data.count) || 15));
+        const count = Math.min(200, Math.max(1, amount(data.count) || 15));
         const lines = this.world.events.slice(-count).map((e) => {
           const time = new Date(e.time).toISOString().slice(11, 19);
           return `#${e.id} ${time} ${e.host} ${e.user || '-'} ${e.sourceIp ?? 'local'} ${e.type} [${e.origin}${e.actor ? ` ${e.actor}` : ''}] ${JSON.stringify(e.details)}`;
@@ -1541,7 +1544,7 @@ export class OfficeGame {
         return reply(`Teleported to ${desk.hostname}.`);
       }
       case 'dev.show':
-        return reply(this.devShow(String(data.what ?? ''), String(data.arg ?? '')));
+        return reply(this.devShow(word(data.what), word(data.arg)));
       case 'dev.dump': {
         if (!this.writeDump) return reply('This server cannot write dumps.');
         const stamp = new Date(this.world.time).toISOString().replace(/[:.]/g, '-');

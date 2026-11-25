@@ -19,11 +19,13 @@
  *   MEETING_SECONDS=90,45,8  meeting discussion, voting and result lengths
  *   STALL_MINUTES=10    anti-stall: every N game minutes one hacker action is flagged HIGH (0 = off)
  *   VULNS=random        today's weaknesses: random (2-4 from the seed), none, or a list like extra-sudo,tailgate
- *   NODE_ENV=production switches the developer panel OFF
+ *   NODE_ENV=production switches the developer panel OFF, serves the built web page too, and lets other computers connect
+ *   GAME_HOST=...       network address to listen on (default: this computer only in development, all in production)
  */
 import { OfficeGame } from './game';
 import { SERVER_PORT } from '@insider/shared';
 import { createGameServer, loadGameOptions, type AppOptions } from './app';
+import { homeAddresses, mainAddress } from './gate';
 
 const options: AppOptions = {
   scenario: process.env.SCENARIO,
@@ -48,8 +50,16 @@ try {
   // instead of failing later when the first player joins.
   const loaded = loadGameOptions(options);
   new OfficeGame(loaded);
-  await createGameServer(options).listen(port);
+  // With the developer panel on, anybody who can connect can see everything: then only this computer may.
+  const host = process.env.GAME_HOST ?? (loaded.dev ? 'localhost' : undefined);
+  await createGameServer(options).listen(port, host);
   console.log(`[insider] game server on ws://localhost:${port}  scenario=${loaded.scenario.id} map=${loaded.mapName} dev=${String(loaded.dev)} bots=${String(loaded.bots)}`);
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`[insider] play on this computer:    http://localhost:${port}`);
+    const [first, ...others] = homeAddresses(undefined, await mainAddress());
+    if (first) console.log(`[insider] other computers at home:  http://${first}:${port}`);
+    if (others.length > 0) console.log(`[insider] (if that does not work: ${others.map((a) => `http://${a}:${port}`).join('  ')})`);
+  }
 } catch (error) {
   console.error(`[insider] cannot start:\n${(error as Error).message}`);
   process.exit(1);

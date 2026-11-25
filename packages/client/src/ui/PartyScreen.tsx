@@ -5,8 +5,8 @@
  * this file only shows it and sends what the player wants.
  */
 import { CODE_LENGTH, NAME_LENGTH, PARTY_HACKERS, PARTY_HUMAN_HACKER, PARTY_MEETINGS, SOLO_DIFFICULTIES, cleanName, parseCode, type PartyHacker, type PartyMeetings, type PartyView, type SoloDifficulty } from '@insider/shared';
-import { useState } from 'react';
-import { invitedTo, inviteLink, readName, saveName } from '../game/playerName';
+import { useEffect, useState } from 'react';
+import { homeAddress, invitedTo, inviteLink, onHostComputer, readName, saveName } from '../game/playerName';
 import { store, type UiState } from '../game/store';
 
 const DIFFICULTY_TEXT: Record<SoloDifficulty, string> = {
@@ -66,13 +66,18 @@ export function PartyScreen({ party }: { party: PartyView }) {
   const host = party.you === party.hostId;
   const me = party.members.find((m) => m.id === party.you);
   const s = party.settings;
+  // "localhost" means something else on every computer: friends need this one's address.
+  const [home, setHome] = useState('');
+  useEffect(() => void homeAddress().then(setHome), []);
   return (
     <div className="start" data-testid="party">
       <div className="start-box">
         <div className="eyebrow"><span className="signal-dot" /> NEXORA CORPORATION / LOBBY</div>
         <h1 className="party-code" data-testid="party-code">{party.code}</h1>
         <p className="start-intro">Friends join with this code, or with this link:</p>
-        <input className="party-link" data-testid="party-link" readOnly aria-label="Link for friends" value={inviteLink(party.code)} onFocus={(e) => e.target.select()} />
+        <input className="party-link" data-testid="party-link" readOnly aria-label="Link for friends" value={inviteLink(party.code, home)} onFocus={(e) => e.target.select()} />
+        {onHostComputer() && import.meta.env.DEV && <p className="start-note">This is the development server: only this computer can join. For friends on other computers start the game with <code>pnpm start</code>.</p>}
+        {home && <p className="start-note">The link works for computers in the same home network. (If Windows asked whether Node.js may use the network, it must be allowed for private networks.)</p>}
 
         <h2>Players ({party.members.length} of {party.size})</h2>
         <ul className="party-list" data-testid="party-members">

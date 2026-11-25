@@ -8,7 +8,8 @@
  * One word can become several arguments (a glob with many matches) or none.
  */
 import { findUser } from '../auth/accounts';
-import { canRead, getNode, resolvePath, type Cred } from '../fs/vfs';
+import { wildMatch, type WildPart } from '../core/pattern';
+import { canRead, childOf, getNode, resolvePath, type Cred } from '../fs/vfs';
 import type { Host } from '../types';
 import type { WordPart } from './lexer';
 
@@ -27,7 +28,10 @@ interface Ch {
 }
 
 function expandVars(text: string, vars: Record<string, string>): string {
-  return text.replace(/\$(\{\w+\}|\w+|\?)/g, (_, name: string) => vars[name.replace(/[{}]/g, '')] ?? '');
+  return text.replace(/\$(\{\w+\}|\w+|\?)/g, (_, raw: string) => {
+    const name = raw.replace(/[{}]/g, '');
+    return Object.hasOwn(vars, name) ? vars[name] : '';
+  });
 }
 
 export function expandWord(parts: WordPart[], env: ExpandEnv): string[] {
@@ -85,7 +89,7 @@ function glob(chars: Ch[], env: ExpandEnv): string[] {
     if (!dir || dir.type !== 'dir') return;
 
     const step = (name: string) => {
-      const child = dir.children![name];
+      const child = childOf(dir, name);
       if (!child) return;
       const display = shown + name;
       if (last) results.push(display);
@@ -94,14 +98,11 @@ function glob(chars: Ch[], env: ExpandEnv): string[] {
 
     if (!wild) return step(text);
     if (!canRead(dir, env.cred)) return; // cannot list this directory
-    const source = comp
-      .map((x) => (!x.lit && x.c === '*' ? '[^/]*' : !x.lit && x.c === '?' ? '.' : x.c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
-      .join('');
-    const regex = new RegExp(`^${source}$`);
+    const parts: WildPart[] = comp.map((x) => (!x.lit && (x.c === '*' || x.c === '?') ? { wild: x.c } : x.c));
     const hiddenOk = text.startsWith('.'); // "*" does not match dot-files
     for (const name of Object.keys(dir.children!).sort()) {
       if (name.startsWith('.') && !hiddenOk) continue;
-      if (regex.test(name)) step(name);
+      if (wildMatch(parts, name)) step(name);
     }
   };
 

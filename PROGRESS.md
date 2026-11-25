@@ -76,7 +76,7 @@ Update it at the end of every part.
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
 | 5 Investigation & social deduction | **done**: Parts A-J |
 | 5a Solo modes | **done**: Parts A-H |
-| 6 Multiplayer | **in progress**: Parts A-G (lobbies, secret roles, several hackers, chat, watching, reconnecting, bots that fill up) done; H (robustness) next |
+| 6 Multiplayer | **in progress**: Parts A-H (lobbies, secret roles, several hackers, chat, watching, reconnecting, bots that fill up, robustness) done; I (bigger offices, can be postponed) next |
 
 ## Phase 6 plan (multiplayer): APPROVED by the owner on 2026-11-24, with all eight defaults
 
@@ -93,8 +93,8 @@ at the end of a part give the owner the exact git commands.
 | E | Fired and watching: free camera, affects nothing | **done** |
 | F | Reconnecting: the place is kept, a bot covers, the host role moves on. **Friends can play a full match here** | **done** |
 | G | Bots that fill up: difficulty and voting rules for mixed groups | **done** |
-| H | Robustness: rate limits, message checks, load test with 30 players, one address for page and server, home network guide | |
-| I | Bigger offices for 15, 20-25 and 30 people (can be postponed) | |
+| H | Robustness: rate limits, message checks, load test with 30 players, one address for page and server, home network guide | **done** |
+| I | Bigger offices for 15, 20-25 and 30 people (can be postponed) | next |
 | J | Whole matches with several browsers, long test, balance, docs | |
 
 Defaults (accepted):
@@ -268,6 +268,32 @@ Also accepted: bot hackers with partners use only their existing behaviour; no n
 - Tests: `server/test/mixed.test.ts` (18), the meeting in `e2e/party.spec.ts`.
 - 779 Vitest tests in 60 files, 21 Playwright (17 office, 4 match): all green in one full run.
 - Not there: balance with people as the hacker (Part J); bots cannot be told apart by votes alone, but they speak in set sentences at meetings, as before.
+
+### Part H: what exists now (robustness)
+
+- FOUND AND FIXED in the simulation (one player could have frozen or damaged the server): hostile search patterns (`grep -E '(a+)+$'`),
+  files doubled again and again, huge outputs, thousands of files, and names like `__proto__` and `constructor`, which reached
+  JavaScript's own objects (`echo $__proto__`, `chmod` as simulated root). Now: `engine/src/core/pattern.ts` (a matcher that never goes back,
+  compared with RegExp on 20,000 random cases; also find -name, siem wildcards, shell globs), `core/limits.ts` (256 KB per file a user
+  writes, 4000 files and 16 MB per machine, 4 MB read per line, 200 arguments, 200 KB on the screen; Linux's own error texts), `childOf` in vfs.ts and
+  `Object.hasOwn` everywhere a player's word is a key. NEVER use a player's text as a key without it, and never `new RegExp` with it.
+- MESSAGES (`server/src/allowance.ts`, `OfficeRoom.arrived`): each browser has 120 points, 40 more per second; a message costs a fixed price plus
+  the time it took and the history it made (at most 120; a new match's history is not charged to the host). Out of points = it waits, in order;
+  more than 200 waiting = connection closed (4009). Largest message 16 KB.
+- MISTAKES: an exception in a message is logged and costs only its sender (20 = sent away); one in the match's clock is logged, and 50 in a row
+  close that room. Other rooms never notice. Texts and numbers from browsers go through `word` and `amount` in game.ts.
+- FRONT DOOR (`server/src/gate.ts`): requests to join are limited per network address (200 points, 1.5 per second; a code costs 5, so about one guess in
+  three seconds), small (4 KB), only known ones, and only from our own page; 300 connections, 60 per address. The shared office takes 60 browsers.
+- ONE ADDRESS: `pnpm start` builds the page and starts the server in production mode: page and game on port 2567. The page's files are read once
+  at the start; nothing else can be requested. Strict rules for the browser (Content-Security-Policy). The lobby's link has the home
+  address even if the host uses localhost (`/address`, answered only to this computer). `pnpm dev` (developer panel!) now listens on this computer only
+  (GAME_HOST changes that). A lobby's match never has the developer panel.
+- `docs/play-with-friends.md`: the guide for the home network.
+- LOAD (`pnpm load [people] [seconds]`, `packages/server/load/load.ts`): 30 and 55 pretend players: 95 % of answers within 5 ms, no connection lost.
+- Tests: `engine/test/robust.test.ts` (12), `server/test/robust.test.ts` (20), `server/test/load.test.ts` (1). Tried by a script with the production
+  build: host on localhost, friend over the home address, a whole start, chat, reload and return.
+- 812 Vitest tests in 63 files, 21 Playwright (17 office, 4 match): all green in one full run.
+- Not there: encryption, accounts, reporting (Phase 8). Nobody has tried it from a second real computer.
 
 ## Phase 5a plan (solo modes): APPROVED by the owner on 2026-11-24, with all five defaults
 

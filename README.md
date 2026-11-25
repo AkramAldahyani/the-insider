@@ -2,7 +2,7 @@
 
 A multiplayer social-deduction game that teaches real Linux forensics. The full design is in [DESIGN.md](DESIGN.md).
 
-**Current state: Phases 1 to 5 and the solo modes (5a) are done; multiplayer (Phase 6) is in progress: lobbies with secret roles, up to three hackers, chat, watching after being voted out, coming back after a lost connection, and bots that fill up and help to judge while people are few work (Parts A to G).** The page opens on a start menu: a private Investigation match against bots (choose a job and a difficulty), a private Infiltration match (you are the hacker), a ladder of five fixed infiltrations (progress is kept in the browser), a lobby for friends (create one, share its code or link, get ready, and the host starts the match; jobs and the hacker are drawn secretly, and after the debrief everybody can return to the same lobby), or the shared office. In solo matches the bots judge the evidence behind an accusation and vote on it, and the debrief rates the investigation. Investigation is playable with every job, and Infiltration as the hacker: the bots notice traces, follow addresses, watch cameras, call meetings and vote. Roles are in (each player's card shows their role and what it allows, and the office has a SOC analyst), the SOC analyst's PC has a SIEM search over every machine's logs (`siem`), the security office's monitors show the camera recordings and the badge log, findings can be pinned to a shared evidence board (`B`), the emergency button in the meeting room starts a meeting with chat, accusations backed by evidence, and a vote, the guard can detain someone caught in the act (`X`), and the helpdesk's PC has a console to lock any PC remotely and reset passwords (`helpdesk`). Bot employees check their own PCs, remember what they saw, tell meetings about it, and vote only on what they know. Phase 4 parts A-H are complete, including the simulated remote tools, phishing, log cleaner, and CLI hacker support. Phase 5 H adds parity, reputation loss, and anti-stall escalation. Phase 5 F is complete: a simulated bot hacker now plays by default. After a match, the debrief shows every step of the hacker, the evidence it left, what was found or missed, and the MITRE ATT&CK technique (Phase 5 I). The bot hacker plays at a human pace, and whole matches are tested (Phase 5 J).
+**Current state: Phases 1 to 5 and the solo modes (5a) are done; multiplayer (Phase 6) is in progress: lobbies with secret roles, up to three hackers, chat, watching after being voted out, coming back after a lost connection, and bots that fill up and help to judge while people are few, and one address for friends at home work (Parts A to H).** The page opens on a start menu: a private Investigation match against bots (choose a job and a difficulty), a private Infiltration match (you are the hacker), a ladder of five fixed infiltrations (progress is kept in the browser), a lobby for friends (create one, share its code or link, get ready, and the host starts the match; jobs and the hacker are drawn secretly, and after the debrief everybody can return to the same lobby), or the shared office. In solo matches the bots judge the evidence behind an accusation and vote on it, and the debrief rates the investigation. Investigation is playable with every job, and Infiltration as the hacker: the bots notice traces, follow addresses, watch cameras, call meetings and vote. Roles are in (each player's card shows their role and what it allows, and the office has a SOC analyst), the SOC analyst's PC has a SIEM search over every machine's logs (`siem`), the security office's monitors show the camera recordings and the badge log, findings can be pinned to a shared evidence board (`B`), the emergency button in the meeting room starts a meeting with chat, accusations backed by evidence, and a vote, the guard can detain someone caught in the act (`X`), and the helpdesk's PC has a console to lock any PC remotely and reset passwords (`helpdesk`). Bot employees check their own PCs, remember what they saw, tell meetings about it, and vote only on what they know. Phase 4 parts A-H are complete, including the simulated remote tools, phishing, log cleaner, and CLI hacker support. Phase 5 H adds parity, reputation loss, and anti-stall escalation. Phase 5 F is complete: a simulated bot hacker now plays by default. After a match, the debrief shows every step of the hacker, the evidence it left, what was found or missed, and the MITRE ATT&CK technique (Phase 5 I). The bot hacker plays at a human pace, and whole matches are tested (Phase 5 J).
 
 **A living office.** You walk around an office full of bot employees, sit at any PC and use its simulated Linux shell. Bots work, write mail, browse and take breaks, so evidence accumulates even while you stand still. The hacker has a private toolkit, a USB stick (hold `U` at an unlocked PC) and shoulder surfing. Reading the server's flag and submitting it from the briefing ends the match. See [visual upgrade notes](docs/design/visual-upgrade.md) for the current procedural art and [progress](PROGRESS.md) for each completed part.
 
@@ -49,13 +49,21 @@ Or leave pnpm uninstalled and put `corepack` in front of every command below (`c
 pnpm install
 ```
 
+## Play with friends at home
+
+```bash
+pnpm start
+```
+
+This builds the page and starts everything on one address that other computers in the same home network can open. The step-by-step guide is [docs/play-with-friends.md](docs/play-with-friends.md).
+
 ## Play in the browser
 
 ```bash
 pnpm dev
 ```
 
-This starts the game server (port 2567) and the web page. Open http://localhost:5173.
+This starts the game server (port 2567) and the web page. Open http://localhost:5173. (For development: only this computer can connect.)
 
 1. Choose an employee. You appear next to their desk with an onboarding card (username, password, PC, badge). Everyone you did not choose is played by a bot.
    On screen they look exactly like people; nothing tells you who is a bot.
@@ -94,9 +102,11 @@ Other commands:
 | `BOT_HACKER=0 pnpm dev` | ordinary employee bots without an automated hacker (PowerShell: `$env:BOT_HACKER=0; pnpm dev`) |
 | `BOT_HACKER_DIFFICULTY=easy pnpm dev` | bot knowledge: `easy`, `normal` (default), or `hard` (PowerShell: `$env:BOT_HACKER_DIFFICULTY='easy'; pnpm dev`) |
 | `BOT_HACKER_PACE=fast pnpm dev` | a bot hacker without pauses, for demonstrations (PowerShell: `$env:BOT_HACKER_PACE='fast'; pnpm dev`) |
+| `pnpm start` | the game for friends at home: page and server on one address (port 2567), no developer panel |
+| `pnpm load` | load test: 30 pretend players for a minute (`pnpm load 55 120`: 55 for two minutes) |
 | `pnpm map` | regenerate `maps/office-small.json` from `maps/build-office.ts` (overwrites edits made in Tiled) |
 
-Server settings are environment variables: `GAME_PORT` (2567), `SCENARIO` (`nexora-small`), `MAP` (`office-small`), `SEED` (the shared office uses 1 unless it is set; every solo match and lobby gets a new one unless it is set), `SOLO_LIMIT` (how many solo matches may run at the same time, 20), `LOBBY_LIMIT` (how many lobbies, 20), `TIME_SPEED` (game seconds per real second, 1), `BOTS` (`0` = an empty office with no bot employees), `MEETING_SECONDS` (meeting discussion, voting and result lengths, `90,45,8`), `STALL_MINUTES` (anti-stall: every N game minutes one of the hacker's actions is flagged HIGH in the SIEM, `10`, `0` = off), `VULNS` (today's weaknesses: `random` by default, `none`, or a list such as `extra-sudo,tailgate`), and `NODE_ENV=production` to switch the developer tools off.
+Server settings are environment variables: `GAME_PORT` (2567), `GAME_HOST` (network address to listen on; this computer only in development, all with `pnpm start`), `SCENARIO` (`nexora-small`), `MAP` (`office-small`), `SEED` (the shared office uses 1 unless it is set; every solo match and lobby gets a new one unless it is set), `SOLO_LIMIT` (how many solo matches may run at the same time, 20), `LOBBY_LIMIT` (how many lobbies, 20), `TIME_SPEED` (game seconds per real second, 1), `BOTS` (`0` = an empty office with no bot employees), `MEETING_SECONDS` (meeting discussion, voting and result lengths, `90,45,8`), `STALL_MINUTES` (anti-stall: every N game minutes one of the hacker's actions is flagged HIGH in the SIEM, `10`, `0` = off), `VULNS` (today's weaknesses: `random` by default, `none`, or a list such as `extra-sudo,tailgate`), and `NODE_ENV=production` to switch the developer tools off.
 
 With bots enabled, one eligible employee is chosen uniformly using the match seed, independently of weaknesses
 and who received mistaken sudo. It starts its mission after several game minutes of
@@ -171,7 +181,7 @@ pnpm test
 pnpm typecheck
 ```
 
-779 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay), the server (movement, sitting, doors and badges, bots, bot hacker fairness, difficulty, fallback matches and interruptions, job tasks, CCTV, a three-hour soak run, whole matches against the bot hacker, map checks, and the visibility rule), and CLI mission startup and completion.
+812 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay), the server (movement, sitting, doors and badges, bots, bot hacker fairness, difficulty, fallback matches and interruptions, job tasks, CCTV, a three-hour soak run, whole matches against the bot hacker, map checks, and the visibility rule), and CLI mission startup and completion.
 
 ```bash
 pnpm e2e

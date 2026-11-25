@@ -43,7 +43,7 @@ export function TerminalOverlay({ hostname }: { hostname: string }) {
     selection.current = () => term.getSelection();
 
     const editor = new LineEditor(term, {
-      onLine: (text) => store.send('term.line', { text }),
+      onLine: (text) => store.send('term.line', { text: text.slice(0, 2000) }),
       onCancel: () => store.send('term.cancel', {}),
       onEscape: () => store.send('stand', {}),
       onSwitchUser: () => store.send('term.switchUser', {}),
@@ -83,7 +83,7 @@ export function TerminalOverlay({ hostname }: { hostname: string }) {
             onClick={() => {
               const text = selection.current().trim();
               if (!text) store.notice('Select some text in the terminal first (drag with the mouse), then pin it.');
-              else store.send('evidence.pin', { kind: 'screen', text });
+              else store.send('evidence.pin', { kind: 'screen', text: text.slice(0, 1500) });
             }}
           >Pin selection</button>
           <button type="button" onClick={() => store.send('stand', {})}>Stand up (Esc)</button>

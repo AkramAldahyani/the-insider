@@ -93,12 +93,12 @@ const mail: Handler = (c, args, stdin) => {
     while (rest.length > 0 && /^[a-z_][a-z0-9_.-]*(@[\w.-]+)?$/i.test(rest[0]) && recipients.length < 5) {
       const user = rest[0].split('@')[0];
       // After the first recipient, a word is another recipient only if it is a real account.
-      if (recipients.length > 0 && !world.credentials[user]) break;
+      if (recipients.length > 0 && !Object.hasOwn(world.credentials, user)) break;
       recipients.push(user);
       rest.shift();
     }
     if (!subject || recipients.length === 0) return fail('Usage: mail -s "SUBJECT" USER [USER...] "BODY"   (or: echo "BODY" | mail -s "SUBJECT" USER)');
-    const unknown = recipients.find((u) => !world.credentials[u]);
+    const unknown = recipients.find((u) => !Object.hasOwn(world.credentials, u));
     if (unknown) return fail(`mail: ${unknown}@${world.domain}: no such user (the message was not sent)`);
     const body = (rest.join(' ') || stdin).trim();
     if (!body) return fail('mail: refusing to send an empty message');

@@ -20,6 +20,7 @@
 import { randomInt } from 'node:crypto';
 import { Room, type Client } from '@colyseus/core';
 import { HOLD_MS, TICK_RATE, parseSoloChoice } from '@insider/shared';
+import { Allowance, MAX_WAITING, MESSAGE_POINTS, MESSAGE_REFILL, PER_EVENT, PER_MS, price } from './allowance';
 import { OfficeGame, type OfficeGameOptions } from './game';
 import { soloGameOptions } from './solo';
 import { newOfficeState, syncState, type OfficeState } from './state';
@@ -30,6 +31,22 @@ interface Lost {
   /** A bot has been playing since the minute was over. */
   covered: boolean;
   giveUp(): void;
+}
+
+/** A browser asked for too much at once (allowance.ts): its connection is closed. */
+export const TOO_MANY = 4009;
+/** The shared office takes this many browsers (people on its start screen included). */
+const OFFICE_SIZE = 60;
+/** A match whose clock failed so many times in a row is closed; so is a browser whose messages failed so often. */
+const MAX_ERRORS = 50;
+const MAX_BAD_MESSAGES = 20;
+
+/** What one browser may ask for, and what it asked for too early. */
+interface Queue {
+  allowance: Allowance;
+  /** How many of its messages ended in a mistake of the program. */
+  bad: number;
+  waiting: { client: Client; type: string; payload: unknown }[];
 }
 
 export abstract class OfficeRoom extends Room<OfficeState> {
@@ -47,9 +64,11 @@ export abstract class OfficeRoom extends Room<OfficeState> {
   protected open(): void {
     this.state = newOfficeState();
     if (this.game) syncState(this.state, this.game.publicState());
-    this.onMessage('*', (client, type, payload) => this.received(client, String(type), payload));
+    this.onMessage('*', (client, type, payload) => this.arrived(client, String(type), payload));
     this.setSimulationInterval((deltaMs) => {
+      this.serveWaiting();
       this.game?.tick(deltaMs);
+      this.errors = 0; // it works (again)
       this.lookForLost();
       this.flush();
     }, 1000 / TICK_RATE);
@@ -58,6 +77,59 @@ export abstract class OfficeRoom extends Room<OfficeState> {
   /** Starts the match. */
   protected begin(options: OfficeGameOptions): void {
     this.game = new OfficeGame(options);
+  }
+
+  // ───────────────────────────── How much a browser may ask (Phase 6, part H) ─────────────────────────────
+
+  private readonly queues = new Map<string, Queue>();
+
+  /** A message has arrived. It is handled at once, unless this browser has asked for too much: then it waits, in order. */
+  private arrived(client: Client, type: string, payload: unknown): void {
+    let queue = this.queues.get(client.sessionId);
+    if (!queue) this.queues.set(client.sessionId, (queue = { allowance: new Allowance(MESSAGE_POINTS, MESSAGE_REFILL), bad: 0, waiting: [] }));
+    if (queue.waiting.length === 0 && queue.allowance.some) return this.handle(queue, { client, type, payload });
+    queue.waiting.push({ client, type, payload });
+    if (queue.waiting.length <= MAX_WAITING) return;
+    queue.waiting = [];
+    client.leave(TOO_MANY, 'Too many messages.');
+  }
+
+  private serveWaiting(): void {
+    for (const [id, queue] of this.queues) {
+      const here = this.clients.getById(id) !== undefined;
+      if (!here) queue.waiting = [];
+      while (queue.waiting.length > 0 && queue.allowance.some) this.handle(queue, queue.waiting.shift()!);
+      if (!here && queue.allowance.full) this.queues.delete(id);
+    }
+  }
+
+  private handle(queue: Queue, { client, type, payload }: Queue['waiting'][number]): void {
+    const start = performance.now();
+    const { game } = this;
+    const before = game?.world.events.length ?? 0;
+    try {
+      this.received(client, type, payload);
+    } catch (error) {
+      // It costs the one who sent it, not the others.
+      this.report(error, type);
+      if (++queue.bad === MAX_BAD_MESSAGES) client.leave(TOO_MANY, 'Too many wrong messages.');
+    }
+    // (Starting a match makes a whole new world: its history is not the host's doing.)
+    const events = game && game === this.game ? game.world.events.length - before : 0;
+    queue.allowance.take(Math.min(MESSAGE_POINTS, price(type) + (performance.now() - start) * PER_MS + events * PER_EVENT));
+  }
+
+  /** A mistake in the program must not take everybody's match down with it. It is written to the server's log. */
+  private report(error: unknown, where: string): void {
+    console.error(`[insider] room ${this.roomId}, ${where.slice(0, 40)}:`, error);
+  }
+
+  private errors = 0;
+  override onUncaughtException(error: Error, where: string): void {
+    // A refusal ("The server is full") is not a mistake: Colyseus tells the browser.
+    if (where === 'onCreate' || where === 'onJoin') return;
+    this.report((error as { cause?: unknown }).cause ?? error, where);
+    if (where === 'setSimulationInterval' && ++this.errors === MAX_ERRORS) void this.disconnect();
   }
 
   /** A message from a browser. */
@@ -160,6 +232,7 @@ export abstract class OfficeRoom extends Room<OfficeState> {
 export function officeRoom(options: OfficeGameOptions): new () => OfficeRoom {
   return class ConfiguredOfficeRoom extends OfficeRoom {
     override onCreate(): void {
+      this.maxClients = OFFICE_SIZE;
       this.begin(options);
       this.open();
     }

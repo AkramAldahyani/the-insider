@@ -4,12 +4,13 @@
  *   pnpm dev                 both (server on :2567, page on http://localhost:5173)
  *   pnpm client              only the web page
  *   pnpm build               production build of the web page into packages/client/dist
+ *   pnpm start               builds the page and starts the game for friends at home: one address for everything
  *
  * It is a plain Node script (no extra tools) that starts the two programs,
  * prefixes their output so you can tell them apart, and stops both when you
  * press Ctrl+C or when one of them dies.
  */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -51,7 +52,13 @@ process.on('SIGINT', () => stop());
 process.on('SIGTERM', () => stop());
 
 const flag = process.argv[2];
-if (flag === '--build') {
+if (flag === '--start') {
+  console.log('[start] building the page...');
+  const built = spawnSync(process.execPath, [vite, 'build', '--logLevel', 'warn'], { cwd: client, stdio: 'inherit' });
+  if (built.status !== 0) process.exit(built.status ?? 1);
+  process.env.NODE_ENV = 'production';
+  start('server', 32, [tsx, join('packages', 'server', 'src', 'index.ts')], root);
+} else if (flag === '--build') {
   start('build', 36, [vite, 'build'], client);
   children[0].on('exit', (code) => process.exit(code ?? 0));
   stopping = true; // a finished build is not a crash

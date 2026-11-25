@@ -237,7 +237,7 @@ function FlagForm() {
   const [text, setText] = useState('');
   return (
     <form className="flag-form" onSubmit={(e) => { e.preventDefault(); if (text.trim()) store.send('flag.submit', { text }); }}>
-      <input data-testid="flag-input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Paste the flag here" spellCheck={false} />
+      <input data-testid="flag-input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Paste the flag here" maxLength={500} spellCheck={false} />
       <button type="submit" data-testid="flag-submit">Hand in</button>
     </form>
   );

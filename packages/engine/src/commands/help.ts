@@ -74,7 +74,7 @@ const help: Handler = () => {
 const man: Handler = (_c, args) => {
   const name = args.find((a) => !a.startsWith('-'));
   if (!name) return fail('What manual page do you want?\nFor example, try \'man man\'.');
-  const page = MANUAL[name];
+  const page = Object.hasOwn(MANUAL, name) ? MANUAL[name] : undefined;
   if (!page) return fail(`No manual entry for ${name}`, 16);
   const upper = name.toUpperCase();
   let out = `${upper}(1)                    User Commands                    ${upper}(1)\n\n`;

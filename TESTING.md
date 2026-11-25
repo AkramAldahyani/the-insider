@@ -639,6 +639,16 @@ Too easy or too hard? The numbers are in `packages/server/src/bots/hacker-pace.t
 4. Without bots, four people: one single vote for somebody fires nobody (*At least 2 votes are needed.*), two do.
 5. The lobby's difficulty can be chosen with and without bots.
 
+## AW. Phase 6, part H: robustness and one address
+
+1. `corepack pnpm start`: the terminal prints an address for this computer and one for other computers. Open the first one: the menu. Create a lobby: the link shows the second address, not `localhost`.
+2. Open that link in another window (or, better, on a second computer: [docs/play-with-friends.md](docs/play-with-friends.md)) and join. Start, chat, reload: everything works. There is no *Dev* at the bottom.
+3. `http://localhost:2567/package.json` and any other file that is not part of the page: *There is nothing here.*
+4. At a PC: `grep -E '(a+)+$' /etc/passwd` answers at once. `echo x > a`, then `cat a a a a a a a a > b; cat b > a` again and again: *File too large* after a while. `echo $__proto__` prints an empty line.
+5. Type codes that do not exist again and again in *Join the lobby*: after about 40 the answer is *Too many tries. Wait a moment.*
+6. `corepack pnpm load`: ends with *Good.*
+7. `pnpm dev`: in a lobby's match the backtick key does nothing, in the shared office the developer panel still opens.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -670,7 +680,7 @@ the outstanding manual check of password masking at a real interactive keyboard.
 pnpm test
 ```
 
-Expected: `Test Files 60 passed (60)` and `Tests 779 passed (779)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
+Expected: `Test Files 63 passed (63)` and `Tests 812 passed (812)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
 
 On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent workers. This passed the complete suite during Phase 5F validation after three existing long-running tests timed out with unrestricted workers.
 

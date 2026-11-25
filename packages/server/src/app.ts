@@ -7,6 +7,7 @@
  * writes files. The engine never does.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import type { Server as HttpServer } from 'node:http';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Server } from '@colyseus/core';
@@ -15,6 +16,7 @@ import { ALL_WEAKNESSES, type Scenario, type WeaknessChoice } from '@insider/eng
 import { PARTY_ROOM_NAME, ROOM_NAME, SOLO_ROOM_NAME, type TiledMap } from '@insider/shared';
 import { officeRoom, soloRoom } from './OfficeRoom';
 import { partyRoom } from './PartyRoom';
+import { Gate } from './gate';
 import type { OfficeGameOptions } from './game';
 import { parseHackerDifficulty } from './bots/hacker-knowledge';
 import { parseHackerPace } from './bots/hacker-pace';
@@ -48,6 +50,8 @@ export interface AppOptions {
   soloLimit?: number;
   /** How many lobbies (with or without a running match) may exist at the same time (default 20). */
   lobbyLimit?: number;
+  /** Serve the built web page (packages/client/dist) from the same address. Default: only when NODE_ENV is "production". */
+  page?: boolean;
 }
 
 /** "random" / "none" / "extra-sudo,tailgate" -> what the game expects. Unknown names stop the server. */
@@ -95,9 +99,16 @@ export function loadGameOptions(options: AppOptions = {}): OfficeGameOptions {
   };
 }
 
+/** Where `pnpm build` puts the web page. */
+export const PAGE_DIR = join(REPO_ROOT, 'packages', 'client', 'dist');
+
 /** Creates a Colyseus server with the shared office, the solo matches and the lobbies defined. Call `.listen(port)` on the result. */
 export function createGameServer(options: AppOptions = {}): Server {
-  const server = new Server({ transport: new WebSocketTransport(), greet: false });
+  const gate = new Gate(options.page ?? process.env.NODE_ENV === 'production' ? PAGE_DIR : undefined);
+  // The largest message is a pasted command line (2000 characters, up to 4 bytes each).
+  const transport = new WebSocketTransport({ maxPayload: 16 * 1024, verifyClient: gate.mayConnect });
+  const server = new Server({ transport, greet: false });
+  gate.guard(transport.server as HttpServer);
   const game = loadGameOptions(options);
   server.define(ROOM_NAME, officeRoom(game));
   server.define(SOLO_ROOM_NAME, soloRoom(game, { seed: options.seed, limit: options.soloLimit }));

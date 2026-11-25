@@ -52,7 +52,7 @@ const helpdesk: Handler = (c, args) => {
   }
 
   if (sub === 'reset') {
-    if (!target || !world.credentials[target] || target.startsWith('root')) return fail('Usage: helpdesk reset USER   (an employee account, not root)');
+    if (!target || !Object.hasOwn(world.credentials, target) || target.startsWith('root')) return fail('Usage: helpdesk reset USER   (an employee account, not root)');
     // A new password that depends only on the account and the time (no random numbers: replays stay identical).
     const h = hashString(`${target}/${world.time}`);
     const password = `${WORDS[h % WORDS.length]}-${WORDS[(h >>> 8) % WORDS.length]}-${10 + ((h >>> 16) % 90)}`;

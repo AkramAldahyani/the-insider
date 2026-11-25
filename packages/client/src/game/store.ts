@@ -337,7 +337,10 @@ export class Store {
   }
 
   private url(): string {
-    return (import.meta.env.VITE_SERVER_URL as string | undefined) ?? `ws://${window.location.hostname}:${SERVER_PORT}`;
+    const { protocol, host, hostname } = window.location;
+    // In development Vite serves the page and the game has its own port. Otherwise both have one address.
+    return (import.meta.env.VITE_SERVER_URL as string | undefined)
+      ?? (import.meta.env.DEV ? `ws://${hostname}:${SERVER_PORT}` : `${protocol === 'https:' ? 'wss' : 'ws'}://${host}`);
   }
 
   // ───────────────────────────── Lost connections (Phase 6, part F) ─────────────────────────────

@@ -1,10 +1,11 @@
 /** Commands that look at or change the filesystem. */
 import { findUser, gidOf, readGroups, uidOf } from '../auth/accounts';
 import { lsStamp, statStamp } from '../core/time';
+import { wildcard } from '../core/pattern';
 import { emit } from '../events/log';
 import {
-  FsError, basename, canExec, canRead, chmod, chown, cloneNode, dirname, getNode, listDir, makeDir,
-  remove, rename, sizeOf, walk, writeFile,
+  FsError, basename, bytesIn, canExec, canRead, chmod, chown, cloneNode, dirname, getNode, listDir, makeDir,
+  needRoom, nodesIn, remove, rename, sizeOf, walk, writeFile,
 } from '../fs/vfs';
 import type { FsNode } from '../types';
 import type { CmdCtx, CmdResult, Handler } from './types';
@@ -215,7 +216,7 @@ function describe(name: string, node: FsNode): string {
     xlsx: 'Microsoft Excel 2007+', docx: 'Microsoft Word 2007+', zip: 'Zip archive data, at least v2.0 to extract',
     gz: 'gzip compressed data', png: 'PNG image data', jpg: 'JPEG image data', sh: 'Bourne-Again shell script, ASCII text executable',
   };
-  if (byExt[ext]) return byExt[ext];
+  if (Object.hasOwn(byExt, ext)) return byExt[ext];
   if (name === 'wtmp' || name === 'btmp' || name === 'lastlog') return 'data';
   return splitLines(text).some((l) => l.length > 300) ? 'ASCII text, with very long lines' : 'ASCII text';
 }
@@ -332,6 +333,7 @@ const cp: Handler = (c, args) => {
         if (!canRead(node, c.cred)) throw new FsError('EACCES');
         // makeDir checks we may create the target; then we fill it with a deep copy.
         makeDir(c.host, target, c.cred, c.world.time);
+        needRoom(c.host, nodesIn(node), bytesIn(node));
         getNode(c.host, target)!.children = cloneNode(c.host, node, c.cred, c.world.time).children;
       } else {
         const existed = !!getNode(c.host, target);
@@ -450,12 +452,6 @@ const chownCmd: Handler = (c, args) => {
 
 // ───────────────────────────── find ─────────────────────────────
 
-/** Converts a shell pattern (*.txt) into a regular expression. */
-export function globToRegex(pattern: string, ignoreCase = false): RegExp {
-  const source = [...pattern].map((ch) => (ch === '*' ? '.*' : ch === '?' ? '.' : ch.replace(/[.+^${}()|[\]\\]/g, '\\$&'))).join('');
-  return new RegExp(`^${source}$`, ignoreCase ? 'i' : '');
-}
-
 const find: Handler = (c, args) => {
   const paths: string[] = [];
   let i = 0;
@@ -470,7 +466,7 @@ const find: Handler = (c, args) => {
     const needValue = ['-name', '-iname', '-type', '-user', '-group', '-maxdepth'].includes(pred);
     if (needValue && value === undefined) return fail(`find: missing argument to \`${pred}'`);
     if (pred === '-name' || pred === '-iname') {
-      const re = globToRegex(value, pred === '-iname');
+      const re = wildcard(value, { ignoreCase: pred === '-iname' });
       tests.push((name) => re.test(name));
     } else if (pred === '-type') tests.push((_, n) => (value === 'd' ? n.type === 'dir' : value === 'f' ? n.type === 'file' : false));
     else if (pred === '-user') tests.push((_, n) => n.owner === value);

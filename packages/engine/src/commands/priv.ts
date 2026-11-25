@@ -173,7 +173,7 @@ function sudoRun(c: CmdCtx, p: SudoArgs, stdin: string): CmdResult {
   }
   // Paths may name simulated toolkit files. The common dispatcher validates
   // their virtual-file permissions and marker; ordinary scripts never execute.
-  if ((!name.includes('/') && !commands[name]) || BUILTINS.has(name)) return fail(`sudo: ${name}: command not found`);
+  if ((!name.includes('/') && !Object.hasOwn(commands, name)) || BUILTINS.has(name)) return fail(`sudo: ${name}: command not found`);
 
   emit(c.world, { ...base, type: 'sudo.exec', details: sudoDetails(c, p) });
   // Run the command with the target user's identity. `c.session` is unchanged,

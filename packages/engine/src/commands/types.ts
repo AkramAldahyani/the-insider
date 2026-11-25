@@ -24,6 +24,8 @@ export interface CmdCtx {
   piped: boolean;
   /** True when the command is being run through sudo. */
   sudo: boolean;
+  /** What the commands of this line may still read (core/limits.ts). */
+  budget?: { left: number };
   /** Name of the command being run (set by the dispatcher; the audit log prints it). */
   command?: string;
 }

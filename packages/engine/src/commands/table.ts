@@ -24,7 +24,7 @@ export function dispatch(c: CmdCtx, argv: string[], stdin: string): CmdResult {
   if (name.includes('/')) {
     // A path like /usr/bin/ls or ./script.sh
     const abs = resolvePath(c.session.cwd, name);
-    if (BIN_DIRS.includes(dirname(abs)) && commands[basename(abs)] && !BUILTINS.has(basename(abs))) {
+    if (BIN_DIRS.includes(dirname(abs)) && Object.hasOwn(commands, basename(abs)) && !BUILTINS.has(basename(abs))) {
       name = basename(abs);
     } else {
       try {
@@ -46,7 +46,7 @@ export function dispatch(c: CmdCtx, argv: string[], stdin: string): CmdResult {
     }
   }
 
-  const handler = commands[name];
+  const handler = Object.hasOwn(commands, name) ? commands[name] : undefined;
   c.command = name;
   if (!handler || (c.sudo && BUILTINS.has(name))) {
     return { stderr: `${shell}: ${name}: command not found\n`, exit: 127 };

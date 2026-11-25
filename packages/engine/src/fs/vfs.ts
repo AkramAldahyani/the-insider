@@ -8,6 +8,7 @@
  *  - "sys" operations (sysWrite, sysMkdir, getNode) skip permission checks.
  *    Only the engine itself uses them (building the world, writing logs).
  */
+import { MAX_FILE, MAX_HOST_BYTES, MAX_HOST_NODES } from '../core/limits';
 import type { FsNode, Host } from '../types';
 
 export type FsErrorCode =
@@ -17,7 +18,10 @@ export type FsErrorCode =
   | 'ENOTDIR'
   | 'ENOTEMPTY'
   | 'EEXIST'
-  | 'EPERM';
+  | 'EPERM'
+  | 'EFBIG'
+  | 'ENOSPC'
+  | 'ENOMEM';
 
 /** The exact texts Linux prints for each error. */
 export const FS_MESSAGES: Record<FsErrorCode, string> = {
@@ -28,6 +32,9 @@ export const FS_MESSAGES: Record<FsErrorCode, string> = {
   ENOTEMPTY: 'Directory not empty',
   EEXIST: 'File exists',
   EPERM: 'Operation not permitted',
+  EFBIG: 'File too large',
+  ENOSPC: 'No space left on device',
+  ENOMEM: 'Cannot allocate memory',
 };
 
 export class FsError extends Error {
@@ -96,12 +103,21 @@ export function newNode(
   return node;
 }
 
+/**
+ * An entry of a directory. Only its own: a JavaScript object also answers to
+ * names like "constructor" and "__proto__", and a player must never get hold
+ * of those (chmod on them would change every object in the program).
+ */
+export function childOf(dir: FsNode, name: string): FsNode | undefined {
+  return dir.children && Object.hasOwn(dir.children, name) ? dir.children[name] : undefined;
+}
+
 /** Looks a node up WITHOUT permission checks (engine-internal). */
 export function getNode(host: Host, path: string): FsNode | undefined {
   let node: FsNode | undefined = host.fs;
   for (const part of normalize(path).split('/')) {
     if (!part) continue;
-    node = node?.children?.[part];
+    node = node && childOf(node, part);
     if (!node) return undefined;
   }
   return node;
@@ -139,7 +155,7 @@ export function walk(host: Host, path: string, cred: Cred): FsNode {
     if (!part) continue;
     if (node.type !== 'dir') throw new FsError('ENOTDIR');
     if (!canExec(node, cred)) throw new FsError('EACCES');
-    const child: FsNode | undefined = node.children![part];
+    const child = childOf(node, part);
     if (!child) throw new FsError('ENOENT');
     node = child;
   }
@@ -162,6 +178,21 @@ function stickyBlocks(dir: FsNode, node: FsNode, cred: Cred): boolean {
   return node.owner !== cred.user && dir.owner !== cred.user;
 }
 
+// ───────────────────────────── Limits (core/limits.ts) ─────────────────────────────
+
+export function nodesIn(node: FsNode): number {
+  return Object.values(node.children ?? {}).reduce((sum, child) => sum + nodesIn(child), 1);
+}
+
+export function bytesIn(node: FsNode): number {
+  return Object.values(node.children ?? {}).reduce((sum, child) => sum + bytesIn(child), node.content?.length ?? 0);
+}
+
+/** Is there room on this machine for so much more? */
+export function needRoom(host: Host, nodes: number, bytes: number): void {
+  if (nodesIn(host.fs) + nodes > MAX_HOST_NODES || bytesIn(host.fs) + bytes > MAX_HOST_BYTES) throw new FsError('ENOSPC');
+}
+
 // ───────────────────────────── User operations ─────────────────────────────
 
 export function readFile(host: Host, path: string, cred: Cred, now: number): string {
@@ -182,15 +213,22 @@ export function writeFile(
 ): void {
   if (normalize(path) === '/dev/null') return; // the classic bit bucket
   const { dir, name } = parentOf(host, path, cred);
-  const existing = dir.children![name];
+  const existing = childOf(dir, name);
   if (existing) {
     if (existing.type === 'dir') throw new FsError('EISDIR');
     if (!canWrite(existing, cred)) throw new FsError('EACCES');
+    const before = existing.content?.length ?? 0;
+    const size = append ? before + content.length : content.length;
+    if (size > before && size > MAX_FILE) throw new FsError('EFBIG');
+    if (size - before > 4096) needRoom(host, 0, size - before);
     existing.content = append ? (existing.content ?? '') + content : content;
     existing.mtime = existing.ctime = now;
     return;
   }
   if (!canWrite(dir, cred)) throw new FsError('EACCES');
+  if (name === '__proto__') throw new FsError('EPERM');
+  if (content.length > MAX_FILE) throw new FsError('EFBIG');
+  needRoom(host, 1, content.length);
   dir.children![name] = newNode(host, 'file', cred.user, cred.groups[0] ?? cred.user, 0o644, now, content);
   dir.mtime = dir.ctime = now;
 }
@@ -206,8 +244,10 @@ export function listDir(host: Host, path: string, cred: Cred, now: number): stri
 
 export function makeDir(host: Host, path: string, cred: Cred, now: number): void {
   const { dir, name } = parentOf(host, path, cred);
-  if (dir.children![name]) throw new FsError('EEXIST');
+  if (childOf(dir, name)) throw new FsError('EEXIST');
+  if (name === '__proto__') throw new FsError('EPERM');
   if (!canWrite(dir, cred)) throw new FsError('EACCES');
+  needRoom(host, 1, 0);
   dir.children![name] = newNode(host, 'dir', cred.user, cred.groups[0] ?? cred.user, 0o755, now);
   dir.mtime = dir.ctime = now;
 }
@@ -223,7 +263,7 @@ function canEmpty(node: FsNode, cred: Cred): boolean {
 
 export function remove(host: Host, path: string, cred: Cred, now: number, recursive = false): void {
   const { dir, name } = parentOf(host, path, cred);
-  const node = dir.children![name];
+  const node = childOf(dir, name);
   if (!node) throw new FsError('ENOENT');
   if (node.type === 'dir' && !recursive) throw new FsError('EISDIR');
   if (!canWrite(dir, cred) || stickyBlocks(dir, node, cred)) throw new FsError('EACCES');
@@ -235,12 +275,13 @@ export function remove(host: Host, path: string, cred: Cred, now: number, recurs
 /** Moves/renames. `dst` must be the full destination path (not a directory to move into). */
 export function rename(host: Host, src: string, dst: string, cred: Cred, now: number): void {
   const from = parentOf(host, src, cred);
-  const node = from.dir.children![from.name];
+  const node = childOf(from.dir, from.name);
   if (!node) throw new FsError('ENOENT');
   const to = parentOf(host, dst, cred);
   if (!canWrite(from.dir, cred) || !canWrite(to.dir, cred)) throw new FsError('EACCES');
   if (stickyBlocks(from.dir, node, cred)) throw new FsError('EPERM');
-  const target = to.dir.children![to.name];
+  const target = childOf(to.dir, to.name);
+  if (to.name === '__proto__') throw new FsError('EPERM');
   if (target === node) return;
   if (target?.type === 'dir') throw new FsError(node.type === 'dir' ? 'ENOTEMPTY' : 'EISDIR');
   delete from.dir.children![from.name];
@@ -297,7 +338,7 @@ export function sysMkdir(host: Host, path: string, opts: SysOpts): FsNode {
   let node = host.fs;
   const parts = normalize(path).split('/').filter(Boolean);
   parts.forEach((part, i) => {
-    let child = node.children![part];
+    let child = childOf(node, part);
     if (!child) {
       const last = i === parts.length - 1;
       child = newNode(
@@ -338,7 +379,7 @@ export function sysWrite(host: Host, path: string, content: string, opts: SysOpt
   const abs = normalize(path);
   const dir = sysMkdir(host, dirname(abs), { owner: opts.owner, group: opts.group, time: opts.time });
   const name = basename(abs);
-  let node = dir.children![name];
+  let node = childOf(dir, name);
   if (!node) {
     node = newNode(host, 'file', opts.owner ?? 'root', opts.group ?? 'root', opts.mode ?? 0o644, opts.time, '');
     dir.children![name] = node;

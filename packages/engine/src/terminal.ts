@@ -20,6 +20,7 @@
  * not touched - it stays logged in and locked, "parked" behind the new one -
  * and both logins are in the logs.
  */
+import { MAX_SCREEN } from './core/limits';
 import { noteUnattendedInput, syncUnattended } from './auth/unattended';
 import { findUser, verifyPassword } from './auth/accounts';
 import { openSession, topSession } from './auth/sessions';
@@ -124,11 +125,18 @@ function screenKind(world: World, terminal: Terminal): ScreenKind {
   return world.sessions[terminal.stack[0]].locked ? 'locked' : 'shell';
 }
 
+/** A terminal keeps only its last lines: of a huge output only the end is shown. */
+function lastPart(text: string): string {
+  if (text.length <= MAX_SCREEN) return text;
+  const line = text.indexOf('\n', text.length - MAX_SCREEN);
+  return '[...]\n' + text.slice(line >= 0 && line < text.length - 1 ? line + 1 : text.length - MAX_SCREEN);
+}
+
 function finish(world: World, terminal: Terminal, run: Run, firstEvent: number): TerminalResult {
   syncUnattended(world, terminal);
   const session = topSession(world, terminal);
   const result: TerminalResult = {
-    output: run.out.join(''),
+    output: lastPart(run.out.join('')),
     prompt: terminal.pending ? terminal.pending.prompt : session ? shellPrompt(world, session) : '',
     events: world.events.slice(firstEvent),
     screen: screenKind(world, terminal),

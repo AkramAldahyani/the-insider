@@ -23,6 +23,7 @@
  *   | sort FIELD / sort -FIELD
  *   | head N / tail N         first / last N records (default: last 30)
  */
+import { wildcard as anyCase } from '../core/pattern';
 import { getNode } from '../fs/vfs';
 import type { World } from '../types';
 
@@ -236,12 +237,10 @@ export function sizeValue(text: string): number {
 function field(r: SiemRecord, name: string): string {
   if (name === 'time') return new Date(r.time).toISOString().slice(0, 19).replace('T', ' ');
   if (name === 'host' || name === 'source' || name === 'raw') return r[name];
-  return r.fields[name] ?? '';
+  return Object.hasOwn(r.fields, name) ? r.fields[name] : '';
 }
 
-function wildcard(pattern: string): RegExp {
-  return new RegExp(`^${pattern.split('*').map((p) => p.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`, 'i');
-}
+const wildcard = (text: string) => anyCase(text, { ignoreCase: true, question: false });
 
 function compare(value: string, op: string, wanted: string): boolean {
   if (op === '~') return value.toLowerCase().includes(wanted.toLowerCase());
