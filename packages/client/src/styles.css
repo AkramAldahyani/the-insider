@@ -445,3 +445,11 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .chat-name:hover { text-decoration: line-through; }
 .meeting-muted .chat-name { margin-right: 8px; text-decoration: underline; }
 @media (max-width: 700px) { .chat-panel, .chat-recent { left: 8px; width: calc(100% - 16px); } }
+
+/* ── Lost connections ── */
+.reconnecting { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(5, 6, 9, 0.72); }
+.reconnecting-box { max-width: 420px; padding: 18px 22px; border-radius: 10px; background: #151b26; border: 1px solid var(--amber); }
+.reconnecting-box h2 { margin: 0 0 8px; }
+.reconnecting-box button, .menu-place > button:last-child { padding: 7px 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: inherit; }
+.menu-place { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 14px 0; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--amber); background: #1c1a12; }
+.menu-place .menu-go { margin: 0; }

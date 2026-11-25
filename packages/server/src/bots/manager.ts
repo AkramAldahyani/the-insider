@@ -557,6 +557,18 @@ export class BotManager {
     }
   }
 
+  /**
+   * The person who played this employee is gone (a lobby's match): a bot goes on from where they stand, as if nothing had
+   * happened. Walking out and coming back in would tell everybody that it was a person.
+   */
+  takeOver(playerId: string, at: Pick<Avatar, 'x' | 'y' | 'facing'>): void {
+    if (this.bots.has(playerId)) return;
+    this.schedule(playerId);
+    const bot = this.bots.get(playerId)!;
+    this.arrive(bot);
+    Object.assign(bot.subject!.body, at);
+  }
+
   private arrive(bot: Bot): void {
     const { world, map } = this.host;
     const player = world.players.find((p) => p.id === bot.playerId)!;

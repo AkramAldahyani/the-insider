@@ -21,6 +21,8 @@ export const PARTY_MIN = 2;
 export const PARTY_MIN_HUMAN = 3;
 /** From this many people on the hacker is one of them, unless the host decides otherwise. */
 export const PARTY_HUMAN_HACKER = 4;
+/** After a lost connection the place is kept for this long; in a match a bot plays from then on until the player returns. */
+export const HOLD_MS = 60_000;
 /** A person who is the hacker waits this many game minutes between first reading the flag and handing it in. */
 export const PARTY_HAND_IN_MINUTES = 3;
 
@@ -53,6 +55,10 @@ export function cleanName(value: unknown): string {
     .replace(/ +/g, ' ').trim();
   return [...text].slice(0, NAME_LENGTH).join('').trim();
 }
+
+/** How a match without bots ends when the hacker (or the last one) is gone. */
+export const HACKER_GONE = 'The hacker left the company.';
+export const HACKERS_GONE = 'The last hacker left the company.';
 
 /** How long meetings are. */
 export const PARTY_MEETINGS = ['short', 'normal', 'long'] as const;
@@ -107,6 +113,8 @@ export interface PartyMember {
   ready: boolean;
   /** Still in the match (or reading its debrief), not in the lobby. */
   away: boolean;
+  /** The connection was lost; the place is kept for a while. (Not told during a match: there it would say who is a person.) */
+  lost: boolean;
 }
 
 /** Who played whom. Told only when a match is over. */

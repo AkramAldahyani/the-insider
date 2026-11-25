@@ -10,6 +10,7 @@ import { BoardPanel } from './ui/BoardPanel';
 import { DebriefPanel } from './ui/DebriefPanel';
 import { CasePanel } from './ui/CasePanel';
 import { RoleReveal, PartyScreen } from './ui/PartyScreen';
+import { Reconnecting } from './ui/Reconnecting';
 import { StartMenu } from './ui/StartMenu';
 import { FiredPanel, MeetingPanel } from './ui/MeetingPanel';
 import { MonitorsPanel } from './ui/MonitorsPanel';
@@ -24,8 +25,8 @@ const DevPanel = import.meta.env.DEV ? lazy(() => import('./ui/DevPanel')) : nul
 export function App() {
   const ui = useSyncExternalStore(store.subscribe, store.getUi);
 
-  if (ui.phase === 'menu') return <StartMenu progress={ui.ladder} />;
-  if (ui.phase === 'connecting') return <div className="center">Connecting to the office…</div>;
+  if (ui.phase === 'menu') return <StartMenu progress={ui.ladder} place={ui.place} />;
+  if (ui.phase === 'connecting') return ui.reconnecting ? <Reconnecting /> : <div className="center">Connecting to the office…</div>;
   if (ui.phase === 'error') {
     return (
       <div className="center">
@@ -37,7 +38,7 @@ export function App() {
       </div>
     );
   }
-  if (ui.phase === 'party' && ui.party) return <PartyScreen party={ui.party} />;
+  if (ui.phase === 'party' && ui.party) return <><PartyScreen party={ui.party} />{ui.reconnecting && <Reconnecting />}</>;
   if (ui.phase === 'lobby') return <StartScreen ui={ui} />;
 
   return (
@@ -58,6 +59,7 @@ export function App() {
       <MatchOver ui={ui} />
       <RoleReveal ui={ui} />
       <DebriefPanel ui={ui} />
+      {ui.reconnecting && <Reconnecting />}
       {ui.cardOpen && ui.card && !ui.seatedAt && <OnboardingCard card={ui.card} />}
       {DevPanel && ui.dev && ui.devOpen && (
         <Suspense fallback={null}>

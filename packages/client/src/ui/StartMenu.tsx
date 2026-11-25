@@ -5,6 +5,7 @@
 import { LADDER, SOLO_DIFFICULTIES, SOLO_ROLES, type SoloChoice, type SoloDifficulty, type SoloMode, type SoloRole } from '@insider/shared';
 import { useState } from 'react';
 import { isOpen, type LadderProgress } from '../game/ladderProgress';
+import type { SavedPlace } from '../game/savedPlace';
 import { store } from '../game/store';
 import { FriendsCard } from './PartyScreen';
 
@@ -65,7 +66,7 @@ function Ladder({ progress }: { progress: LadderProgress }) {
   );
 }
 
-export function StartMenu({ progress }: { progress: LadderProgress }) {
+export function StartMenu({ progress, place }: { progress: LadderProgress; place: SavedPlace | null }) {
   const [role, setRole] = useState<SoloRole>('soc');
   const [difficulty, setDifficulty] = useState<SoloDifficulty>('normal');
   const [risk, setRisk] = useState<SoloDifficulty>('normal');
@@ -76,6 +77,13 @@ export function StartMenu({ progress }: { progress: LadderProgress }) {
         <div className="eyebrow"><span className="signal-dot" /> NEXORA CORPORATION / EMPLOYEE ACCESS</div>
         <h1>THE INSIDER</h1>
         <p className="start-intro">An ordinary office. An extraordinary amount of evidence.</p>
+        {place && (
+          <div className="menu-place" role="status" data-testid="menu-place">
+            <span>You were in {place.code ? <>the lobby <strong>{place.code}</strong></> : place.solo ? <>a solo match (<strong>{matchName(place.solo)}</strong>)</> : 'a match'}. Your place may still be kept.</span>
+            <button type="button" className="menu-go" data-testid="menu-go-back" onClick={() => store.goBack()}>Go back to it</button>
+            <button type="button" data-testid="menu-forget" onClick={() => store.forgetPlace()}>No</button>
+          </div>
+        )}
         <div className="menu-cards">
           <FriendsCard />
           <form className="menu-card" onSubmit={(e) => { e.preventDefault(); void store.startSolo(choice); }}>

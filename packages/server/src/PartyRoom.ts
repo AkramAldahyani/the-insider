@@ -47,9 +47,34 @@ export function partyRoom(base: OfficeGameOptions, { seed, limit = 20 }: { seed?
       this.sendParty();
     }
 
-    override onLeave(client: Client): void {
-      super.onLeave(client);
-      this.party.leave(client.sessionId);
+    /** Whoever the host removed is not waited for. */
+    protected override keeps(clientId: string): boolean {
+      return this.party.has(clientId);
+    }
+
+    /** While a match runs the place is kept as long as somebody plays (a bot plays for them). Otherwise others wait for it. */
+    protected override keepsOn(): boolean {
+      return this.party.playing && this.clients.length > 0;
+    }
+
+    protected override lost(clientId: string): void {
+      super.lost(clientId);
+      this.party.lose(clientId);
+      // Not during the match: the others would look who is standing still.
+      if (!this.party.playing) this.sendParty();
+    }
+
+    protected override returned(clientId: string): void {
+      this.party.returned(clientId);
+      // The lobby first: the page then knows that this is a lobby's match.
+      if (this.party.playing) this.clients.getById(clientId)?.send('party', this.party.view(clientId));
+      else this.sendParty();
+      if (this.party.isAway(clientId)) super.returned(clientId);
+    }
+
+    protected override left(clientId: string): void {
+      super.left(clientId);
+      this.party.leave(clientId);
       this.sendParty();
     }
 
@@ -87,6 +112,7 @@ export function partyRoom(base: OfficeGameOptions, { seed, limit = 20 }: { seed?
           if (!target || target === client.sessionId) return;
           // Out at once, whatever their browser does with the goodbye.
           party.leave(target);
+          this.giveUp(target); // nor can they come back, if their connection was lost
           this.clients.getById(target)?.leave(PARTY_REMOVED, 'The host removed you from the lobby.');
           break;
         }
@@ -122,6 +148,7 @@ export function partyRoom(base: OfficeGameOptions, { seed, limit = 20 }: { seed?
     protected override finished(): void {
       if (!this.party.playing) return;
       this.party.end(this.cast);
+      this.holdAgain();
       if (this.party.open) void this.unlock();
       this.sendParty();
     }

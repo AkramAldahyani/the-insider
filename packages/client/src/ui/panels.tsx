@@ -1,5 +1,5 @@
 /** The small React pieces around the map: start screen, HUD and onboarding card. */
-import { LADDER, ladderLevel, type EmployeeChoice, type OnboardingCard as Card } from '@insider/shared';
+import { HACKERS_GONE, HACKER_GONE, LADDER, ladderLevel, type EmployeeChoice, type OnboardingCard as Card } from '@insider/shared';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { store, type UiState } from '../game/store';
 import { characterPortrait, departmentColor } from '../game/characterArt';
@@ -259,11 +259,12 @@ export function MatchOver({ ui }: { ui: UiState }) {
   // The hacker can also win without the flag (reputation, parity): the reason below says how.
   const byFlag = o.reason === 'The hacker got the flag out.';
   const several = o.hackers.length > 1;
+  const gaveUp = o.reason === HACKER_GONE || o.reason === HACKERS_GONE;
   const title = several
-    ? (o.winner === 'hacker' ? (iAmHacker ? 'Your side wins.' : 'The hackers win.') : iAmHacker ? 'All of you were caught.' : 'Every hacker was caught. The company is safe.')
+    ? (gaveUp ? 'The hackers gave up. The company is safe.' : o.winner === 'hacker' ? (iAmHacker ? 'Your side wins.' : 'The hackers win.') : iAmHacker ? 'All of you were caught.' : 'Every hacker was caught. The company is safe.')
     : o.winner === 'hacker'
     ? (iAmHacker ? (byFlag ? 'You got the flag out. You win.' : 'You win.') : byFlag ? 'The hacker got the flag out.' : 'The hacker wins.')
-    : (iAmHacker ? 'You were caught.' : 'The hacker was caught. The company is safe.');
+    : gaveUp ? 'The hacker gave up. The company is safe.' : (iAmHacker ? 'You were caught.' : 'The hacker was caught. The company is safe.');
   return (
     <div className="match-over" data-testid="match-over">
       <div className="match-over-box">

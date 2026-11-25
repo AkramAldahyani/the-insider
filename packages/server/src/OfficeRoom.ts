@@ -11,15 +11,30 @@
  * and each plays a different employee. A solo match (DESIGN.md section 1a) is
  * a private room for one browser; a lobby (PartyRoom.ts) is a room whose match
  * starts later.
+ *
+ * Lost connections (Phase 6, part F; lobbies and solo matches): the place is
+ * kept for HOLD_MS. The browser comes back with a secret token that Colyseus
+ * gave it when it joined, and it gets the same network id again, so the game
+ * hardly notices. Leaving with the button gives the place up at once.
  */
 import { randomInt } from 'node:crypto';
 import { Room, type Client } from '@colyseus/core';
-import { TICK_RATE, parseSoloChoice } from '@insider/shared';
+import { HOLD_MS, TICK_RATE, parseSoloChoice } from '@insider/shared';
 import { OfficeGame, type OfficeGameOptions } from './game';
 import { soloGameOptions } from './solo';
 import { newOfficeState, syncState, type OfficeState } from './state';
 
+/** A lost connection whose place is kept. `giveUp` ends the waiting. */
+interface Lost {
+  since: number;
+  /** A bot has been playing since the minute was over. */
+  covered: boolean;
+  giveUp(): void;
+}
+
 export abstract class OfficeRoom extends Room<OfficeState> {
+  private readonly waitingFor = new Map<string, Lost>();
+
   /** The match. Null only in a lobby whose match has not started (PartyRoom.ts). */
   protected game: OfficeGame | null = null;
 
@@ -35,6 +50,7 @@ export abstract class OfficeRoom extends Room<OfficeState> {
     this.onMessage('*', (client, type, payload) => this.received(client, String(type), payload));
     this.setSimulationInterval((deltaMs) => {
       this.game?.tick(deltaMs);
+      this.lookForLost();
       this.flush();
     }, 1000 / TICK_RATE);
   }
@@ -55,8 +71,69 @@ export abstract class OfficeRoom extends Room<OfficeState> {
     this.flush();
   }
 
-  override onLeave(client: Client): void {
-    this.game?.disconnect(client.sessionId);
+  override onLeave(client: Client, consented?: boolean): void {
+    const id = client.sessionId;
+    if (consented || !this.keeps(id)) return this.left(id);
+    const reconnection = this.allowReconnection(client, 'manual');
+    this.waitingFor.set(id, { since: Date.now(), covered: false, giveUp: () => void reconnection.reject?.(false) });
+    this.lost(id);
+    // (Colyseus' own promise type does not know that a promise can also fail.)
+    Promise.resolve(reconnection as unknown as PromiseLike<Client>).then(
+      () => {
+        this.waitingFor.delete(id);
+        this.returned(id);
+        this.flush();
+      },
+      () => {
+        this.waitingFor.delete(id);
+        this.left(id);
+      },
+    );
+  }
+
+  /** Is this player's place kept when the connection is lost? (In the shared office people simply choose an employee again.) */
+  protected keeps(_clientId: string): boolean {
+    return false;
+  }
+
+  /** Is it kept longer than HOLD_MS, with a bot playing? */
+  protected keepsOn(): boolean {
+    return false;
+  }
+
+  /** Looks after everybody whose connection is lost. */
+  private lookForLost(): void {
+    for (const [id, who] of this.waitingFor) {
+      if (Date.now() - who.since < HOLD_MS) continue;
+      if (!this.keepsOn()) who.giveUp();
+      else if (!who.covered) {
+        who.covered = true;
+        this.game?.standIn(id);
+      }
+    }
+  }
+
+  /** Those who are missing get another HOLD_MS (the match is over: they may still come to see the end). */
+  protected holdAgain(): void {
+    for (const who of this.waitingFor.values()) who.since = Date.now();
+  }
+
+  /** This player is not waited for any longer. */
+  protected giveUp(clientId: string): void {
+    this.waitingFor.get(clientId)?.giveUp();
+  }
+
+  protected lost(clientId: string): void {
+    this.game?.connectionLost(clientId);
+    this.flush();
+  }
+
+  protected returned(clientId: string): void {
+    this.game?.connectionBack(clientId);
+  }
+
+  protected left(clientId: string): void {
+    this.game?.disconnect(clientId);
     this.flush();
   }
 
@@ -111,6 +188,11 @@ export function soloRoom(base: OfficeGameOptions, { seed, limit = 20 }: { seed?:
       void this.setPrivate();
       running++;
       this.counted = true;
+    }
+
+    /** Closing the page by mistake, or reloading it, does not end the match. */
+    protected override keeps(): boolean {
+      return true;
     }
 
     override onDispose(): void {

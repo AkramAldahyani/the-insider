@@ -48,7 +48,7 @@ export class Party {
     if (this.playing) return 'This match has already started.';
     if (!this.open) return 'The host has closed this lobby.';
     if (this.members.size >= this.size) return 'This lobby is full.';
-    this.members.set(clientId, { id: `m${++this.count}`, name: this.freeName(cleanName(wanted) || 'Player'), ready: false, away: false });
+    this.members.set(clientId, { id: `m${++this.count}`, name: this.freeName(cleanName(wanted) || 'Player'), ready: false, away: false, lost: false });
     if (!this.host) this.host = clientId;
     return '';
   }
@@ -63,7 +63,34 @@ export class Party {
   /** Somebody goes. If it was the host, whoever has been here longest takes over. */
   leave(clientId: string): void {
     this.members.delete(clientId);
-    if (this.host === clientId) this.host = this.members.keys().next().value ?? '';
+    if (this.host === clientId) this.host = '';
+    this.findHost();
+  }
+
+  /** There is always a host who is connected (if anybody is): whoever has been here longest. */
+  private findHost(): void {
+    if (this.members.get(this.host)?.lost === false) return;
+    const next = [...this.members].find(([, m]) => !m.lost) ?? [...this.members][0];
+    this.host = next?.[0] ?? '';
+  }
+
+  /** The connection was lost. The place is kept; being the host moves on at once, and does not come back. */
+  lose(clientId: string): void {
+    const member = this.members.get(clientId);
+    if (!member) return;
+    Object.assign(member, { lost: true, ready: false });
+    this.findHost();
+  }
+
+  returned(clientId: string): void {
+    const member = this.members.get(clientId);
+    if (member) member.lost = false;
+    this.findHost();
+  }
+
+  /** In a match (or reading its debrief)? */
+  isAway(clientId: string): boolean {
+    return this.members.get(clientId)?.away ?? false;
   }
 
   isHost(clientId: string): boolean {
@@ -113,6 +140,8 @@ export class Party {
     if (this.playing) return 'The match has already started.';
     if (this.members.size < PARTY_MIN) return `At least ${PARTY_MIN} people are needed. Share the code with a friend.`;
     if (whoMayHack(this.settings, this.members.size, this.size) === 'human' && this.members.size < PARTY_MIN_HUMAN) return `When one of you is the hacker, at least ${PARTY_MIN_HUMAN} people are needed.`;
+    const lost = [...this.members.values()].filter((m) => m.lost).map((m) => m.name);
+    if (lost.length > 0) return `${lost.join(', ')} lost the connection. Their place is kept for a minute.`;
     const away = [...this.members.values()].filter((m) => m.away).map((m) => m.name);
     if (away.length > 0) return `Waiting for ${away.join(', ')} to come back from the last match.`;
     const waiting = [...this.members].filter(([clientId, m]) => !this.isHost(clientId) && !m.ready).map(([, m]) => m.name);
@@ -124,7 +153,7 @@ export class Party {
       code: this.code,
       you: this.members.get(clientId)?.id ?? '',
       hostId: this.members.get(this.host)?.id ?? '',
-      members: [...this.members.values()].map((m) => ({ ...m })),
+      members: [...this.members.values()].map((m) => ({ ...m, lost: m.lost && !this.playing })),
       size: this.size,
       settings: { ...this.settings },
       hackers: this.playing ? this.matchHackers : hackerCount(this.settings, this.members.size, this.size),

@@ -15,6 +15,7 @@
 import { Client, type Room } from 'colyseus.js';
 import { readLadder, saveWin, type LadderProgress } from './ladderProgress';
 import { Movement } from './movement';
+import { readPlace, savePlace, type SavedPlace } from './savedPlace';
 import {
   PARTY_REMOVED, PARTY_ROOM_NAME, ROOM_NAME, SERVER_PORT, SOLO_ROOM_NAME, ladderLevel, parseOfficeMap, withCameras,
   type ClientMessages, type EmployeeChoice, type EvidenceView, type MeetingView, type MissionBriefing, type OfficeMap, type OnboardingCard, type PartyView, type PublicDesk, type PublicDoor, type PublicPlayer,
@@ -34,6 +35,12 @@ export interface RoomState {
   doors: { get(id: string): PublicDoor | undefined; forEach(cb: (door: PublicDoor, id: string) => void): void };
 }
 
+/** After a lost connection: how often this page tries to come back, and how long it believes a server that says "no" (it may not have noticed yet that we are gone). */
+const RETRY_MS = 2000;
+const EXPIRED_AFTER_MS = 20_000;
+/** In a running match the server sends something many times per second. This long without anything means the line is dead. */
+const SILENCE_MS = 15_000;
+
 /** Which room to join: the shared office, a solo match, a new lobby, or a friend's lobby. */
 type Destination =
   | { kind: 'office' }
@@ -44,6 +51,10 @@ type Destination =
 /** What React draws. Replaced by a new object on every change. */
 export interface UiState {
   phase: 'menu' | 'connecting' | 'party' | 'lobby' | 'playing' | 'error';
+  /** The connection is lost and this page tries to come back. */
+  reconnecting: boolean;
+  /** Start menu: a match or lobby this tab was in before the page was reloaded. */
+  place: SavedPlace | null;
   /** The lobby this player is in, also while its match runs (null = not in one). */
   party: PartyView | null;
   /** A lobby's match has just started: the screen that tells this player their part. */
@@ -132,7 +143,7 @@ type Listener = () => void;
 
 /** A page that has just been opened (or has just left a match). */
 const START: UiState = {
-  phase: 'menu', party: null, reveal: false, solo: null, ladder: {}, error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, debrief: null, debriefOpen: false, meeting: null, meetingAt: 0, chat: [], chatOpen: false, chatSecret: false, muted: [], fired: '', watch: '', zoom: 1, nearButton: false, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
+  phase: 'menu', reconnecting: false, place: null, party: null, reveal: false, solo: null, ladder: {}, error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, debrief: null, debriefOpen: false, meeting: null, meetingAt: 0, chat: [], chatOpen: false, chatSecret: false, muted: [], fired: '', watch: '', zoom: 1, nearButton: false, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
   clock: 0, speed: 1, roomName: '', nearDesk: '', nearDoor: '', nearDoorName: '', seatedAt: '', notice: '', tasks: [], tasksCompleted: 0, tasksOpen: true, devOpen: false, devLog: [],
 };
 
@@ -145,7 +156,9 @@ export class Store {
   /** The map file as Tiled wrote it (the scene reads the tile colours from it). */
   rawMap: TiledMap | null = null;
 
-  private ui: UiState = { ...START, ladder: readLadder() };
+  private ui: UiState = { ...START, ladder: readLadder(), place: readPlace() };
+  /** When the server was last heard (see SILENCE_MS). */
+  private heardAt = 0;
   private listeners = new Set<Listener>();
   private termListener: ((event: TermEvent) => void) | null = null;
   /** Terminal events that arrived before the terminal window was ready. */
@@ -217,6 +230,7 @@ export class Store {
 
   /** Sends one message to the server. The types make a wrong payload a compile error. */
   send<T extends keyof ClientMessages>(type: T, payload: ClientMessages[T]): void {
+    if (this.ui.reconnecting) return; // nobody would get it
     if (type === 'move') {
       this.set({ nearDesk: '' }); // Clear the hint immediately, before any network round trip.
       this.room?.send(type, { ...payload, sequence: this.movement.request() });
@@ -249,13 +263,28 @@ export class Store {
   leave(): void {
     const room = this.room;
     this.reset();
-    void room?.leave();
+    savePlace(null);
+    void room?.leave().catch(() => undefined);
+  }
+
+  /** Start menu: go back to where this tab was before the page was reloaded. */
+  goBack(): void {
+    const place = this.ui.place;
+    if (!place) return;
+    this.set({ phase: 'connecting', solo: place.solo, place: null });
+    void this.comeBack(place);
+  }
+
+  forgetPlace(): void {
+    savePlace(null);
+    this.set({ place: null });
   }
 
   /** The same kind of match again, with a new office (and in a solo match a new hacker); or another solo match, e.g. the next level. */
   async playAgain(solo: SoloChoice | null = this.ui.solo): Promise<void> {
     const room = this.room;
     this.reset();
+    savePlace(null);
     this.set({ phase: 'connecting', solo });
     // Leave first, so that the old match is gone before the new one starts.
     await room?.leave().catch(() => undefined);
@@ -293,11 +322,78 @@ export class Store {
 
   private async join(to: Destination): Promise<void> {
     const solo = to.kind === 'solo' ? to.choice : null;
-    this.set({ phase: 'connecting', error: '', solo });
-    const url = (import.meta.env.VITE_SERVER_URL as string | undefined) ?? `ws://${window.location.hostname}:${SERVER_PORT}`;
+    this.set({ phase: 'connecting', error: '', solo, place: null });
+    savePlace(null);
+    const url = this.url();
     try {
-      const room = await this.connect(new Client(url), to);
+      this.listen(await this.connect(new Client(url), to), solo);
+    } catch (error) {
+      // 4212: no room with this id, or one that takes nobody (full, closed, playing). The player cannot do anything different about it.
+      if (to.kind === 'join' && (error as { code?: unknown }).code === 4212) return this.set({ phase: 'error', error: `No open lobby has the code ${to.code}. It may be full, closed, already playing, or mistyped.` });
+      // An answer with a code is the server saying no (full, unknown match); without one there was no answer.
+      const refused = typeof (error as { code?: unknown }).code === 'number' && (error as Error).message;
+      this.set({ phase: 'error', error: refused || `Cannot reach the game server at ${url}. Is it running? (${(error as Error).message})` });
+    }
+  }
+
+  private url(): string {
+    return (import.meta.env.VITE_SERVER_URL as string | undefined) ?? `ws://${window.location.hostname}:${SERVER_PORT}`;
+  }
+
+  // ───────────────────────────── Lost connections (Phase 6, part F) ─────────────────────────────
+
+  /** The line to the server is gone. In a lobby or a solo match the server keeps the place: try to come back. */
+  private lineLost(room: Room<RoomState>): void {
+    if (this.room !== room) return;
+    const place = readPlace();
+    this.room = null;
+    if (!place) return this.set({ phase: 'error', error: 'The connection to the game server was closed.' });
+    this.set({ reconnecting: true, pan: { dx: 0, dy: 0 } });
+    void room.leave(false).catch(() => undefined); // if only this page thinks it is gone
+    void this.comeBack(place);
+  }
+
+  /** Tries again and again, until the server takes us back, says that the place is gone, or the player has had enough. */
+  private async comeBack(place: SavedPlace): Promise<void> {
+    this.set({ reconnecting: true });
+    const since = Date.now();
+    while (this.ui.reconnecting && !this.room) {
+      try {
+        const room = await new Client(this.url()).reconnect<RoomState>(place.token);
+        if (!this.ui.reconnecting) return void room.leave(); // the player went back to the menu meanwhile
+        this.movement = new Movement();
+        this.termBacklog = [];
+        this.set({ reconnecting: false, seatedAt: '', monitors: null, monitorFrame: null });
+        return this.listen(room, place.solo);
+      } catch (error) {
+        const code = (error as { code?: unknown }).code;
+        // 4212: the room is gone. 4214: this place is not kept (or the server has not noticed yet that the old line is dead).
+        if (code === 4212 || (code === 4214 && Date.now() - since > EXPIRED_AFTER_MS)) {
+          savePlace(null);
+          if (this.ui.reconnecting) this.set({ phase: 'error', reconnecting: false, error: 'Your place is gone: the match or the lobby is over, or you were away for too long.' });
+          return;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, RETRY_MS));
+      }
+    }
+  }
+
+  /** Starts listening to a room this page is in. */
+  private listen(room: Room<RoomState>, solo: SoloChoice | null): void {
       this.room = room;
+      this.heardAt = Date.now();
+      // (In the shared office no place is kept.)
+      if (room.name !== ROOM_NAME) savePlace({ token: room.reconnectionToken, solo, code: room.name === PARTY_ROOM_NAME ? room.roomId : '' });
+      // The office clock never stands still during a match. (Not a listener of Colyseus: its `remove` can take away somebody else's.)
+      let clock: number | undefined;
+      const watch = window.setInterval(() => {
+        if (this.room !== room) return window.clearInterval(watch);
+        if (room.state?.clock !== clock) {
+          clock = room.state?.clock;
+          this.heardAt = Date.now();
+        }
+        if (this.ui.phase === 'playing' && !this.ui.debrief && Date.now() - this.heardAt > SILENCE_MS) this.lineLost(room);
+      }, 2000);
       /** Messages of a match this page has already left are ignored. */
       const on = <T extends keyof ServerMessages>(type: T, handler: (payload: ServerMessages[T]) => void) =>
         room.onMessage(type, (payload: ServerMessages[T]) => { if (this.room === room) handler(payload); });
@@ -311,7 +407,14 @@ export class Store {
         this.map = parseOfficeMap(this.rawMap);
         this.set({ scenarioName: lobby.scenarioName, employees: lobby.employees, dev: lobby.dev, hackerOpen: lobby.hackerOpen, asHacker: this.ui.asHacker && lobby.hackerOpen, phase: this.ui.phase === 'playing' || this.ui.solo || this.ui.party ? this.ui.phase : 'lobby' }); // solo and lobbies: the server has already chosen; "welcome" follows
       });
-      on('welcome', ({ playerId, card, mission }) => {
+      on('welcome', ({ playerId, card, mission, back }) => {
+        if (back) {
+          // Back after a lost connection: go on as before, without the opening screens.
+          this.set({ phase: 'playing', playerId, card, briefing: mission, tasks: [], tasksCompleted: 0, reveal: this.ui.reveal && this.ui.phase === 'playing', ...(this.ui.phase === 'playing' ? {} : { briefingOpen: true }) });
+          this.send('move', { dx: 0, dy: 0 });
+          this.notice('You are back.');
+          return;
+        }
         this.set({ phase: 'playing', playerId, card, cardOpen: true, briefing: mission, briefingOpen: mission !== null || this.ui.solo !== null || this.ui.party !== null, reveal: this.ui.party !== null });
         this.send('move', { dx: 0, dy: 0 });
       });
@@ -353,20 +456,19 @@ export class Store {
       on('card', ({ card }) => this.set({ card }));
       on('monitors.frame', (frame) => this.set({ monitorFrame: frame })); 
       on('tasks', ({ tasks, completed }) => {
-        if (completed > this.ui.tasksCompleted) this.notice('Task finished.');
+        if (completed > this.ui.tasksCompleted && this.ui.tasks.length > 0) this.notice('Task finished.');
         this.set({ tasks, tasksCompleted: completed });
       });
       on('dev.result', ({ text }) => this.set({ devLog: [...this.ui.devLog.slice(-30), text] }));
 
-      room.onLeave((code) => { if (this.room === room) this.set({ phase: 'error', error: code === PARTY_REMOVED ? 'The host removed you from the lobby.' : 'The connection to the game server was closed.' }); });
-      room.onError((_code, message) => { if (this.room === room) this.set({ phase: 'error', error: message ?? 'Network error.' }); });
-    } catch (error) {
-      // 4212: no room with this id, or one that takes nobody (full, closed, playing). The player cannot do anything different about it.
-      if (to.kind === 'join' && (error as { code?: unknown }).code === 4212) return this.set({ phase: 'error', error: `No open lobby has the code ${to.code}. It may be full, closed, already playing, or mistyped.` });
-      // An answer with a code is the server saying no (full, unknown match); without one there was no answer.
-      const refused = typeof (error as { code?: unknown }).code === 'number' && (error as Error).message;
-      this.set({ phase: 'error', error: refused || `Cannot reach the game server at ${url}. Is it running? (${(error as Error).message})` });
-    }
+      room.onLeave((code) => {
+        if (this.room !== room) return;
+        // 4000: the server closed it on purpose (it is shutting down).
+        if (code !== PARTY_REMOVED && code !== 4000) return this.lineLost(room);
+        savePlace(null);
+        this.set({ phase: 'error', error: code === PARTY_REMOVED ? 'The host removed you from the lobby.' : 'The connection to the game server was closed.' });
+      });
+      room.onError((_code, message) => { if (this.room === room) this.lineLost(room); else console.warn(message); });
   }
 }
 

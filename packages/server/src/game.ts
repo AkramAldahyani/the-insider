@@ -17,7 +17,7 @@ import {
   awaitingSecret, currentPrompt, escalate, glimpse, plugUsb, submitFlag, sendInput, serializeWorld, setHacker, shoulderSurf, switchUser, usbCooldown, type FsNode, type GameEvent, type OpenResult, type Scenario, type TerminalResult, type WeaknessChoice, type World,
 } from '@insider/engine';
 import {
-  ALERT_BANNER_GAP_MS, BUTTON_DISTANCE, CHAT_BURST, CHAT_EARSHOT, CHAT_REFILL_MS, DETAIN_DISTANCE, INTERACT_DISTANCE, MONITOR_SHOTS, PLAYER_RADIUS, REPUTATION_PER_FIRING, distanceToRect, isFree, PLAYER_SPEED, SURF_BEHIND, SURF_SIDE, USB_HOLD_MS, cleanChat, moveWithCollision, parseOfficeMap, roomAt,
+  ALERT_BANNER_GAP_MS, BUTTON_DISTANCE, CHAT_BURST, HACKERS_GONE, HACKER_GONE, CHAT_EARSHOT, CHAT_REFILL_MS, DETAIN_DISTANCE, INTERACT_DISTANCE, MONITOR_SHOTS, PLAYER_RADIUS, REPUTATION_PER_FIRING, distanceToRect, isFree, PLAYER_SPEED, SURF_BEHIND, SURF_SIDE, USB_HOLD_MS, cleanChat, moveWithCollision, parseOfficeMap, roomAt,
   type ChatChannel, type ClientMessages, type Facing, type MeetingView, type OfficeMap, type PublicState, type ServerMessages, type ServerMessageType, type TiledMap,
 } from '@insider/shared';
 import { BotManager, type BotOptions } from './bots/manager';
@@ -114,6 +114,17 @@ export class OfficeGame {
    * and no secrets: not who the hackers are, no screens, no private chat. All they can send is chat to each other.
    */
   private readonly ghosts = new Map<string, string>();
+  /** Why each of them is out. */
+  private readonly outBecause = new Map<string, string>();
+  /**
+   * A lobby's match (Phase 6, part F): network id -> player id of people who have been without a connection for so long that
+   * a bot plays for them. They may come back any time.
+   */
+  private readonly absent = new Map<string, string>();
+  /** A lobby's match: the employees of people who left for good, or are absent. */
+  private readonly gone = new Set<string>();
+  /** What everybody was told at the end, for those who come back after it. */
+  private ending: { over: ServerMessages['match.over']; debrief: ServerMessages['debrief']['debrief'] } | null = null;
   /** Game time of the next anti-stall escalation (Infinity = off). */
   private nextEscalation: number;
   private readonly escalationMs: number;
@@ -153,6 +164,7 @@ export class OfficeGame {
   private readonly assigned: boolean;
   /** A lobby's match: the employees people were given. */
   private readonly seats = new Set<string>();
+  private readonly seatOf = new Map<string, string>();
   private readonly handInMs: number;
   /** When the hacker first read the flag (game time). */
   private flagReadAt: number | null = null;
@@ -310,6 +322,7 @@ export class OfficeGame {
   /** A lobby's match: this browser plays this employee. */
   seat(clientId: string, playerId: string): void {
     this.seats.add(playerId);
+    this.seatOf.set(clientId, playerId);
     this.connect(clientId);
     this.choose(clientId, { playerId });
   }
@@ -336,18 +349,106 @@ export class OfficeGame {
     this.avatars.delete(key);
   }
 
+  /** Somebody is gone for good. */
   disconnect(clientId: string): void {
     const avatar = this.avatars.get(clientId);
-    // Going home: the badge system records the departure at the main entrance.
-    if (avatar) this.throughEntrance(avatar, 'OUT');
-    this.removeBody(clientId);
+    if (this.assigned) {
+      this.goAway(clientId);
+      this.absent.delete(clientId);
+    } else if (avatar) {
+      // Going home: the badge system records the departure at the main entrance.
+      this.throughEntrance(avatar, 'OUT');
+      this.removeBody(clientId);
+    }
     this.clients.delete(clientId);
     this.board.forget(clientId);
     this.ghosts.delete(clientId);
+    this.outBecause.delete(clientId);
     this.mayWrite.delete(clientId);
     // The employee is not left empty: a bot comes to work in their place a little later (not if they were fired).
-    if (avatar && !this.fired.has(avatar.playerId)) this.bots?.schedule(avatar.playerId, 20);
+    if (!this.assigned && avatar && !this.fired.has(avatar.playerId)) this.bots?.schedule(avatar.playerId, 20);
     this.updateLobby();
+  }
+
+  // ───────────────────────────── Lost connections (Phase 6, part F) ─────────────────────────────
+
+  /** The connection is lost. The body stays where it is, as of somebody who is reading or thinking, and nobody is told. */
+  connectionLost(clientId: string): void {
+    const avatar = this.avatars.get(clientId);
+    if (!avatar) return;
+    Object.assign(avatar, { dx: 0, dy: 0 });
+    if (avatar.hold) this.endItem(avatar, 'The connection was lost. Nothing happened.');
+  }
+
+  /** The connection has been lost for long: in a lobby's match a bot plays until the player returns. */
+  standIn(clientId: string): void {
+    if (!this.assigned || this.over) return;
+    const avatar = this.avatars.get(clientId);
+    if (!avatar) return; // out already: they only watch
+    this.absent.set(clientId, avatar.playerId);
+    this.clients.delete(clientId);
+    this.goAway(clientId);
+  }
+
+  /** A lobby's match: the person behind this body is gone. A bot goes on from the same spot; without bots the employee goes home. */
+  private goAway(clientId: string): void {
+    const avatar = this.avatars.get(clientId);
+    if (!avatar) return;
+    const { playerId, x, y, facing } = avatar;
+    if (avatar.hold) this.endItem(avatar, '');
+    if (!this.bots) this.throughEntrance(avatar, 'OUT');
+    this.removeBody(clientId);
+    if (this.over) return;
+    this.bots?.takeOver(playerId, { x, y, facing });
+    this.gone.add(playerId);
+    this.checkHackerWins();
+  }
+
+  /** Somebody is connected again: they get their employee back where it is now, and everything their screen needs. */
+  connectionBack(clientId: string): void {
+    const playerId = this.absent.get(clientId);
+    if (playerId !== undefined) {
+      this.absent.delete(clientId);
+      this.clients.add(clientId);
+      if (this.fired.has(playerId)) {
+        // The others voted the employee out while a bot played it.
+        this.ghosts.set(clientId, playerId);
+        this.outBecause.set(clientId, 'You were voted out or detained while you were away.');
+      } else if (!this.over) {
+        this.gone.delete(playerId);
+        const bot = [...this.avatars.values()].find((a) => a.playerId === playerId);
+        this.bots?.remove(playerId);
+        const body = this.newBody(clientId, playerId, bot);
+        if (!bot) {
+          this.throughEntrance(body, 'IN');
+          if (this.meetings.current) Object.assign(body, this.meetingSpots[this.avatars.size % this.meetingSpots.length]);
+        }
+      }
+    }
+    this.resume(clientId);
+  }
+
+  /** Sends a browser that knows nothing (any more) everything it needs to go on. */
+  private resume(clientId: string): void {
+    const avatar = this.avatars.get(clientId);
+    const playerId = avatar?.playerId ?? this.ghosts.get(clientId) ?? this.absent.get(clientId);
+    if (!this.clients.has(clientId)) return;
+    this.sendLobby(clientId);
+    const id = playerId ?? this.seatOf.get(clientId);
+    if (id === undefined) return;
+    this.send(clientId, 'welcome', { ...this.welcome(id), back: true });
+    this.send(clientId, 'board', { items: this.board.view(avatar ? id : '') });
+    this.send(clientId, 'meeting', this.meetingView(id));
+    if (avatar) {
+      this.send(clientId, 'tasks', taskList(this.tasks.view(id)));
+      // Still at a PC: the screen as it is now.
+      if (avatar.seatedAt) this.send(clientId, 'term.open', { hostname: avatar.seatedAt, ...termScreen(openTerminal(this.world, avatar.seatedAt, id)) });
+    }
+    if (this.ghosts.has(clientId)) this.send(clientId, 'fired', { reason: this.outBecause.get(clientId) ?? 'You are out.' });
+    if (this.ending) {
+      this.send(clientId, 'match.over', this.ending.over);
+      this.send(clientId, 'debrief', { debrief: this.ending.debrief });
+    }
   }
 
   /** People on the start screen see who can still be picked. (Watchers are not on it.) */
@@ -479,25 +580,34 @@ export class OfficeGame {
     // If this employee's bot is already in the building, the human simply takes over from it.
     const alreadyInside = this.bots?.isPresent(player.id) ?? false;
     this.bots?.remove(player.id);
-    const spawn = this.map.spawns[player.desk] ?? this.map.defaultSpawn;
-    const avatar: Avatar = {
-      clientId, playerId: player.id, account: player.account, name: player.name, x: spawn.x, y: spawn.y, facing: 'up', seatedAt: '', terminalId: '', dx: 0, dy: 0,
-    };
-    this.avatars.set(clientId, avatar);
+    const avatar = this.newBody(clientId, player.id);
     // Otherwise they "came to work": the main entrance logs their arrival, as it does for everyone.
     if (!alreadyInside) this.throughEntrance(avatar, 'IN');
-    this.send(clientId, 'welcome', {
-      playerId: player.id,
-      card: onboardingCard(this.world, this.scenario, player.id),
-      // Only the hacker's own browser ever receives a briefing.
-      mission: isHacker(this.world, player.id) ? { ...missionBriefing(this.world, player.id), ...(this.handInMs > 0 ? { handInMinutes: this.handInMs / 60_000 } : {}) } : null,
-    });
+    this.send(clientId, 'welcome', this.welcome(player.id));
     this.tasks.assign(player.id);
     this.tasks.takeChanged();
     this.send(clientId, 'tasks', taskList(this.tasks.view(player.id)));
     this.send(clientId, 'board', { items: this.board.view(player.id) });
     this.send(clientId, 'meeting', this.meetingView(player.id));
     this.updateLobby();
+  }
+
+  /** The body of a person, at a place or next to their desk. */
+  private newBody(clientId: string, playerId: string, at?: Pick<Avatar, 'x' | 'y' | 'facing'>): Avatar {
+    const player = this.world.players.find((p) => p.id === playerId)!;
+    const { x, y, facing } = at ?? { ...(this.map.spawns[player.desk] ?? this.map.defaultSpawn), facing: 'up' as Facing };
+    const avatar: Avatar = { clientId, playerId, account: player.account, name: player.name, x, y, facing, seatedAt: '', terminalId: '', dx: 0, dy: 0 };
+    this.avatars.set(clientId, avatar);
+    return avatar;
+  }
+
+  private welcome(playerId: string): ServerMessages['welcome'] {
+    return {
+      playerId,
+      card: onboardingCard(this.world, this.scenario, playerId),
+      // Only the hacker's own browser ever receives a briefing.
+      mission: isHacker(this.world, playerId) ? { ...missionBriefing(this.world, playerId), ...(this.handInMs > 0 ? { handInMinutes: this.handInMs / 60_000 } : {}) } : null,
+    };
   }
 
   /**
@@ -780,7 +890,8 @@ export class OfficeGame {
     this.over = { winner, at: this.world.time };
     for (const a of this.avatars.values()) if (a.hold) this.endItem(a, 'The match is over.');
     for (const a of [...this.avatars.values()]) if (a.seatedAt) this.stand(a, 'The match is over.');
-    for (const client of this.clients) this.send(client, 'match.over', { winner, hacker: hackerName, hackers, at: this.world.time, reason });
+    const over = { winner, hacker: hackerName, hackers, at: this.world.time, reason };
+    for (const client of this.clients) this.send(client, 'match.over', over);
     // The match is over: now, and only now, everybody learns what really happened.
     const debrief = this.debrief.build({
       winner, reason, at: this.world.time, startedAt: this.startedAt, cctv: this.cctv, board: this.board.items,
@@ -789,6 +900,7 @@ export class OfficeGame {
     });
     if (this.soloPlayer) debrief.rating = this.soloHacker ? this.infiltrationRating(winner, debrief.totals) : this.rating(winner, hackerName);
     for (const client of this.clients) this.send(client, 'debrief', { debrief });
+    this.ending = { over, debrief };
   }
 
   /** Solo matches: how well did the player do? (See rating.ts.) */
@@ -948,6 +1060,7 @@ export class OfficeGame {
     if (body && this.clients.has(body.clientId)) {
       this.removeBody(body.clientId);
       this.ghosts.set(body.clientId, playerId);
+      this.outBecause.set(body.clientId, reason);
       this.send(body.clientId, 'fired', { reason });
       this.send(body.clientId, 'board', { items: this.board.view('') });
     } else this.bots?.remove(playerId);
@@ -960,7 +1073,7 @@ export class OfficeGame {
   }
 
   /**
-   * After a firing: has the hacker won without the flag?
+   * After a firing, or when somebody is gone: has the match been decided without the flag?
    *  - REPUTATION (owner's rule, Phase 5 part H): every wrong firing costs the
    *    company 25 points; at 0 % the company is ruined and the hacker wins.
    *    With the default 25 points that is the fourth wrong firing.
@@ -969,19 +1082,31 @@ export class OfficeGame {
    *    not), except the fired. In an office of 11 that would take nine wrong
    *    firings, so reputation ends such a match first; parity matters for
    *    small offices and future settings.
+   *  - NOBODY LEFT (owner's rules, Phase 6 part F, lobbies only). Without bots,
+   *    people who are gone count no longer; if that leaves no hacker, the
+   *    defenders win. With bots, somebody else goes on for whoever is gone, but
+   *    bots do not investigate: when no person is left who could find the
+   *    hackers, the hackers win.
    */
   private checkHackerWins(): void {
-    const hackers = activeHackers(this.world);
+    let hackers = activeHackers(this.world);
     if (hackers.length === 0 || this.over) return;
+    if (this.assigned && !this.bots) {
+      hackers = hackers.filter((id) => !this.gone.has(id));
+      if (hackers.length === 0) return this.endMatch('defenders', this.several() ? HACKERS_GONE : HACKER_GONE);
+    }
     // Infiltration is won with the flag only: getting colleagues fired is not a way to win.
     if (this.soloHacker) return;
     if (this.reputation <= 0) {
       return this.endMatch('hacker', `The company's reputation hit 0 %: too many innocent people were fired. The ${this.several() ? 'hackers win' : 'hacker wins'}.`);
     }
     // A lobby's match without bots has only the people who were given a desk.
-    const staff = this.assigned && !this.bots ? this.world.players.filter((p) => this.seats.has(p.id)) : this.world.players;
+    const staff = this.assigned && !this.bots ? this.world.players.filter((p) => this.seats.has(p.id) && !this.gone.has(p.id)) : this.world.players;
     const defenders = staff.filter((p) => !isHacker(this.world, p.id) && !this.fired.has(p.id)).length;
     if (defenders <= hackers.length) this.endMatch('hacker', `Only ${defenders} defender${defenders === 1 ? ' is' : 's are'} left, as many as hackers: the ${this.several() ? 'hackers' : 'hacker'} took over the company.`);
+    else if (this.assigned && this.bots && ![...this.seats].some((id) => !isHacker(this.world, id) && !this.fired.has(id) && !this.gone.has(id))) {
+      this.endMatch('hacker', `Nobody is left who could find the ${this.several() ? 'hackers' : 'hacker'}: everybody who tried is out or has left.`);
+    }
   }
 
   /** The meeting as one player sees it. */

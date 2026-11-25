@@ -79,10 +79,11 @@ export function PartyScreen({ party }: { party: PartyView }) {
           {party.members.map((m) => (
             <li key={m.id}>
               <span className="party-name">{m.name}{m.id === party.you && <small> you</small>}</span>
-              {m.away && <span className="party-waiting">in the last match</span>}
+              {m.lost && <span className="party-waiting">connection lost</span>}
+              {!m.lost && m.away && <span className="party-waiting">in the last match</span>}
               {m.id === party.hostId
                 ? <span className="party-ready">host</span>
-                : !m.away && <span className={m.ready ? 'party-ready' : 'party-waiting'}>{m.ready ? 'ready' : 'not ready'}</span>}
+                : !m.away && !m.lost && <span className={m.ready ? 'party-ready' : 'party-waiting'}>{m.ready ? 'ready' : 'not ready'}</span>}
               {host && m.id !== party.you && <button type="button" data-testid={`remove-${m.name}`} onClick={() => store.send('party.remove', { id: m.id })}>Remove</button>}
             </li>
           ))}

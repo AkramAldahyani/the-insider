@@ -76,7 +76,7 @@ Update it at the end of every part.
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
 | 5 Investigation & social deduction | **done**: Parts A-J |
 | 5a Solo modes | **done**: Parts A-H |
-| 6 Multiplayer | **in progress**: Parts A-E (lobbies, secret roles, several hackers, chat, watching) done; F (reconnecting) next |
+| 6 Multiplayer | **in progress**: Parts A-F (lobbies, secret roles, several hackers, chat, watching, reconnecting) done; G (bots that fill up) next |
 
 ## Phase 6 plan (multiplayer): APPROVED by the owner on 2026-11-24, with all eight defaults
 
@@ -90,8 +90,8 @@ part all tests, this file, commit locally (never push), then wait for the owner'
 | C | Several hackers (1-3) who know each other: win rules, briefing, detain, debrief, alerts | **done** |
 | D | Chat: same room, meetings, hackers' private chat, fired players; mute and length limits | **done** |
 | E | Fired and watching: free camera, affects nothing | **done** |
-| F | Reconnecting: the place is kept, a bot covers, the host role moves on. **Friends can play a full match here** | next |
-| G | Bots that fill up: difficulty and voting rules for mixed groups | |
+| F | Reconnecting: the place is kept, a bot covers, the host role moves on. **Friends can play a full match here** | **done** |
+| G | Bots that fill up: difficulty and voting rules for mixed groups | next |
 | H | Robustness: rate limits, message checks, load test with 30 players, one address for page and server, home network guide | |
 | I | Bigger offices for 15, 20-25 and 30 people (can be postponed) | |
 | J | Whole matches with several browsers, long test, balance, docs | |
@@ -216,8 +216,36 @@ Also accepted: bot hackers with partners use only their existing behaviour; no n
   20, 12 and 3 seconds (8 was too short for three windows on a slow machine).
 - 733 Vitest tests in 58 files, 19 Playwright (15 office, 4 match). In the full run the lobby match failed once because the TEST pressed M
   before standing up was confirmed; it waits now (2 reruns passed; the other 18 passed in the full run).
-- Not there: a watcher cannot go back to the lobby before the match is over (only leave). If everybody who plays is out or has left
-  and only bots are in the office, the match goes on until the bots end it: a question for the owner in Part F.
+- Not there: a watcher cannot go back to the lobby before the match is over (only leave). (What happens when only
+  bots are left was decided in Part F.)
+
+### Part F: what exists now (lost connections and leaving)
+
+- OWNER'S WIN RULES (2026-11-25, lobbies only, `checkHackerWins` in game.ts): without bots, a match whose last hacker has left or has
+  been without a connection for 60 s is won by the defenders, and people who are gone no longer count as defenders for parity;
+  with bots, the hackers win when no person who is not a hacker is left (all out, left, or 60 s without a connection).
+- WHERE: lobbies and solo matches keep the place (`keeps` in OfficeRoom.ts); the shared office does not (choose an employee again).
+- HOW (OfficeRoom.ts `onLeave`, `waitingFor`, `lookForLost`): Colyseus' `allowReconnection` gives the returning browser the SAME network
+  id. HOLD_MS = 60 s (shared/party.ts). In a lobby's running match the place is kept as long as anybody is connected; otherwise it is
+  given up after 60 s. After the match those missing get another 60 s, then the lobby stops waiting. Leaving with the button, or being
+  removed by the host (also while lost), gives it up at once.
+- GAME (game.ts "Lost connections"): `connectionLost` (body stops, USB let go, nobody told), `standIn` after the minute (`BotManager.takeOver`:
+  the bot goes on from the same spot, no badge line, nothing sent to anybody), `connectionBack` (body back where the bot is; without
+  bots at the desk through the entrance) and `resume` (lobby, welcome with `back`, board, meeting, tasks, the PC's screen, or `fired`, or
+  the end and the debrief). `goAway` is also what leaving with the button does, so leaving no longer shows who was a person.
+  A human hacker's bot is a hacker with its existing behaviour, as before.
+- LOBBY (party.ts `lose/returned/findHost`): the host role moves on at once and does not come back; a lost member is shown and the start
+  waits. During a match members' `lost` is never sent: the others would look who is standing still.
+- PAGE (store.ts): `listen` (all message handlers), `lineLost`, `comeBack` (every 2 s; "expired" is believed only after 20 s, because the
+  server notices a dead line after up to 9 s), silence of 15 s in a running match counts as a dead line. `savedPlace.ts` keeps the token
+  in sessionStorage (this tab only): after a reload the menu offers "Go back to it". `ui/Reconnecting.tsx`.
+- Tests: `server/test/reconnect.test.ts` (28, also with real connections), `e2e/reconnect.spec.ts` (2).
+- 761 Vitest tests in 59 files, 21 Playwright (17 office, 4 match). In the last full run 20 passed; `reconnect.spec.ts` failed on the test's own
+  short waits (a quick overlay; on this machine drawing the map again can block a page for seconds). After longer waits it passed 8 of 8 alone.
+- PITFALL: Colyseus `signal.remove(unknown)` removes the LAST listener, and `e2e/helpers/movement.ts` calls it twice. So the page does not use
+  `onStateChange`; the silence check looks at the office clock.
+- Not there: coming back after the TAB was closed or on another computer (the token is gone with the tab; no accounts until Phase 8);
+  chat said while away is lost; a bot that covers somebody keeps no memory of what that person did.
 
 ## Phase 5a plan (solo modes): APPROVED by the owner on 2026-11-24, with all five defaults
 

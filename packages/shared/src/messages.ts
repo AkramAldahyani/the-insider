@@ -279,8 +279,8 @@ export interface ServerMessages {
   'move.ack': { sequence: number; dx: number; dy: number; x: number; y: number };
   /** Sent on connect: who can be played. */
   lobby: { scenarioName: string; mapName: string; employees: EmployeeChoice[]; dev: boolean; hackerOpen: boolean };
-  /** Sent after choosing an employee. */
-  welcome: { playerId: string; card: OnboardingCard; mission: MissionBriefing | null };
+  /** Sent after choosing an employee, and (with `back`) to somebody whose connection was lost and who has returned. */
+  welcome: { playerId: string; card: OnboardingCard; mission: MissionBriefing | null; back?: true };
   /** The player sat down: the screen as it was left. */
   'term.open': TermScreen & { hostname: string };
   /** New text on the screen of the PC the player is sitting at. */
