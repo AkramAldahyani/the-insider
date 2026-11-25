@@ -76,7 +76,7 @@ export class Game {
       `Game time: ${dateStamp(this.world.time)}\n\n` +
       this.playersTable() +
       `\nYou are ${this.playerId}. Try:  :sit ${this.world.players.find((p) => p.id === this.playerId)?.desk ?? ''}     (":help" lists CLI commands)\n` +
-      (this.world.mission.hacker === this.playerId ? this.missionBriefing() : '')
+      (this.world.mission.hackers.includes(this.playerId) ? this.missionBriefing() : '')
     );
   }
 
@@ -222,7 +222,7 @@ export class Game {
   }
 
   private missionBriefing(): string {
-    if (this.world.mission.hacker !== this.playerId) return 'Only the hacker can view the mission briefing.\n';
+    if (!this.world.mission.hackers.includes(this.playerId)) return 'Only the hacker can view the mission briefing.\n';
     const mission = briefing(this.world);
     return `You are the hacker.\n${mission.goal}\nTools: ${mission.toolsPath}\n` +
       mission.rumours.map((rumour) => `- ${rumour}\n`).join('') +

@@ -108,11 +108,11 @@ export function partyRoom(base: OfficeGameOptions, { seed, limit = 20 }: { seed?
       this.begin(partyGameOptions(base, party.settings, matchSeed, dealt));
       const game = this.game!;
       const nameOf = (id: string) => base.scenario.players.find((p) => p.id === id)!.name;
-      this.cast = [...dealt.seats].map(([clientId, id]) => ({ name: party.nameOf(clientId), employee: nameOf(id), hacker: id === dealt.hacker }));
+      this.cast = [...dealt.seats].map(([clientId, id]) => ({ name: party.nameOf(clientId), employee: nameOf(id), hacker: dealt.hackers.includes(id) }));
       void this.lock();
-      party.begin();
+      party.begin(dealt.hackers.length);
       this.sendParty();
-      for (const [clientId, id] of dealt.seats) game.seat(clientId, id, id === dealt.hacker);
+      for (const [clientId, id] of dealt.seats) game.seat(clientId, id);
       // The computer's colleagues are at work from the first moment, like everybody else: who walks in later would be known to be one.
       game.everybodyIsIn();
       this.flush();

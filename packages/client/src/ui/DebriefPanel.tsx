@@ -26,13 +26,13 @@ function Evidence({ item }: { item: DebriefEvidenceView }) {
   );
 }
 
-function Step({ step, index }: { step: DebriefStepView; index: number }) {
+function Step({ step, index, by }: { step: DebriefStepView; index: number; by: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <li className={`debrief-step debrief-${step.status} ${step.suspicious ? '' : 'debrief-ordinary'}`} data-testid={`debrief-step-${index}`}>
       <button type="button" className="debrief-head" aria-expanded={open} onClick={() => setOpen(!open)}>
         <span className="debrief-time">{clock(step.time)}</span>
-        <span className="debrief-title">{step.title}{step.count > 1 ? ` (${step.count} times)` : ''}</span>
+        <span className="debrief-title">{by && <strong>{step.by}: </strong>}{step.title}{step.count > 1 ? ` (${step.count} times)` : ''}</span>
         {step.technique && <span className="debrief-technique">{step.technique.id}</span>}
         <span className="debrief-status">{step.suspicious ? STATUS[step.status] : 'ORDINARY'}</span>
       </button>
@@ -129,7 +129,7 @@ export function DebriefPanel({ ui }: { ui: UiState }) {
           <button type="button" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>Everything</button>
           <button type="button" aria-pressed={filter === 'missed'} data-testid="debrief-missed" onClick={() => setFilter('missed')}>Only what was not pinned</button>
         </div>
-        {steps.length === 0 ? <p className="debrief-muted">Nothing to show here.</p> : <ol className="debrief-steps">{steps.map(({ step, index }) => <Step key={index} step={step} index={index} />)}</ol>}
+        {steps.length === 0 ? <p className="debrief-muted">Nothing to show here.</p> : <ol className="debrief-steps">{steps.map(({ step, index }) => <Step key={index} step={step} index={index} by={d.hackers.length > 1} />)}</ol>}
         <Extras d={d} />
       </div>
     </div>

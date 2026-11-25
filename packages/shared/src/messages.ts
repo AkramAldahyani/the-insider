@@ -132,7 +132,9 @@ export interface RatingView {
 export interface DebriefView {
   winner: 'hacker' | 'defenders';
   reason: string;
+  /** All of them in one text ("A and B"), and as a list. */
   hacker: string;
+  hackers: string[];
   startedAt: number;
   at: number;
   reputation: number;
@@ -216,6 +218,8 @@ export interface MissionBriefing {
   /** Infiltration: game minutes between first reading the flag and the moment it can be handed in (absent = none). */
   handInMinutes?: number;
   goal: string;
+  /** Matches with several hackers: the others. Hackers know each other. */
+  partners: { id: string; name: string }[];
   /** Where the tools folder is on the hacker's own PC. */
   toolsPath: string;
   /** Things that MIGHT be wrong with this office. Which of them are true today is not told. */
@@ -291,7 +295,7 @@ export interface ServerMessages {
    */
   alert: { text: string };
   /** The match is over. Sent to everybody, including people on the start screen. */
-  'match.over': { winner: 'hacker' | 'defenders'; hacker: string; at: number; reason: string };
+  'match.over': { winner: 'hacker' | 'defenders'; hacker: string; hackers: string[]; at: number; reason: string };
   /** Right after match.over: everything the hacker did, and what was found or missed. Never sent during a match. */
   debrief: { debrief: DebriefView };
   /** Your onboarding card changed (the helpdesk gave you a new password). Only ever sent to its owner. */

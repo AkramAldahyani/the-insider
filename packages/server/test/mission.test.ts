@@ -24,7 +24,7 @@ describe('joining as the hacker', () => {
     expect(lobby(r, 'h').hackerOpen).toBe(true);
     r.send('h', 'choose', { playerId: 'p4', hacker: true });
     expect(welcome(r, 'h').mission).toMatchObject({ toolsPath: '/home/o.farouk/.tools' });
-    expect(r.game.world.mission.hacker).toBe('p4');
+    expect(r.game.world.mission.hackers[0]).toBe('p4');
     expect(r.file('MKT-LT-11', '/home/o.farouk/.tools/README')).toContain('Every tool leaves a trace');
 
     r.connect('e', 'p1');
@@ -41,14 +41,14 @@ describe('joining as the hacker', () => {
     r.send('x', 'choose', { playerId: 'p1', hacker: true });
     expect(r.notice('x')).toContain('already has its hacker');
     expect(r.last('x', 'welcome')).toBeUndefined(); // still on the start screen
-    expect(r.game.world.mission.hacker).toBe('p4');
+    expect(r.game.world.mission.hackers[0]).toBe('p4');
 
     r.game.disconnect('h');
     r.flush();
     expect(lobby(r, 'x').hackerOpen).toBe(true);
     r.send('x', 'choose', { playerId: 'p1', hacker: true });
     expect(welcome(r, 'x').mission).not.toBeNull();
-    expect(r.game.world.mission.hacker).toBe('p1');
+    expect(r.game.world.mission.hackers[0]).toBe('p1');
   });
 
   it('a hacker flag that is not exactly `true` is an ordinary employee', () => {
@@ -56,7 +56,7 @@ describe('joining as the hacker', () => {
     r.connect('a');
     r.send('a', 'choose', { playerId: 'p1', hacker: 'yes' });
     expect(welcome(r, 'a').mission).toBeNull();
-    expect(r.game.world.mission.hacker).toBeNull();
+    expect(r.game.world.mission.hackers).toEqual([]);
   });
 });
 

@@ -32,7 +32,7 @@
  * In a meeting a bot says its strongest findings in the chat, and votes only
  * on what it knows itself (see `ballot`).
  */
-import { commandNames, screenState, setHacker, type Scenario, type TerminalResult, type World } from '@insider/engine';
+import { activeHackers, commandNames, isHacker, screenState, setHacker, type Scenario, type TerminalResult, type World } from '@insider/engine';
 import { DETAIN_DISTANCE, PLAYER_RADIUS, isFree, roomAt, type MapDoor, type Point } from '@insider/shared';
 import type { Avatar } from '../visibility';
 import { CHECK_MINUTES, employeeTree, firstCheck, newMind, type BotSubject, type BrainWorld, type Mind, type Persona } from './brain';
@@ -98,8 +98,6 @@ export interface BotOptions {
   hackerDifficulty?: HackerDifficulty;
   /** This employee must not be the simulated hacker (a solo player who chose to defend). */
   hackerNot?: string;
-  /** This employee is the hacker (a lobby's match, where the server has drawn already). If a human plays them, so be it. */
-  hackerId?: string;
   /** How fast the simulated hacker plays. Default: the pace that belongs to its difficulty. */
   hackerPace?: HackerPace;
   /** Bots put the clues they find on the evidence board themselves: at most this many in a match (default 0). */
@@ -218,12 +216,12 @@ export class BotManager {
     this.knowledge = hackerKnowledge(this.hackerDifficulty, seed,
       this.hackerDifficulty === 'easy' ? [] : host.world.mission.weaknesses);
     for (const player of host.world.players) this.schedule(player.id);
-    if (options.hacker !== false && host.world.mission.flag && !host.world.mission.hacker) {
+    if (options.hacker !== false && host.world.mission.flag && host.world.mission.hackers.length === 0) {
       const others = host.world.players.filter((p) => p.id !== options.hackerNot);
       const employees = others.filter((p) => p.role === 'employee');
       const pool = employees.length ? employees : others;
       // Use a separate match-seeded draw: neither weaknesses nor their recipients influence identity.
-      const selected = others.find((p) => p.id === options.hackerId) ?? new Random(seed ^ 0x4ac4e2).pick(pool);
+      const selected = new Random(seed ^ 0x4ac4e2).pick(pool);
       if (selected) setHacker(host.world, selected.id);
     }
   }
@@ -338,6 +336,8 @@ export class BotManager {
 
   /** Adds a finding, unless the bot already remembers the same thing. */
   private find(bot: Bot, f: Omit<Finding, 'time'>): boolean {
+    // Hackers know each other, and do not give each other away.
+    if (isHacker(this.host.world, bot.playerId) && isHacker(this.host.world, f.suspect)) return false;
     const same = bot.findings.find((x) => x.text === f.text || (f.suspect && x.suspect === f.suspect && x.weight === f.weight && this.host.world.time - x.time < 5 * 60_000));
     if (same && f.caught) same.caught = true;
     if (same) return false; // seen again within minutes: it is the same story
@@ -377,7 +377,9 @@ export class BotManager {
    * evidence: it votes for the person the evidence convinces it of, and
    * otherwise "skip" instead of nothing. Nobody is fired for weak evidence.
    */
-  ballot(playerId: string, accused: string[], verdicts?: ReadonlyMap<string, Verdict>): string | null {
+  ballot(playerId: string, everybody: string[], verdicts?: ReadonlyMap<string, Verdict>): string | null {
+    const partner = (id: string) => isHacker(this.host.world, playerId) && isHacker(this.host.world, id);
+    const accused = everybody.filter((id) => !partner(id));
     const ranked = accused.filter((s) => s !== playerId).map((s) => ({ s, score: this.suspicion(playerId, s) })).sort((a, b) => b.score - a.score);
     if (ranked[0] && ranked[0].score >= VOTE_THRESHOLD) return ranked[0].s;
     const others = new Set(this.findings(playerId).map((f) => f.suspect).filter((s) => s && !accused.includes(s)));
@@ -536,7 +538,7 @@ export class BotManager {
       report: (f) => {
         const bot = this.bots.get(body.playerId);
         // The hacker checks its own PC like everybody (it would stand out otherwise), but tells nobody about its own traces.
-        if (!bot || host.world.mission.hacker === body.playerId) return;
+        if (!bot || isHacker(host.world, body.playerId)) return;
         const fresh = this.find(bot, { suspect: f.suspect ?? '', weight: f.weight, text: f.text });
         if ((fresh || f.pin) && f.line && this.mayPin(f.line)) host.pin(body, f.line);
       },
@@ -731,10 +733,10 @@ export class BotManager {
         if (this.host.world.time >= bot.arriveAt) this.arrive(bot);
         continue;
       }
-      const isHacker = this.options.hacker !== false && this.host.world.mission.hacker === bot.playerId && this.host.world.mission.flag !== null;
-      if (isHacker && !bot.hacker) bot.hacker = this.hackerBrain(bot.subject);
-      if (!isHacker && bot.hacker) this.relinquishHacker(bot.playerId);
-      if ((!isHacker || !bot.hacker!.tick(bot.subject)) && !this.pursue(bot) && !this.convene(bot)) employeeTree(bot.subject); // decide
+      const hacking = this.options.hacker !== false && activeHackers(this.host.world).includes(bot.playerId) && this.host.world.mission.flag !== null;
+      if (hacking && !bot.hacker) bot.hacker = this.hackerBrain(bot.subject);
+      if (!hacking && bot.hacker) this.relinquishHacker(bot.playerId);
+      if ((!hacking || !bot.hacker!.tick(bot.subject)) && !this.pursue(bot) && !this.convene(bot)) employeeTree(bot.subject); // decide
       if (this.host.finished() || this.host.inMeeting()) return; // it just ended the match, or called a meeting
       bot.subject.mover.update(realMs); // walk
     }

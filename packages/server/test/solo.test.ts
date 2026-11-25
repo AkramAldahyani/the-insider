@@ -48,7 +48,7 @@ describe('a solo match', () => {
       const r = solo({ role: 'employee' }, seed);
       r.connect('me');
       const { playerId } = r.last('me', 'welcome')!.payload as { playerId: string };
-      const hacker = r.game.world.mission.hacker;
+      const hacker = r.game.world.mission.hackers[0];
       expect(hacker).not.toBeNull();
       expect(hacker, `seed ${seed}`).not.toBe(playerId);
       expect(r.game.bots!.has(hacker!)).toBe(true);
@@ -63,12 +63,12 @@ describe('a solo match', () => {
   it('choosing somebody else, or the hacker role, does nothing', () => {
     const r = solo();
     r.connect('me');
-    const hacker = r.game.world.mission.hacker;
+    const hacker = r.game.world.mission.hackers[0];
     const before = r.messages('me').length;
     r.send('me', 'choose', { playerId: 'p4', hacker: true });
     r.send('me', 'choose', { playerId: hacker });
     expect(r.messages('me').length).toBe(before);
-    expect(r.game.world.mission.hacker).toBe(hacker);
+    expect(r.game.world.mission.hackers[0]).toBe(hacker);
     expect(Object.keys(r.game.publicState().players)).toEqual(['p11']);
     // Nor for a connection without a body (there is none in a real solo room).
     r.connect('other');
@@ -80,7 +80,7 @@ describe('a solo match', () => {
     for (const difficulty of ['easy', 'normal', 'hard'] as const) {
       const r = new Recorder(soloGameOptions({ ...base, bots: false, botOptions: { hacker: false } }, { ...CHOICE, difficulty }, 3));
       expect(r.game.bots!.hackerDifficulty).toBe(difficulty);
-      expect(r.game.world.mission.hacker).not.toBeNull();
+      expect(r.game.world.mission.hackers).toHaveLength(1);
       r.connect('me');
       expect(r.last('me', 'meeting')!.payload).toMatchObject({ usesLeft: SOLO_MEETINGS });
     }
@@ -152,7 +152,7 @@ describe('over the network', () => {
     for (const choice of [CHOICE, { mode: 'infiltration', role: 'any', difficulty: 'easy' }]) {
       const room = await (await client()).create(SOLO_ROOM_NAME, choice);
       room.onMessage('*', () => undefined);
-      expect(game(room.roomId).world.mission.hacker).not.toBeNull();
+      expect(game(room.roomId).world.mission.hackers).toHaveLength(1);
       await room.leave();
     }
   });

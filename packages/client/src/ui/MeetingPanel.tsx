@@ -110,7 +110,7 @@ export function MeetingPanel({ ui }: { ui: UiState }) {
             {m.phase === 'result' && m.result && (
               <div className="meeting-result" data-testid="meeting-result">
                 <div className="meeting-verdict">
-                  {m.result.fired ? `${m.result.fired} was voted out. ${m.result.wasHacker ? 'They were the hacker!' : 'They were not the hacker.'}` : 'Nobody was voted out.'}
+                  {m.result.fired ? `${m.result.fired} was voted out. ${m.result.wasHacker ? `They were ${(ui.party?.hackers ?? 1) > 1 ? 'a' : 'the'} hacker!` : `They were not ${(ui.party?.hackers ?? 1) > 1 ? 'a' : 'the'} hacker.`}` : 'Nobody was voted out.'}
                 </div>
                 <div className="meeting-muted">
                   {m.result.tally.map((t) => `${t.name}: ${t.votes}`).join(' · ')}{m.result.tally.length ? ' · ' : ''}skip: {m.result.skips} · did not vote: {m.result.abstained}
@@ -129,7 +129,7 @@ export function FiredPanel({ ui }: { ui: UiState }) {
   if (!ui.fired || ui.meeting?.active) return null;
   return (
     <div className="fired" data-testid="fired">
-      <div className="meeting-head"><span>YOU WERE FIRED</span></div>
+      <div className="meeting-head"><span>YOU ARE OUT</span></div>
       <p>{ui.fired} Move the view with the arrow keys.</p>
       <Chat ui={ui} channel="fired" />
     </div>

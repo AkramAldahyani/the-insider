@@ -203,7 +203,7 @@ describe('in a solo match', () => {
     play(r, () => r.game.bots!.list().every((b) => b.present), 5);
     for (const cmd of ['hostname', 'whoami', 'pwd']) pin(r, r.type('soc', cmd).trim());
     expect(r.game.board.items).toHaveLength(3);
-    const hacker = r.game.world.mission.hacker!;
+    const hacker = r.game.world.mission.hackers[0]!;
     const result = meeting(r, hacker)!; // even though it is the hacker!
     expect(result.fired).toBe('');
     expect(result.skips).toBeGreaterThanOrEqual(9);
@@ -218,7 +218,7 @@ describe('in a solo match', () => {
 
   it('ordinary lines about an innocent colleague, or words the player typed, do not fire them either', () => {
     const r = solo('easy', 2);
-    const hacker = r.game.world.mission.hacker!;
+    const hacker = r.game.world.mission.hackers[0]!;
     // The first innocent colleague who logs in to the server for their work.
     const innocent = scenario.players.filter((p) => p.id !== hacker && p.role === 'employee');
     const worked = () => innocent.find((p) => queryEvents(r.game.world, { type: 'ssh.accept', actor: p.id }).some((e) => e.host === 'ADMIN-SRV-01' && e.time > r.game.world.noise.from!));

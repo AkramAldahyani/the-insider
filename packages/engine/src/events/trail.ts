@@ -23,13 +23,15 @@ const NOTABLE = new Set([
 
 /** Whose trail this event belongs on (a player id), or null. */
 function trailOwner(world: World, e: GameEvent): string | null {
-  const hacker = world.mission.hacker;
-  if (!hacker || world.noise.from === null) return null;
-  if (e.actor === hacker && NOTABLE.has(e.type)) return hacker;
-  // The victim of a reset mail does these, but they are the hacker's work (and the evidence of it).
-  if (e.type === 'phish.submit') return hacker;
-  if (e.type === 'web.request' && world.toolkit.phishing.some((m) => m.url === e.details.url)) return hacker;
-  return null;
+  const { hackers } = world.mission;
+  if (hackers.length === 0 || world.noise.from === null) return null;
+  if (e.actor !== null && hackers.includes(e.actor) && NOTABLE.has(e.type)) return e.actor;
+  // The victim of a reset mail does these, but they are the work of the hacker who sent it (and the evidence of it).
+  if (e.type !== 'phish.submit' && e.type !== 'web.request') return null;
+  const mail = world.toolkit.phishing.find((m) => m.url === e.details.url);
+  if (!mail) return e.type === 'phish.submit' ? hackers[0] : null;
+  const sender = world.events.find((x) => x.type === 'mail.send' && x.details.id === mail.mailId)?.actor;
+  return sender && hackers.includes(sender) ? sender : hackers[0];
 }
 
 /** Runs the step that writes an event's log lines and, if the event belongs on the trail, remembers those lines. */

@@ -67,23 +67,37 @@ export interface PartySettings {
   /** Desks nobody plays are filled by the computer. */
   bots: boolean;
   hacker: PartyHacker;
+  /** How many hackers: 0 = as many as suit the size of the match. */
+  hackers: number;
   /** How much the computer's hacker knows, and how fast it is. */
   difficulty: SoloDifficulty;
   meetings: PartyMeetings;
 }
 
-export const DEFAULT_PARTY_SETTINGS: PartySettings = { bots: true, hacker: 'auto', difficulty: 'normal', meetings: 'normal' };
+export const DEFAULT_PARTY_SETTINGS: PartySettings = { bots: true, hacker: 'auto', hackers: 0, difficulty: 'normal', meetings: 'normal' };
 
 /** Takes the valid fields of a change from the host; everything else stays as it was. */
 export function changeSettings(old: PartySettings, change: unknown): PartySettings {
   if (typeof change !== 'object' || change === null) return old;
-  const { bots, hacker, difficulty, meetings } = change as Record<string, unknown>;
+  const { bots, hacker, hackers, difficulty, meetings } = change as Record<string, unknown>;
   return {
     bots: typeof bots === 'boolean' ? bots : old.bots,
     hacker: PARTY_HACKERS.find((h) => h === hacker) ?? old.hacker,
+    hackers: [0, 1, 2, 3].find((n) => n === hackers) ?? old.hackers,
     difficulty: SOLO_DIFFICULTIES.find((d) => d === difficulty) ?? old.difficulty,
     meetings: PARTY_MEETINGS.find((m) => m === meetings) ?? old.meetings,
   };
+}
+
+/**
+ * How many hackers a match gets (DESIGN.md section 7): one up to 15 people, two
+ * up to 25, then three. The host may want another number, but at most one
+ * hacker for every three others, so that the defenders keep the majority.
+ */
+export function hackerCount(settings: PartySettings, people: number, desks: number): number {
+  const total = settings.bots ? desks : people;
+  const wanted = settings.hackers || (total <= 15 ? 1 : total <= 25 ? 2 : 3);
+  return Math.max(1, Math.min(wanted, Math.floor((total - 1) / 3)));
 }
 
 export interface PartyMember {
@@ -114,6 +128,8 @@ export interface PartyView {
   /** How many people fit. */
   size: number;
   settings: PartySettings;
+  /** How many hackers the match has (or would have now). */
+  hackers: number;
   /** False = the host has closed the lobby: nobody else may come in. */
   open: boolean;
   /** Their match is running. */

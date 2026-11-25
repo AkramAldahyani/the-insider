@@ -18,14 +18,14 @@ describe('CLI mission settings', () => {
   it('keeps the ordinary CLI without a hacker or weaknesses', () => {
     const game = new Game(scenario, 1, 'dumps', missionOptions([]));
     expect(game.playerId).toBe('p1');
-    expect(game.world.mission).toMatchObject({ hacker: null, weaknesses: [] });
+    expect(game.world.mission).toMatchObject({ hackers: [], weaknesses: [] });
     expect(game.intro()).not.toContain('You are the hacker.');
   });
 
   it('selects a hacker by ID, installs tools, and uses deterministic random weaknesses by default', () => {
     const first = new Game(scenario, 42, 'dumps', missionOptions(['--hacker', 'p4']));
     const second = new Game(scenario, 42, 'dumps', { hacker: 'p4' });
-    expect(first.world.mission.hacker).toBe('p4');
+    expect(first.world.mission.hackers[0]).toBe('p4');
     expect(first.world.mission.weaknesses.length).toBeGreaterThanOrEqual(2);
     expect(first.world.mission.weaknesses).toEqual(second.world.mission.weaknesses);
     expect(first.intro()).toContain(':sit MKT-LT-11');
@@ -62,7 +62,7 @@ describe('CLI hacker gameplay', () => {
   it('does not move the hacker role with :as or reveal its briefing to the other player', () => {
     const game = hackerGame();
     game.handle(':as p1');
-    expect(game.world.mission.hacker).toBe('p4');
+    expect(game.world.mission.hackers[0]).toBe('p4');
     expect(game.handle(':briefing').output).toBe('Only the hacker can view the mission briefing.\n');
     expect(game.handle(`:flag ${flag}`).output).toContain('Only the hacker');
     game.handle(':as o.farouk');

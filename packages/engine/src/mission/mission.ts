@@ -1,5 +1,5 @@
 /**
- * The match's secrets: who the hacker is, and which WEAKNESSES this office
+ * The match's secrets: who the hackers are (usually one), and which WEAKNESSES this office
  * has today.
  *
  * Every match switches on a few weaknesses at random (DESIGN.md section 6),
@@ -21,6 +21,7 @@ import type { Scenario } from '../core/scenario';
 import type { Mission, WeaknessId, World } from '../types';
 import { installTools } from '../tools/toolkit';
 import { emit, withActor } from '../events/log';
+import { activeHackers, isHacker } from './hackers';
 import { getNode } from '../fs/vfs';
 
 export const ALL_WEAKNESSES: WeaknessId[] = ['weak-admin-password', 'extra-sudo', 'plaintext-password', 'careless-admin', 'tailgate'];
@@ -75,7 +76,8 @@ export function applyWeaknesses(scenario: Scenario, seed: number, choice: Weakne
   const weaknesses = chooseWeaknesses(s, seed, choice);
   const next = sequence(seed + 1);
   const mission: Mission = {
-    hacker: null,
+    hackers: [],
+    caught: [],
     flag: m ? { host: m.flagHost, path: m.flagPath } : null,
     weaknesses,
     extraSudoAccount: '',
@@ -127,37 +129,44 @@ export function applyWeaknesses(scenario: Scenario, seed: number, choice: Weakne
  * Returns false if the match already has another hacker.
  */
 export function setHacker(world: World, playerId: string): boolean {
-  if (world.mission.hacker && world.mission.hacker !== playerId) return false;
+  const { hackers } = world.mission;
+  if (hackers.length > 0 && !hackers.includes(playerId)) return false;
+  return addHacker(world, playerId);
+}
+
+/** The same for a match with several hackers: one more of them. */
+export function addHacker(world: World, playerId: string): boolean {
   const player = world.players.find((p) => p.id === playerId);
   const host = player && world.hosts[player.desk];
   if (!player || !host) return false;
-  world.mission.hacker = playerId;
+  if (!world.mission.hackers.includes(playerId)) world.mission.hackers.push(playerId);
   installTools(world, host, player.account);
   return true;
 }
 
 /**
- * The hacker hands in the flag. It counts only if the text is exactly what is
- * in the flag file AND this player really read that file during this match
- * (the master log says so): knowing the text from elsewhere is not enough.
+ * A hacker hands in the flag. It counts only if the text is exactly what is
+ * in the flag file AND one of the hackers really read that file during this
+ * match (the master log says so): knowing the text from elsewhere is not
+ * enough. Partners may hand in what one of them read.
  * Winning is recorded; the server then ends the match for everybody.
  */
 export function submitFlag(world: World, playerId: string, text: string): { won: boolean; text: string } {
   const m = world.mission;
-  if (!m.flag || m.hacker !== playerId) return { won: false, text: 'Only the hacker can hand in the flag.' };
+  if (!m.flag || !activeHackers(world).includes(playerId)) return { won: false, text: 'Only the hacker can hand in the flag.' };
   if (m.won !== null) return { won: false, text: 'The match is already over.' };
   const flag = (getNode(world.hosts[m.flag.host], m.flag.path)?.content ?? '').trim();
   if (!flag || text.trim() !== flag) return { won: false, text: 'That is not the flag.' };
-  const readIt = world.events.some((e) => e.type === 'file.read' && e.actor === playerId && !e.details.denied && e.host === m.flag!.host && e.details.path === m.flag!.path);
+  const readIt = world.events.some((e) => e.type === 'file.read' && isHacker(world, e.actor) && !e.details.denied && e.host === m.flag!.host && e.details.path === m.flag!.path);
   if (!readIt) return { won: false, text: 'You have to get the flag yourself in this match: read it on the server first.' };
   m.won = world.time;
   withActor(playerId, () => emit(world, { host: m.flag!.host, user: '', type: 'mission.won', details: { hacker: playerId } }));
   return { won: true, text: 'The flag is out. You win.' };
 }
 
-/** The hacker's private briefing. It hints at what MIGHT be wrong with this office, never at what is. */
-export function briefing(world: World): { goal: string; toolsPath: string; rumours: string[] } {
-  const player = world.players.find((p) => p.id === world.mission.hacker);
+/** A hacker's private briefing. It hints at what MIGHT be wrong with this office, never at what is. */
+export function briefing(world: World, playerId = world.mission.hackers[0]): { goal: string; toolsPath: string; rumours: string[] } {
+  const player = world.players.find((p) => p.id === playerId);
   return {
     goal: `Read the file ${world.mission.flag?.path ?? '?'} on ${world.mission.flag?.host ?? '?'} and hand in what it says, without being identified.`,
     toolsPath: `/home/${player?.account ?? '?'}/.tools`,

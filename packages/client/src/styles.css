@@ -405,3 +405,5 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .reveal-hacker h2 { color: #ff8a8e; }
 .reveal-box p { line-height: 1.5; }
 .cast { margin: 10px 0; padding: 0; list-style: none; display: grid; gap: 4px; max-height: 30vh; overflow: auto; }
+.partner-tag { color: #ff8a8e; font-size: 12px; }
+.party-settings small { color: var(--muted); font-size: 13px; }

@@ -97,13 +97,14 @@ export function termScreen(result: TerminalResult): TermScreen {
 }
 
 /**
- * The hacker's private briefing: the goal, where the tools are, and rumours
+ * A hacker's private briefing: the goal, the partners if there are any, where the tools are, and rumours
  * about what MIGHT be wrong with this office. It does not contain the list
- * of today's weaknesses, and it is sent to the hacker's own browser only.
+ * of today's weaknesses, and it is sent to that hacker's own browser only.
  */
-export function missionBriefing(world: World): MissionBriefing {
-  const b = briefing(world);
-  return { goal: b.goal, toolsPath: b.toolsPath, rumours: [...b.rumours] };
+export function missionBriefing(world: World, playerId: string): MissionBriefing {
+  const b = briefing(world, playerId);
+  const partners = world.players.filter((p) => p.id !== playerId && world.mission.hackers.includes(p.id)).map((p) => ({ id: p.id, name: p.name }));
+  return { goal: b.goal, toolsPath: b.toolsPath, rumours: [...b.rumours], partners };
 }
 
 /**

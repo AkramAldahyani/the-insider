@@ -24,8 +24,9 @@ describe('the draw', () => {
           expect([...d.seats.keys()]).toEqual(people(n));
           expect(new Set(d.seats.values()).size).toBe(n);
           for (const id of d.seats.values()) expect(scenario.players.some((p) => p.id === id)).toBe(true);
-          expect(ordinary).toContain(d.hacker);
-          expect(d.human).toBe([...d.seats.values()].includes(d.hacker));
+          expect(d.hackers).toHaveLength(1);
+          expect(ordinary).toContain(d.hackers[0]);
+          expect(d.human).toBe([...d.seats.values()].includes(d.hackers[0]));
         }
       }
     }
@@ -43,9 +44,9 @@ describe('the draw', () => {
   it('is fair: everybody is the hacker about equally often, at every ordinary desk', () => {
     const d = many(4, {}, 4000);
     const count = new Map<string, number>();
-    for (const x of d) for (const [client, id] of x.seats) if (id === x.hacker) count.set(client, (count.get(client) ?? 0) + 1);
+    for (const x of d) for (const [client, id] of x.seats) if (id === x.hackers[0]) count.set(client, (count.get(client) ?? 0) + 1);
     for (const client of people(4)) expect(Math.abs(count.get(client)! / 4000 - 1 / 4)).toBeLessThan(0.04);
-    for (const id of ordinary) expect(Math.abs(d.filter((x) => x.hacker === id).length / 4000 - 1 / ordinary.length)).toBeLessThan(0.03);
+    for (const id of ordinary) expect(Math.abs(d.filter((x) => x.hackers[0] === id).length / 4000 - 1 / ordinary.length)).toBeLessThan(0.03);
     // Whoever is not the hacker can get any job.
     for (const p of scenario.players) expect(d.some((x) => x.seats.get('net0') === p.id), p.id).toBe(true);
     // Two people: now and then it is one of them, usually not.
@@ -77,7 +78,7 @@ function start(n: number, s: Partial<PartySettings> = {}, seed = 1) {
   const d = deal(scenario.players, people(n), settings(s), new Random(seed));
   const o = partyGameOptions(base, settings(s), seed, d);
   const r = new Recorder({ ...o, botOptions: { ...o.botOptions, hackerPace: undefined } });
-  for (const [client, id] of d.seats) r.game.seat(client, id, id === d.hacker);
+  for (const [client, id] of d.seats) r.game.seat(client, id);
   r.game.everybodyIsIn();
   r.flush();
   return { r, d };
@@ -93,26 +94,26 @@ describe('the match', () => {
         const { playerId, mission, card } = welcome[0].payload as { playerId: string; mission: { handInMinutes?: number } | null; card: { username: string } };
         expect(playerId).toBe(id);
         expect(card.username).toBe(scenario.players.find((p) => p.id === id)!.account);
-        if (id === d.hacker) expect(mission).toMatchObject({ handInMinutes: PARTY_HAND_IN_MINUTES });
+        if (id === d.hackers[0]) expect(mission).toMatchObject({ handInMinutes: PARTY_HAND_IN_MINUTES });
         else expect(mission).toBeNull();
       }
-      expect(r.game.world.mission.hacker).toBe(d.hacker);
+      expect(r.game.world.mission.hackers[0]).toBe(d.hackers[0]);
     }
   });
 
   it('a bot can be the hacker, and a person cannot change that', () => {
     const { r, d } = start(3, { hacker: 'bot' }, 5);
     expect(d.human).toBe(false);
-    expect(r.game.world.mission.hacker).toBe(d.hacker);
-    expect(r.game.bots!.has(d.hacker)).toBe(true);
+    expect(r.game.world.mission.hackers[0]).toBe(d.hackers[0]);
+    expect(r.game.bots!.has(d.hackers[0])).toBe(true);
     for (const client of people(3)) expect((r.last(client, 'welcome')!.payload as { mission: unknown }).mission).toBeNull();
     const before = r.messages('net0').length;
-    r.send('net0', 'choose', { playerId: d.hacker, hacker: true });
+    r.send('net0', 'choose', { playerId: d.hackers[0], hacker: true });
     r.connect('stranger');
     r.send('stranger', 'choose', { playerId: 'p4', hacker: true });
     expect(r.messages('net0').length).toBe(before);
     expect(r.messages('stranger', 'welcome')).toEqual([]);
-    expect(r.game.world.mission.hacker).toBe(d.hacker);
+    expect(r.game.world.mission.hackers[0]).toBe(d.hackers[0]);
   });
 
   it('everybody is at work from the first moment, in the same way: nothing tells people from bots', () => {
@@ -129,7 +130,7 @@ describe('the match', () => {
     // The entrance logged each of them once, at the same time.
     const arrivals = r.game.world.events.filter((e) => e.type === 'badge.tap' && e.time === r.game.world.time);
     expect(arrivals.map((e) => e.actor).sort()).toEqual(scenario.players.map((p) => p.id).sort());
-    const other = [...d.seats].find(([, id]) => id !== d.hacker)![0];
+    const other = [...d.seats].find(([, id]) => id !== d.hackers[0])![0];
     const told = r.last(other, 'lobby')!.payload as { employees: { taken: boolean }[]; hackerOpen: boolean };
     expect(told.employees.some((e) => e.taken)).toBe(false);
     expect(told.hackerOpen).toBe(false);
@@ -138,7 +139,7 @@ describe('the match', () => {
   it('the same for a match with a human and with a bot hacker: the first messages have the same shape', () => {
     const shape = (hacker: 'human' | 'bot') => {
       const { r, d } = start(3, { hacker }, 9);
-      const [client] = [...d.seats].find(([, id]) => id !== d.hacker)!;
+      const [client] = [...d.seats].find(([, id]) => id !== d.hackers[0])!;
       return r.messages(client).map((m) => `${m.type}:${Object.keys(m.payload as object).sort().join()}`);
     };
     expect(shape('human')).toEqual(shape('bot'));
@@ -158,16 +159,16 @@ describe('the match', () => {
       const text = JSON.stringify(r.sent.get(client)!.map((m) => [m.type, m.payload]));
       const me = scenario.players.find((p) => p.id === id)!;
       for (const [user, password] of Object.entries(PW)) if (user !== me.account) expect(text, user).not.toContain(password);
-      if (id !== d.hacker) for (const word of ['"mission":{', 'toolsPath', '"debrief"', '"cast"', 'net0', 'net1']) expect(text).not.toContain(word);
+      if (id !== d.hackers[0]) for (const word of ['"mission":{', 'toolsPath', '"debrief"', '"cast"', 'net0', 'net1']) expect(text).not.toContain(word);
     }
   }, 60_000);
 
   it('a human hacker has to wait before handing in; a hacker played by the computer has its own waits', () => {
-    const o = (human: boolean) => partyGameOptions(base, settings(), 1, { hacker: 'p4', human });
+    const o = (human: boolean) => partyGameOptions(base, settings(), 1, { hackers: ['p4'], human });
     expect(o(true).handInMinutes).toBe(3);
     expect(o(false).handInMinutes).toBeUndefined();
     const { r, d } = start(4, {}, 13);
-    const [client, id] = [...d.seats].find(([, x]) => x === d.hacker)!;
+    const [client, id] = [...d.seats].find(([, x]) => x === d.hackers[0])!;
     // (The file is read by force here: this is about the waiting, not about getting in.)
     const flag = r.file('ADMIN-SRV-01', '/root/flag.txt').trim();
     const { flag: where } = r.game.world.mission;

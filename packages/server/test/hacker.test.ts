@@ -19,7 +19,7 @@ function until(r: Recorder, done: () => boolean, seconds = 1200): void {
   expect(done(), JSON.stringify(r.game.bots?.list())).toBe(true);
 }
 
-function hackerId(r: Recorder): string { return r.game.world.mission.hacker!; }
+function hackerId(r: Recorder): string { return r.game.world.mission.hackers[0]!; }
 const hasEvent = (r: Recorder, type: string) => r.game.world.events.some((e) => e.type === type && e.actor === hackerId(r));
 
 describe('Phase 5 F: automatic hacker', () => {
@@ -64,11 +64,11 @@ describe('Phase 5 F: automatic hacker', () => {
     const first = match();
     expect(hackerId(first)).toBe(hackerId(match()));
     expect(first.game.bots?.has(hackerId(first))).toBe(true);
-    expect(new Recorder({ bots: true }).game.world.mission.hacker).toBeNull();
-    expect(new Recorder({ bots: false, botOptions: { hacker: true } }).game.world.mission.hacker).toBeNull();
+    expect(new Recorder({ bots: true }).game.world.mission.hackers).toEqual([]);
+    expect(new Recorder({ bots: false, botOptions: { hacker: true } }).game.world.mission.hackers).toEqual([]);
     const plain = clone(scenario);
     delete plain.mission;
-    expect(new Recorder({ scenario: plain, bots: true, botOptions: { hacker: true } }).game.world.mission.hacker).toBeNull();
+    expect(new Recorder({ scenario: plain, bots: true, botOptions: { hacker: true } }).game.world.mission.hackers).toEqual([]);
   });
 
   it.each(['plaintext-password', 'extra-sudo', 'weak-admin-password'] as WeaknessId[])('finishes a whole bot-only match using %s, with ordinary evidence and no direct flag grant', (weakness) => {

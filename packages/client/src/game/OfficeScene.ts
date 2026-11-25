@@ -186,7 +186,9 @@ export function createOfficeScene(store: Store): Phaser.Scene {
       const shadow = this.add.ellipse(0, 9, 27, 10, 0x07111e, 0.35);
       const sprite = this.add.image(0, 10, key, 0).setOrigin(0.5, 1);
       const self = p.id === store.getUi().playerId;
-      const name = this.add.text(0, 17, self ? `${p.name} (you)` : p.name, { ...LABEL, fontFamily: 'Segoe UI, sans-serif', fontSize: '10px', backgroundColor: '#132131', padding: { x: 4, y: 2 }, color: self ? '#9fe8d0' : '#e6e8ee' }).setOrigin(0.5, 0);
+      // Hackers see who their partners are. (Only a hacker's browser ever has this list.)
+      const partner = store.getUi().briefing?.partners.some((x) => x.id === p.id) ?? false;
+      const name = this.add.text(0, 17, self ? `${p.name} (you)` : p.name, { ...LABEL, fontFamily: 'Segoe UI, sans-serif', fontSize: '10px', backgroundColor: '#132131', padding: { x: 4, y: 2 }, color: self ? '#9fe8d0' : partner ? '#ff8a8e' : '#e6e8ee' }).setOrigin(0.5, 0);
       // A little "..." bubble: what anybody walking past sees when someone fiddles with a PC.
       const busy = this.add.text(12, -34, '···', { ...LABEL, fontSize: '13px', color: '#ffd27a', backgroundColor: '#2b2113', padding: { x: 3, y: 0 } }).setOrigin(0.5).setVisible(false);
       const container = this.add.container(p.x, p.y, [shadow, sprite, name, busy]).setDepth(10);

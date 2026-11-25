@@ -5,7 +5,7 @@
  */
 import { randomInt } from 'node:crypto';
 import {
-  CODE_LENGTH, CODE_LETTERS, DEFAULT_PARTY_SETTINGS, PARTY_HAND_IN_MINUTES, PARTY_MIN, PARTY_MIN_HUMAN, changeSettings, cleanName,
+  CODE_LENGTH, CODE_LETTERS, DEFAULT_PARTY_SETTINGS, PARTY_HAND_IN_MINUTES, PARTY_MIN, PARTY_MIN_HUMAN, changeSettings, cleanName, hackerCount,
   type PartyCast, type PartyMeetings, type PartyMember, type PartySettings, type PartyView,
 } from '@insider/shared';
 import { whoMayHack, type Deal } from './deal';
@@ -24,6 +24,8 @@ export class Party {
   playing = false;
   /** Who was who in the last match. Filled only when it is over. */
   private cast: PartyCast[] = [];
+  /** How many hackers the running match has (people leaving does not change that). */
+  private matchHackers = 1;
   /** Network id -> member, in the order they came in. */
   private readonly members = new Map<string, PartyMember>();
   /** Network id of the host. */
@@ -84,8 +86,9 @@ export class Party {
   }
 
   /** The match starts: everybody goes to the office. */
-  begin(): void {
+  begin(hackers: number): void {
     this.playing = true;
+    this.matchHackers = hackers;
     this.cast = [];
     for (const m of this.members.values()) Object.assign(m, { away: true, ready: false });
   }
@@ -124,6 +127,7 @@ export class Party {
       members: [...this.members.values()].map((m) => ({ ...m })),
       size: this.size,
       settings: { ...this.settings },
+      hackers: this.playing ? this.matchHackers : hackerCount(this.settings, this.members.size, this.size),
       open: this.open,
       playing: this.playing,
       cast: this.cast.map((c) => ({ ...c })),
@@ -144,13 +148,14 @@ const MEETINGS: Record<PartyMeetings, Partial<MeetingTimes>> = {
  * from the server operator. If a human hacker leaves, the bot that takes their
  * place goes on as the hacker, as in the shared office.
  */
-export function partyGameOptions(base: OfficeGameOptions, settings: PartySettings, seed: number, { hacker, human }: Pick<Deal, 'hacker' | 'human'>): OfficeGameOptions {
+export function partyGameOptions(base: OfficeGameOptions, settings: PartySettings, seed: number, { hackers, human }: Pick<Deal, 'hackers' | 'human'>): OfficeGameOptions {
   return {
     ...base,
     seed,
     bots: settings.bots,
-    botOptions: { ...base.botOptions, hacker: true, hackerId: hacker, hackerDifficulty: settings.difficulty },
+    botOptions: { ...base.botOptions, hacker: true, hackerDifficulty: settings.difficulty },
     assigned: true,
+    hackers,
     handInMinutes: human ? PARTY_HAND_IN_MINUTES : undefined,
     meetingTimes: { ...base.meetingTimes, ...MEETINGS[settings.meetings] },
   };

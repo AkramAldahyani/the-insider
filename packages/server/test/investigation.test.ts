@@ -98,7 +98,7 @@ describe('the SOC analyst (a bot) and its alerts', () => {
         expect(r.messages('me', 'notice').some((m) => (m.payload as { text: string }).text === `${i.pinnedBy} pinned something to the evidence board (${i.id}).`)).toBe(true);
         // It is a real line from a real screen, and it does not say who did it.
         expect(i.text).toMatch(/alert|pts\/|@reboot|ESTAB|LISTEN|usb|\/\./);
-        const hacker = scenario.players.find((p) => p.id === r.game.world.mission.hacker)!;
+        const hacker = scenario.players.find((p) => p.id === r.game.world.mission.hackers[0])!;
         expect(i.text).not.toContain(hacker.name);
       }
     }
@@ -267,7 +267,7 @@ describe('the rating', () => {
 
   it('a guard who detains the right person without any evidence only guessed', () => {
     const { r } = solo({ role: 'guard' }, 2);
-    const hacker = r.game.world.mission.hacker!;
+    const hacker = r.game.world.mission.hackers[0]!;
     play(r, () => r.game.bots!.isPresent(hacker), 10);
     for (let tries = 0; tries < 30 && !r.game.over; tries++) {
       const p = r.game.publicState().players[hacker];

@@ -76,7 +76,7 @@ Update it at the end of every part.
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
 | 5 Investigation & social deduction | **done**: Parts A-J |
 | 5a Solo modes | **done**: Parts A-H |
-| 6 Multiplayer | **in progress**: Parts A-B (lobbies, secret roles) done; C (several hackers) next |
+| 6 Multiplayer | **in progress**: Parts A-C (lobbies, secret roles, several hackers) done; D (chat) next |
 
 ## Phase 6 plan (multiplayer): APPROVED by the owner on 2026-11-24, with all eight defaults
 
@@ -87,8 +87,8 @@ part all tests, this file, commit locally (never push), then wait for the owner'
 |---|---|---|
 | A | Lobbies: create, join with a code, names, ready, host settings, close, remove, start | **done** |
 | B | Secret roles: jobs and hackers drawn at the start, private reveal; back to the same lobby after the match | **done** |
-| C | Several hackers (1-3) who know each other: win rules, briefing, detain, debrief, alerts | next |
-| D | Chat: same room, meetings, hackers' private chat, fired players; mute and length limits | |
+| C | Several hackers (1-3) who know each other: win rules, briefing, detain, debrief, alerts | **done** |
+| D | Chat: same room, meetings, hackers' private chat, fired players; mute and length limits | next |
 | E | Fired and watching: free camera, affects nothing | |
 | F | Reconnecting: the place is kept, a bot covers, the host role moves on. **Friends can play a full match here** | |
 | G | Bots that fill up: difficulty and voting rules for mixed groups | |
@@ -156,6 +156,28 @@ Also accepted: bot hackers with partners use only their existing behaviour; no n
 - 690 Vitest tests in 55 files, 16 Playwright (12 office, 4 match). On 2026-11-25 the machine was busy (everything took two to
   three times as long, also on the previous commit): five office tests failed in the full run and passed when run again.
 - Not checked: how matches with human hackers balance (Part J), and a match with people and bots by hand.
+
+### Part C: what exists now (several hackers)
+
+- ENGINE: `world.mission.hacker` (one or null) became `mission.hackers` (a list) and `mission.caught` (those who are out).
+  `isHacker` / `activeHackers` (mission/hackers.ts); `setHacker` still allows only one, `addHacker` adds a partner.
+  The trail, the debrief, the anti-stall rule (only hackers still in the game) and the flag rule follow. A partner may hand
+  in what one of them read (also one who was caught since); a reset mail's victim is on the trail of whoever sent it.
+- HOW MANY: `hackerCount` (shared/party.ts): one up to 15 people, two up to 25, then three; the host may choose 1-3
+  (`settings.hackers`, 0 = by size), but at most one for every three others. Without bots only the people count.
+  At least two people are not hackers (with three or more people). How many there are is public, so is how many are left.
+- WIN RULES: a hacker voted out or detained is out (human: watches, like a fired player), it is announced, no reputation is
+  lost; the last one ends the match. Parity compares with the hackers still in the game; in a lobby's match without bots the
+  staff is the people who were given a desk.
+- HACKERS KNOW EACH OTHER: the briefing lists the partners (reveal screen, briefing, red names, "partner" in the list). Nobody else's
+  browser gets that list. A bot hacker tells meetings nothing about its partners and does not vote for them; otherwise bot hackers
+  use only their existing behaviour. A partner's pins and screens do not count as "found" in the debrief.
+- Messages: `match.over` and the debrief have `hackers` (names) besides `hacker` (all in one text).
+- FIXED on the way: reading the flag and handing it in within one server tick (50 ms) slipped past the hand-in wait, also in
+  Infiltration. `submitFlag` now looks at everything that happened since the last tick first.
+- Tests: `server/test/hackers.test.ts` (20). The shared office, solo modes and CLI still have exactly one hacker.
+- 710 Vitest tests in 56 files, 17 Playwright (13 office, 4 match).
+- Not there yet: a private chat for hackers (Part D); a hacker who leaves a match without bots (Part F: the match cannot end then).
 
 ## Phase 5a plan (solo modes): APPROVED by the owner on 2026-11-24, with all five defaults
 
@@ -463,7 +485,7 @@ match has a simulated bot hacker by default. `BOT_HACKER=0` disables that contro
 - Server: `announceAlerts()` also watches `password.change` events. The owner, if human, gets a new `card` message
   (only them) and a notice; a bot's persona learns the password (`BotManager.passwordChanged`).
 - Guard detain: client message `detain { target }`. Checks: sender's role is `guard`, has not lost the power, target is
-  another living body within `DETAIN_DISTANCE` (64 px, shared constant). Target is `world.mission.hacker` ->
+  another living body within `DETAIN_DISTANCE` (64 px, shared constant). Target is a hacker (`isHacker`; one `world.mission.hacker` then) ->
   `endMatch('defenders', name, "GUARD caught NAME in the act.")`. Otherwise every human gets a notice, and the guard
   is in `detainLost` for the rest of the match. Every attempt is in `game.detentions` (for the debrief, Part I).
   Not allowed during meetings or after the match (the existing message filter already drops it).

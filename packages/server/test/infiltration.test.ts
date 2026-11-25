@@ -63,7 +63,7 @@ describe('starting', () => {
     for (let seed = 1; seed <= 40; seed++) {
       const { r, me } = infiltrate('normal', seed);
       expect(me.role ?? 'employee').toBe('employee');
-      expect(r.game.world.mission.hacker).toBe(me.id);
+      expect(r.game.world.mission.hackers[0]).toBe(me.id);
       expect(briefing(r)).toMatchObject({ handInMinutes: 4, toolsPath: `/home/${me.account}/.tools` });
       who.add(me.id);
     }

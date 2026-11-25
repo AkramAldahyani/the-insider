@@ -195,7 +195,7 @@ describe('doors', () => {
     r.tick(seconds(2));
     for (const c of ['k', 'h']) r.send(c, 'move', { dx: 0, dy: 0 });
     expect(r.position('p4').x).toBeGreaterThan(50 * r.map.tile);
-    r.game.world.mission.hacker = 'p4';
+    r.game.world.mission.hackers = ['p4'];
     win(r, attackFrom(r));
     expect(step(debrief(r, 's'), 'Slipped through door SRV-ROOM behind someone else')).toMatchObject({ suspicious: true, technique: null });
   });

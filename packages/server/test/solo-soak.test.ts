@@ -52,7 +52,7 @@ describe('Investigation, played by somebody who does nothing', () => {
       const types = r.sent.get('me')!.map((m) => m.type);
       expect(types.filter((t) => t === 'debrief')).toHaveLength(1);
       expect(types.indexOf('debrief')).toBeGreaterThan(types.indexOf('match.over'));
-      expect(r.game.bots!.list().filter((b) => b.failure && b.playerId !== r.game.world.mission.hacker)).toEqual([]);
+      expect(r.game.bots!.list().filter((b) => b.failure && b.playerId !== r.game.world.mission.hackers[0])).toEqual([]);
       // Nobody accuses anybody in Investigation except the player.
       expect(r.game.meetings.history).toEqual([]);
       expect(r.game.detentions).toEqual([]);
@@ -123,7 +123,7 @@ describe('many matches', () => {
     const run = () => {
       const { r } = start({ mode: 'investigation', role: 'any', difficulty: 'normal' }, 41);
       live(r, 60);
-      return { over: r.game.over, events: r.game.world.events.length, hacker: r.game.world.mission.hacker };
+      return { over: r.game.over, events: r.game.world.events.length, hacker: r.game.world.mission.hackers[0] };
     };
     expect(run()).toEqual(run());
   }, 60_000);

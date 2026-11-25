@@ -1,10 +1,10 @@
 /**
- * Who plays whom in a lobby's match, and who is the hacker (Phase 6, part B).
+ * Who plays whom in a lobby's match, and who the hackers are (Phase 6, parts B and C).
  * Drawn once, when the host starts, on the server only. Each browser is told
  * its own part (its card, and the briefing if it is the hacker) and nothing
  * about the others until the match is over.
  */
-import { PARTY_HUMAN_HACKER, type PartySettings } from '@insider/shared';
+import { PARTY_HUMAN_HACKER, hackerCount, type PartySettings } from '@insider/shared';
 import type { Random } from './bots/random';
 
 /** The hacker poses as an ordinary employee, in every kind of match. */
@@ -16,9 +16,9 @@ interface Employee {
 export interface Deal {
   /** Network id -> the employee this person plays. */
   seats: Map<string, string>;
-  /** The employee who is the hacker. */
-  hacker: string;
-  /** Is the hacker one of the people (and not the computer)? */
+  /** The employees who are hackers. */
+  hackers: string[];
+  /** Is at least one of them a person (and not the computer)? */
   human: boolean;
 }
 
@@ -48,17 +48,25 @@ export function deal(employees: readonly Employee[], clients: readonly string[],
   const all = employees.map((e) => e.id);
   const who = whoMayHack(settings, clients.length, all.length);
 
+  const count = Math.min(hackerCount(settings, clients.length, all.length), possible.length);
+
   if (who === 'any') {
-    const order = shuffled(all, random);
-    const hacker = random.pick(possible);
-    const seats = new Map(clients.map((c, i) => [c, order[i]]));
-    return { seats, hacker, human: [...seats.values()].includes(hacker) };
+    // Drawn again if (with several hackers) too few people would be left who are not one.
+    for (;;) {
+      const order = shuffled(all, random);
+      const hackers = shuffled(possible, random).slice(0, count);
+      const seats = new Map(clients.map((c, i) => [c, order[i]]));
+      const people = [...seats.values()].filter((id) => hackers.includes(id)).length;
+      if (people <= Math.max(1, clients.length - 2)) return { seats, hackers, human: people > 0 };
+    }
   }
-  // First the hacker's desk, then everybody else gets one of the others.
-  const hacker = random.pick(possible);
-  const order = shuffled(all.filter((id) => id !== hacker), random);
-  const chosen = who === 'human' ? random.pick(clients) : null;
+  // First the hackers' desks, then everybody else gets one of the others.
+  const hackers = shuffled(possible, random).slice(0, count);
+  const order = shuffled(all.filter((id) => !hackers.includes(id)), random);
+  // Two people at least are not hackers, so that nobody knows everything; and whoever fits at no other desk has to be one.
+  const people = Math.max(who === 'human' ? Math.max(1, Math.min(count, clients.length - 2)) : 0, clients.length - order.length);
+  const chosen = shuffled(clients, random).slice(0, people);
   const seats = new Map<string, string>();
-  for (const c of clients) seats.set(c, c === chosen ? hacker : order.pop()!);
-  return { seats, hacker, human: chosen !== null };
+  for (const c of clients) seats.set(c, chosen.includes(c) ? hackers[chosen.indexOf(c)] : order.pop()!);
+  return { seats, hackers, human: people > 0 };
 }

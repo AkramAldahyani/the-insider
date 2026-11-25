@@ -13,7 +13,7 @@
  * actually happens.
  */
 import {
-  advanceTime, cancelInput, createWorld, dateStamp, leaveTerminal, openTerminal, parseDuration, refreshTerminal, screenState,
+  activeHackers, addHacker, advanceTime, cancelInput, isHacker, createWorld, dateStamp, leaveTerminal, openTerminal, parseDuration, refreshTerminal, screenState,
   awaitingSecret, currentPrompt, escalate, glimpse, plugUsb, submitFlag, sendInput, serializeWorld, setHacker, shoulderSurf, switchUser, usbCooldown, type FsNode, type GameEvent, type OpenResult, type Scenario, type TerminalResult, type WeaknessChoice, type World,
 } from '@insider/engine';
 import {
@@ -24,7 +24,7 @@ import { BotManager, type BotOptions } from './bots/manager';
 import { Doors, type Walker } from './doors';
 import { Random } from './bots/random';
 import { Cctv, type Snapshot } from './cctv';
-import { Debrief } from './debrief';
+import { Debrief, nameList } from './debrief';
 import { EvidenceBoard, type EvidenceItem } from './evidence';
 import { comment, judgeAccusation, strongCase, type Judge, type Testimony, type Verdict } from './judge';
 import { rate, rateInfiltration } from './rating';
@@ -66,6 +66,8 @@ export interface OfficeGameOptions {
    * A lobby's match: the server decides who plays whom (`seat`). Nobody can choose, and nothing on the way says which employees are people.
    */
   assigned?: boolean;
+  /** A lobby's match: the hackers the server has drawn, whoever plays them. */
+  hackers?: string[];
   /** Infiltration: that human is the hacker, wins only with the flag, and the bots try to catch them. */
   soloHacker?: boolean;
   /** Infiltration and lobbies: game minutes after first reading the flag before it can be handed in (default 0). */
@@ -141,6 +143,8 @@ export class OfficeGame {
   private readonly soloPlayer: string | null;
   private readonly soloHacker: boolean;
   private readonly assigned: boolean;
+  /** A lobby's match: the employees people were given. */
+  private readonly seats = new Set<string>();
   private readonly handInMs: number;
   /** When the hacker first read the flag (game time). */
   private flagReadAt: number | null = null;
@@ -170,6 +174,7 @@ export class OfficeGame {
     // Fail loudly, before anyone joins, if the map and the scenario disagree.
     checkMapAgainstScenario(this.map, options.scenario, options.mapName);
     this.world = createWorld(options.scenario, options.seed ?? 1, { weaknesses: options.weaknesses ?? 'random' });
+    for (const id of options.hackers ?? []) addHacker(this.world, id);
     this.debrief = new Debrief(this.world);
     this.startedAt = this.world.time;
     this.collision = { ...this.map, solid: this.map.solid.map((row) => [...row]) };
@@ -282,7 +287,7 @@ export class OfficeGame {
       employees: employeeChoices(this.world, this.scenario, taken),
       dev: this.dev,
       // Everybody knows a match has one hacker; whether the role is still free is no secret. WHO it is, is.
-      hackerOpen: !this.assigned && this.world.mission.flag !== null && !this.humans().some((a) => a.playerId === this.world.mission.hacker),
+      hackerOpen: !this.assigned && this.world.mission.flag !== null && !this.humans().some((a) => isHacker(this.world, a.playerId)),
     });
   }
 
@@ -295,9 +300,10 @@ export class OfficeGame {
   }
 
   /** A lobby's match: this browser plays this employee. */
-  seat(clientId: string, playerId: string, hacker: boolean): void {
+  seat(clientId: string, playerId: string): void {
+    this.seats.add(playerId);
     this.connect(clientId);
-    this.choose(clientId, { playerId, hacker });
+    this.choose(clientId, { playerId });
   }
 
   /** A lobby's match, after everybody was seated: the bots are at work too. */
@@ -437,9 +443,10 @@ export class OfficeGame {
     }
     // Joining as the hacker: one per match. (Roles are assigned properly in Phase 5; until then a player asks for it.)
     // Taking over the same employee preserves their secret role, just as their workstation persists.
-    const asHacker = data.hacker === true || (this.bots?.has(player.id) && this.world.mission.hacker === player.id);
+    // (In a lobby's match the roles are fixed: whoever was drawn is a hacker already.)
+    const asHacker = !this.assigned && (data.hacker === true || (this.bots?.has(player.id) && isHacker(this.world, player.id)));
     if (asHacker) {
-      const current = this.world.mission.hacker;
+      const current = this.world.mission.hackers[0] ?? null;
       const taken = current !== null && current !== player.id && this.humans().some((a) => a.playerId === current);
       if (taken || this.world.mission.flag === null) {
         this.send(clientId, 'notice', { text: 'This match already has its hacker. Join as an employee.' });
@@ -447,7 +454,7 @@ export class OfficeGame {
       }
       // The role moves with the player: a hacker who left is replaced by whoever asks next.
       if (current && current !== player.id) this.bots?.relinquishHacker(current);
-      this.world.mission.hacker = null;
+      this.world.mission.hackers = [];
       setHacker(this.world, player.id);
     }
     // If this employee's bot is already in the building, the human simply takes over from it.
@@ -464,7 +471,7 @@ export class OfficeGame {
       playerId: player.id,
       card: onboardingCard(this.world, this.scenario, player.id),
       // Only the hacker's own browser ever receives a briefing.
-      mission: this.world.mission.hacker === player.id ? { ...missionBriefing(this.world), ...(this.handInMs > 0 ? { handInMinutes: this.handInMs / 60_000 } : {}) } : null,
+      mission: isHacker(this.world, player.id) ? { ...missionBriefing(this.world, player.id), ...(this.handInMs > 0 ? { handInMinutes: this.handInMs / 60_000 } : {}) } : null,
     });
     this.tasks.assign(player.id);
     this.tasks.takeChanged();
@@ -534,10 +541,12 @@ export class OfficeGame {
   }
 
   private watchPassword(typist: Avatar, password: string): void {
-    const hackerId = this.world.mission.hacker;
-    const hacker = [...this.avatars.values()].find((a) => a.playerId === hackerId);
+    for (const hacker of this.avatars.values()) if (isHacker(this.world, hacker.playerId)) this.watchedByHacker(hacker, typist, password);
+  }
+
+  private watchedByHacker(hacker: Avatar, typist: Avatar, password: string): void {
     const desk = this.map.desks.find((d) => d.hostname === typist.seatedAt);
-    if (!hacker || hacker === typist || hacker.seatedAt || !desk || !password) return;
+    if (hacker === typist || hacker.seatedAt || !desk || !password) return;
     // "Right behind": just below the chair (people sit facing their desk, which is above them).
     const behind = hacker.y - desk.seatY;
     if (behind <= 4 || behind > SURF_BEHIND || Math.abs(hacker.x - desk.seatX) > SURF_SIDE) return;
@@ -557,7 +566,7 @@ export class OfficeGame {
   /** The hacker starts holding the USB stick against a PC. Every condition is checked here, not in the browser. */
   private startItem(avatar: Avatar, data: Record<string, unknown>): void {
     if (data.item !== 'usb' || avatar.hold || avatar.seatedAt) return;
-    if (this.world.mission.hacker !== avatar.playerId) return; // only the hacker has the stick
+    if (!isHacker(this.world, avatar.playerId)) return; // only a hacker has the stick
     const desk = this.map.desks.find((d) => d.hostname === data.hostname);
     if (!desk) return;
     const notice = (text: string) => this.send(avatar.clientId, 'notice', { text });
@@ -726,7 +735,9 @@ export class OfficeGame {
 
   /** The hacker hands in the flag. On success the match ends for everybody and the hacker is named. */
   private submitFlag(avatar: Avatar, text: string): boolean {
-    // The contact who takes the file needs a while (Infiltration). Reading it is what started the clock.
+    // Anything that happened since the last tick counts too: reading the file and handing it in at once must not slip past the wait.
+    this.announceAlerts();
+    // The contact who takes the file needs a while (Infiltration, lobbies). Reading it is what started the clock.
     const left = this.flagReadAt === null ? 0 : this.flagReadAt + this.handInMs - this.world.time;
     if (left > 0) {
       this.send(avatar.clientId, 'notice', { text: `Your contact is not here yet. Hand it in in ${left > 90_000 ? `${Math.ceil(left / 60_000)} minutes` : `${Math.ceil(left / 1000)} seconds`}.` });
@@ -734,16 +745,22 @@ export class OfficeGame {
     }
     const result = submitFlag(this.world, avatar.playerId, text);
     if (!result.won) { this.send(avatar.clientId, 'notice', { text: result.text }); return false; }
-    this.endMatch('hacker', avatar.name, 'The hacker got the flag out.');
+    this.endMatch('hacker', this.several() ? `${avatar.name} got the flag out.` : 'The hacker got the flag out.');
     return true;
   }
 
-  /** The end: everybody is told who won and who the hacker was. */
-  private endMatch(winner: 'hacker' | 'defenders', hackerName: string, reason: string): void {
+  private several(): boolean {
+    return this.world.mission.hackers.length > 1;
+  }
+
+  /** The end: everybody is told who won and who the hacker was (or the hackers were). */
+  private endMatch(winner: 'hacker' | 'defenders', reason: string): void {
+    const hackers = this.world.mission.hackers.map((id) => this.nameOf(id));
+    const hackerName = nameList(hackers);
     this.over = { winner, at: this.world.time };
     for (const a of this.avatars.values()) if (a.hold) this.endItem(a, 'The match is over.');
     for (const a of [...this.avatars.values()]) if (a.seatedAt) this.stand(a, 'The match is over.');
-    for (const client of this.clients) this.send(client, 'match.over', { winner, hacker: hackerName, at: this.world.time, reason });
+    for (const client of this.clients) this.send(client, 'match.over', { winner, hacker: hackerName, hackers, at: this.world.time, reason });
     // The match is over: now, and only now, everybody learns what really happened.
     const debrief = this.debrief.build({
       winner, reason, at: this.world.time, startedAt: this.startedAt, cctv: this.cctv, board: this.board.items,
@@ -756,7 +773,7 @@ export class OfficeGame {
 
   /** Solo matches: how well did the player do? (See rating.ts.) */
   private rating(winner: 'hacker' | 'defenders', hackerName: string): ReturnType<typeof rate> {
-    const hacker = this.world.mission.hacker ?? '';
+    const hacker = this.world.mission.hackers[0] ?? '';
     const voted = this.meetings.current?.result?.wasHacker ? this.verdicts().get(hacker) : undefined;
     const player = this.soloPlayer!;
     return rate({
@@ -804,8 +821,8 @@ export class OfficeGame {
   }
 
   /**
-   * The guard detains the person next to them. Right: the hacker is caught
-   * and the defenders win. Wrong: the person is let go, everybody hears about
+   * The guard detains the person next to them. Right: the hacker is caught;
+   * when no other hacker is left, the defenders win. Wrong: the person is let go, everybody hears about
    * it, and this guard can never detain anyone again.
    */
   private detain(guard: Avatar, targetId: string): void {
@@ -816,9 +833,15 @@ export class OfficeGame {
     const target = [...this.avatars.values()].find((a) => a.playerId === targetId);
     if (!target || target === guard) return;
     if (Math.hypot(target.x - guard.x, target.y - guard.y) > DETAIN_DISTANCE) return no(`You must stand next to ${target.name} to detain them.`);
-    const wasHacker = this.world.mission.hacker === target.playerId;
+    const wasHacker = isHacker(this.world, target.playerId);
     this.detentions.push({ time: this.world.time, guardId: guard.playerId, targetId: target.playerId, wasHacker });
-    if (wasHacker) return this.endMatch('defenders', target.name, `${guard.name} caught ${target.name} in the act.`);
+    if (wasHacker) {
+      this.world.mission.caught.push(target.playerId);
+      if (activeHackers(this.world).length === 0) return this.endMatch('defenders', `${guard.name} caught ${target.name} in the act.`);
+      this.takeOut(target.playerId, 'You were detained. You can watch, and talk with others who are out.');
+      for (const a of this.humans()) this.send(a.clientId, 'notice', { text: `${guard.name} detained ${target.name}, who was a hacker. ${this.hackersLeft()}` });
+      return this.checkHackerWins();
+    }
     this.detainLost.add(guard.playerId);
     for (const a of this.humans()) this.send(a.clientId, 'notice', { text: `${guard.name} detained ${target.name}, who was not the hacker, and had to let them go. ${guard.name} can no longer detain anyone.` });
   }
@@ -875,30 +898,44 @@ export class OfficeGame {
 
   private tickMeeting(realMs: number): void {
     this.tickBotMeeting(realMs);
-    const change = this.meetings.tick(realMs, (id) => this.world.mission.hacker === id);
+    const change = this.meetings.tick(realMs, (id) => isHacker(this.world, id));
     if (!change) return;
     const m = this.meetings.history.at(-1)!;
     if (change === 'decided' && m.result?.firedId) {
       if (m.result.wasHacker) {
         this.sendMeeting();
-        return this.endMatch('defenders', this.nameOf(m.result.firedId), `${this.nameOf(m.result.firedId)} was voted out. They were the hacker.`);
-      }
-      this.fire(m.result.firedId);
+        this.world.mission.caught.push(m.result.firedId);
+        if (activeHackers(this.world).length === 0) return this.endMatch('defenders', `${this.nameOf(m.result.firedId)} was voted out. They were the ${this.several() ? 'last ' : ''}hacker.`);
+        this.takeOut(m.result.firedId, 'You were voted out at the meeting. You can watch, and talk with others who are out.');
+        for (const a of this.humans()) this.send(a.clientId, 'notice', { text: `${this.nameOf(m.result.firedId)} was a hacker. ${this.hackersLeft()}` });
+        this.checkHackerWins();
+      } else this.fire(m.result.firedId);
     }
     this.sendMeeting();
   }
 
   /** Voted out and innocent: out of the game for good, and the company looks bad. */
   private fire(playerId: string): void {
-    this.fired.add(playerId);
     this.reputation = Math.max(0, this.reputation - REPUTATION_PER_FIRING);
+    this.takeOut(playerId, 'You were voted out at the meeting. You can watch, and talk with other fired players.');
+    this.checkHackerWins();
+  }
+
+  /** Out of the game for good: a human watches from now on. */
+  private takeOut(playerId: string, reason: string): void {
+    this.fired.add(playerId);
     const body = [...this.avatars.values()].find((a) => a.playerId === playerId);
     if (body && this.clients.has(body.clientId)) {
       this.removeBody(body.clientId);
       this.ghosts.set(body.clientId, playerId);
-      this.send(body.clientId, 'fired', { reason: 'You were voted out at the meeting. You can watch, and talk with other fired players.' });
+      this.send(body.clientId, 'fired', { reason });
     } else this.bots?.remove(playerId);
-    this.checkHackerWins();
+  }
+
+  /** How many hackers a match has is no secret (the lobby says it), so neither is how many are left. */
+  private hackersLeft(): string {
+    const left = activeHackers(this.world).length;
+    return left === 1 ? 'One hacker is still out there.' : `${left} hackers are still out there.`;
   }
 
   /**
@@ -913,15 +950,17 @@ export class OfficeGame {
    *    small offices and future settings.
    */
   private checkHackerWins(): void {
-    const hacker = this.world.mission.hacker;
-    if (!hacker || this.over || this.fired.has(hacker)) return;
+    const hackers = activeHackers(this.world);
+    if (hackers.length === 0 || this.over) return;
     // Infiltration is won with the flag only: getting colleagues fired is not a way to win.
     if (this.soloHacker) return;
     if (this.reputation <= 0) {
-      return this.endMatch('hacker', this.nameOf(hacker), "The company's reputation hit 0 %: too many innocent people were fired. The hacker wins.");
+      return this.endMatch('hacker', `The company's reputation hit 0 %: too many innocent people were fired. The ${this.several() ? 'hackers win' : 'hacker wins'}.`);
     }
-    const defenders = this.world.players.filter((p) => p.id !== hacker && !this.fired.has(p.id)).length;
-    if (defenders <= 1) this.endMatch('hacker', this.nameOf(hacker), `Only ${defenders} defender${defenders === 1 ? ' is' : 's are'} left, as many as hackers: the hacker took over the company.`);
+    // A lobby's match without bots has only the people who were given a desk.
+    const staff = this.assigned && !this.bots ? this.world.players.filter((p) => this.seats.has(p.id)) : this.world.players;
+    const defenders = staff.filter((p) => !isHacker(this.world, p.id) && !this.fired.has(p.id)).length;
+    if (defenders <= hackers.length) this.endMatch('hacker', `Only ${defenders} defender${defenders === 1 ? ' is' : 's are'} left, as many as hackers: the ${this.several() ? 'hackers' : 'hacker'} took over the company.`);
   }
 
   /** The meeting as one player sees it. */
@@ -1107,15 +1146,16 @@ export class OfficeGame {
 
   /** The hacker read the flag file (in Infiltration that starts the wait for the contact). */
   private isFlagRead(e: GameEvent): boolean {
-    const { flag, hacker } = this.world.mission;
-    return e.type === 'file.read' && e.actor === hacker && e.host === flag?.host && e.details.path === flag.path && !e.details.denied;
+    const { flag } = this.world.mission;
+    return e.type === 'file.read' && isHacker(this.world, e.actor) && e.host === flag?.host && e.details.path === flag.path && !e.details.denied;
   }
 
   private flagRead(at: number): void {
     this.flagReadAt = at;
-    const human = this.humans().find((a) => a.playerId === this.world.mission.hacker);
     const minutes = Math.round(this.handInMs / 60_000);
-    if (human) this.send(human.clientId, 'notice', { text: `You have the file. Your contact takes it in ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}: do not get caught until then.` });
+    for (const a of this.humans()) {
+      if (isHacker(this.world, a.playerId)) this.send(a.clientId, 'notice', { text: `You have the file. Your contact takes it in ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}: do not get caught until then.` });
+    }
   }
 
   /** An avatar as the doors see it. */
@@ -1240,7 +1280,7 @@ export class OfficeGame {
         return [
           'Mission (match secrets)',
           `bot hacker difficulty: ${this.bots?.hackerDifficulty ?? 'disabled (no bots)'}`,
-          `hacker:      ${m.hacker ? `${m.hacker} ${name(m.hacker)}${this.humans().some((a) => a.playerId === m.hacker) ? '' : ' (not connected)'}` : 'nobody yet'}`,
+          `hacker:      ${m.hackers.length > 0 ? m.hackers.map((id) => `${id} ${name(id)}${m.caught.includes(id) ? ' (caught)' : this.humans().some((a) => a.playerId === id) ? '' : ' (not connected)'}`).join(', ') : 'nobody yet'}`,
           `flag:        ${m.flag ? `${m.flag.host}:${m.flag.path}` : '-'}`,
           `weaknesses:  ${m.weaknesses.join(', ') || 'none'}`,
           `extra sudo:  ${m.extraSudoAccount || '-'}`,

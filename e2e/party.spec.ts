@@ -39,6 +39,10 @@ test('friends gather in a lobby with a code and start a match together', async (
   await expect(ben.getByTestId('party-bots')).not.toBeChecked();
   await anna.getByTestId('party-meetings').selectOption('short');
   await expect(ben.getByTestId('party-meetings')).toHaveValue('short');
+  await anna.getByTestId('party-hackers').selectOption('3');
+  await expect(ben.getByTestId('party-hacker-count')).toHaveText('Only 1: the defenders must keep the majority.');
+  await anna.getByTestId('party-hackers').selectOption('0');
+  await expect(ben.getByTestId('party-hacker-count')).toHaveText('This match: one hacker.');
   await anna.screenshot({ path: 'e2e/screenshots/party.png' });
   await anna.setViewportSize({ width: 390, height: 844 });
   expect(await anna.evaluate(() => document.querySelector('.start')!.scrollWidth <= window.innerWidth)).toBe(true);
@@ -68,7 +72,7 @@ test('friends gather in a lobby with a code and start a match together', async (
     await page.getByTestId('reveal-close').click();
     await expect(page.getByTestId('reveal')).toHaveCount(0);
   }
-  expect(roles.sort()).toEqual(['You are not the hacker', 'You are not the hacker', 'You are the hacker']);
+  expect(roles.sort()).toEqual(['You are not a hacker', 'You are not a hacker', 'You are the hacker']);
   for (const page of [anna, ben, dora]) {
     await expect(page.getByTestId('party-hud')).toHaveText(`Lobby ${code}`);
     await expect(page.getByTestId('roster').locator('.roster-person')).toHaveCount(3);
@@ -78,4 +82,43 @@ test('friends gather in a lobby with a code and start a match together', async (
   await cleo.getByTestId('friends-join').click();
   await expect(cleo.getByText(`No open lobby has the code ${code}`)).toBeVisible();
   for (const page of [anna, ben, cleo, dora]) await page.context().close();
+});
+
+test('two hackers: the one who is a person sees the partner, the others see nothing', async ({ browser }) => {
+  const anna = await person(browser, 'Anna');
+  await anna.getByTestId('friends-create').click();
+  const link = await anna.getByTestId('party-link').inputValue();
+  const others: Page[] = [];
+  for (const name of ['Ben', 'Cleo']) {
+    const page = await person(browser, name, link);
+    await page.getByTestId('friends-join').click();
+    await page.getByTestId('party-ready').click();
+    others.push(page);
+  }
+  await anna.getByTestId('party-hacker').selectOption('human');
+  await anna.getByTestId('party-hackers').selectOption('2');
+  await expect(others[0].getByTestId('party-hacker-count')).toHaveText('This match: 2 hackers.');
+  await anna.getByTestId('party-start').click();
+  let hackers = 0;
+  for (const page of [anna, ...others]) {
+    const role = await page.getByTestId('reveal-role').textContent();
+    await expect(page.getByTestId('roster').locator('.roster-person')).toHaveCount(11);
+    if (role === 'You are a hacker') {
+      hackers++;
+      await page.screenshot({ path: 'e2e/screenshots/party-partner.png' });
+      const partner = /You are not alone: (.+)\. Any of you/.exec((await page.getByTestId('reveal-partners').textContent())!)![1];
+      await page.getByTestId('reveal-close').click();
+      await page.keyboard.press('c');
+      await expect(page.getByTestId('mission-partners')).toContainText(partner);
+      await expect(page.locator('.roster-person', { hasText: partner }).locator('.partner-tag')).toHaveText('partner');
+      await expect(page.locator('.partner-tag')).toHaveCount(1);
+      await page.screenshot({ path: 'e2e/screenshots/party-partner-office.png' });
+    } else {
+      expect(role).toBe('You are not a hacker');
+      await expect(page.getByTestId('reveal')).toContainText('2 of your colleagues are after a file');
+      await expect(page.locator('.partner-tag')).toHaveCount(0);
+    }
+  }
+  expect(hackers).toBe(1);
+  for (const page of [anna, ...others]) await page.context().close();
 });

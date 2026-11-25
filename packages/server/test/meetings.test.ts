@@ -99,7 +99,7 @@ describe('accusing and voting', () => {
     if (hacker) {
       r.connect('o');
       r.send('o', 'choose', { playerId: 'p4', hacker: hacker === 'p4' });
-      if (hacker !== 'p4') r.game.world.mission.hacker = hacker;
+      if (hacker !== 'p4') r.game.world.mission.hackers = [hacker];
     } else r.connect('o', 'p4');
     r.connect('s', 'p1');
     r.connect('m', 'p9');

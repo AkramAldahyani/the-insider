@@ -39,7 +39,7 @@ function play(r: Recorder, done: () => boolean, minutes = 180): void {
   expect(done(), JSON.stringify(r.game.bots!.list())).toBe(true);
 }
 
-const flagReads = (r: Recorder): GameEvent[] => queryEvents(r.game.world, { type: 'file.read', actor: r.game.world.mission.hacker! })
+const flagReads = (r: Recorder): GameEvent[] => queryEvents(r.game.world, { type: 'file.read', actor: r.game.world.mission.hackers[0]! })
   .filter((e) => e.details.path === scenario.mission!.flagPath && !e.details.denied);
 
 /** How long each match took, by level (filled by the first test, read by the second). */
@@ -50,7 +50,7 @@ describe('soak: whole matches with nobody investigating', () => {
     const r = match(level, seed);
     const pace = paceFor(level);
     const world = r.game.world;
-    const hacker = world.mission.hacker!;
+    const hacker = world.mission.hackers[0]!;
     const flagText = r.file(world.mission.flag!.host, world.mission.flag!.path).trim();
     expect(flagText.length).toBeGreaterThan(5);
     // Somebody who plays (and does nothing), and somebody still on the start screen.
@@ -154,7 +154,7 @@ describe('a defender who follows the evidence wins', () => {
     expect(r.game.board.items).toHaveLength(3);
     // The staff list says who works at that PC (everybody may know that).
     const suspect = scenario.players.find((p) => p.desk === pc)!.id;
-    expect(suspect).toBe(r.game.world.mission.hacker);
+    expect(suspect).toBe(r.game.world.mission.hackers[0]);
 
     r.send('soc', 'stand');
     const button = r.map.furniture.find((f) => f.kind === 'button')!;
@@ -175,7 +175,7 @@ describe('a defender who follows the evidence wins', () => {
 
   it('the guard can walk up to the hacker in that time, too', () => {
     const r = match('normal', 2);
-    const hacker = r.game.world.mission.hacker!;
+    const hacker = r.game.world.mission.hackers[0]!;
     r.connect('guard', 'p10');
     play(r, () => flagReads(r).length > 0, 60);
     for (let tries = 0; tries < 20 && !r.game.over; tries++) {
@@ -202,7 +202,7 @@ describe('the pace setting', () => {
       meetingTimes: { discussionMs: 5000, votingMs: 5000, resultMs: 1000 },
     });
     r.connect('m', 'p9');
-    const hacker = r.game.world.mission.hacker!;
+    const hacker = r.game.world.mission.hackers[0]!;
     const button = r.map.furniture.find((f) => f.kind === 'button')!;
     expect(r.walkTo('m', 'p9', button.x + button.width / 2, button.y + button.height + 14)).toBe(true);
     play(r, () => flagReads(r).length > 0, 60);

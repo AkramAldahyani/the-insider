@@ -12,7 +12,7 @@ const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 describe('choosing weaknesses', () => {
   it('a plain world has none, and its server room door lets one person through per badge', () => {
     const w = createWorld(scenario, 1);
-    expect(w.mission).toMatchObject({ hacker: null, weaknesses: [], extraSudoAccount: '', carelessPlayer: '', onePersonDoors: ['SRV-ROOM'], won: null });
+    expect(w.mission).toMatchObject({ hackers: [], weaknesses: [], extraSudoAccount: '', carelessPlayer: '', onePersonDoors: ['SRV-ROOM'], won: null });
     expect(w.mission.flag).toEqual({ host: SERVER, path: '/root/flag.txt' });
   });
 
@@ -121,7 +121,7 @@ describe('the hacker', () => {
   it('gets a hidden, private tools folder on their own PC', () => {
     const w = world([]);
     expect(setHacker(w, 'p4')).toBe(true); // Omar
-    expect(w.mission.hacker).toBe('p4');
+    expect(w.mission.hackers[0]).toBe('p4');
     const omar = atDesk(w, 'o.farouk');
     expect(omar.type('ls')).not.toContain('.tools'); // hidden from a plain ls
     expect(omar.type('ls -a')).toContain('.tools');
@@ -144,7 +144,7 @@ describe('the hacker', () => {
     expect(setHacker(w, 'p1')).toBe(false);
     expect(setHacker(w, 'p4')).toBe(true); // the same player again is fine
     expect(setHacker(w, 'nobody')).toBe(false);
-    expect(w.mission.hacker).toBe('p4');
+    expect(w.mission.hackers[0]).toBe('p4');
     expect(fileOn(w, 'FIN-LT-07', '/home/s.alharbi/.tools/README')).toBe('');
   });
 

@@ -163,7 +163,7 @@ describe('every level can be won', () => {
     expect(winner(r)).toBe('hacker');
     const blamed = [...r.game.fired, ...r.game.detentions.map((d) => d.targetId)];
     expect(blamed.length).toBeGreaterThan(0);
-    expect(blamed).not.toContain(r.game.world.mission.hacker);
+    expect(blamed).not.toContain(r.game.world.mission.hackers[0]);
   }, 30_000);
 
   it.each([4, 5])('level %i through another machine, most of the time', (level) => {

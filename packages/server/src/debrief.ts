@@ -15,7 +15,7 @@
  * in the next match, and a debrief must not spoil it (or break the rule that
  * browsers never receive anyone else's credentials).
  */
-import { debriefSteps, pinShows, shows, weaknessNotes, type DebriefEvidence, type DebriefStep, type World } from '@insider/engine';
+import { debriefSteps, isHacker, pinShows, shows, weaknessNotes, type DebriefEvidence, type DebriefStep, type World } from '@insider/engine';
 import type { DebriefEvidenceView, DebriefStepView, DebriefView } from '@insider/shared';
 import type { Cctv } from './cctv';
 import type { EvidenceItem } from './evidence';
@@ -31,6 +31,8 @@ const MAX_EVIDENCE = 16;
 const MAX_PICTURES_SEEN = 2000;
 
 const clock = (t: number) => new Date(t).toISOString().slice(11, 19);
+/** "A", "A and B", "A, B and C". */
+export const nameList = (names: string[]) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`);
 const keyOf = (e: DebriefEvidence) => `${e.host}|${e.where}|${e.text}`;
 
 /** What the debrief needs from the match. */
@@ -65,7 +67,7 @@ export class Debrief {
 
   /** Text that appeared on this player's screen (a terminal or the badge and motion lists of the monitors). */
   noteScreen(playerId: string, text: string): void {
-    if (playerId === this.world.mission.hacker) return;
+    if (isHacker(this.world, playerId)) return;
     const evidence = this.evidence();
     if (evidence.length === 0) return;
     for (const line of text.split('\n')) {
@@ -80,7 +82,7 @@ export class Debrief {
 
   /** A camera picture this player looked at. */
   notePicture(playerId: string, picture: { camera: string; time: number; people: { name: string }[] }): void {
-    if (playerId === this.world.mission.hacker || picture.people.length === 0) return;
+    if (isHacker(this.world, playerId) || picture.people.length === 0) return;
     this.pictures.push({ playerId, camera: picture.camera, time: picture.time, names: picture.people.map((p) => p.name) });
     if (this.pictures.length > MAX_PICTURES_SEEN) this.pictures.shift();
   }
@@ -97,10 +99,10 @@ export class Debrief {
   build(input: DebriefInput): DebriefView {
     const { mission } = this.world;
     const steps = debriefSteps(this.world).slice(-MAX_STEPS).map((s) => this.step(s, input));
-    const hackers = new Set([...mission.trail.map((t) => t.by), ...(mission.hacker ? [mission.hacker] : [])]);
+    const hackers = new Set([...mission.trail.map((t) => t.by), ...mission.hackers]);
     const findable = steps.filter((s) => s.suspicious && s.status !== 'none');
     const view: DebriefView = {
-      winner: input.winner, reason: input.reason, hacker: mission.hacker ? this.name(mission.hacker) : '',
+      winner: input.winner, reason: input.reason, hacker: nameList(mission.hackers.map((id) => this.name(id))), hackers: mission.hackers.map((id) => this.name(id)),
       startedAt: input.startedAt, at: input.at, reputation: input.reputation,
       steps,
       totals: {
@@ -125,9 +127,14 @@ export class Debrief {
     return this.redact(view);
   }
 
+  /** What the hacker themself or a partner pinned or looked at was not FOUND by anybody. */
+  private hackedBy(s: DebriefStep, playerId: string): boolean {
+    return playerId === s.by || isHacker(this.world, playerId);
+  }
+
   private step(s: DebriefStep, input: DebriefInput): DebriefStepView {
     const evidence: DebriefEvidenceView[] = s.evidence.map((e) => {
-      const pins = input.board.filter((i) => i.kind !== 'snapshot' && i.pinnedById !== s.by && pinShows(e, i.text));
+      const pins = input.board.filter((i) => i.kind !== 'snapshot' && !this.hackedBy(s, i.pinnedById) && pinShows(e, i.text));
       const seen = this.seen.get(keyOf(e)) ?? new Set<string>();
       return {
         host: e.host, where: e.where, text: e.text, gone: e.gone,
@@ -157,8 +164,8 @@ export class Debrief {
     const chosen = [...new Set([shots.filter((x) => x.time <= s.time).at(-1), shots.find((x) => x.time > s.time)])].filter((x) => x !== undefined);
     return chosen.map((shot) => {
       const same = (camera: string, time: number, names: string[]) => camera === shot.camera && Math.abs(time - shot.time) <= PICTURE_MS && names.includes(name);
-      const pins = input.board.filter((i) => i.frame && i.pinnedById !== s.by && same(i.frame.camera, i.frame.time, i.frame.people.map((p) => p.name)));
-      const seen = this.pictures.filter((p) => p.playerId !== s.by && same(p.camera, p.time, p.names));
+      const pins = input.board.filter((i) => i.frame && !this.hackedBy(s, i.pinnedById) && same(i.frame.camera, i.frame.time, i.frame.people.map((p) => p.name)));
+      const seen = this.pictures.filter((p) => !this.hackedBy(s, p.playerId) && same(p.camera, p.time, p.names));
       const me = shot.people.find((p) => p.playerId === s.by)!;
       const doing = me.activity === 'at-pc' ? ' (crouched at a PC)' : me.seatedAt ? ` (sitting at ${me.seatedAt})` : '';
       return {

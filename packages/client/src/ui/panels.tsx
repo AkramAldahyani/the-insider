@@ -175,12 +175,13 @@ function PlayerRoster({ ui }: { ui: UiState }) {
       {people.map((p) => {
         const department = ui.employees.find((e) => e.id === p.id)?.department ?? 'Employee';
         const self = p.id === ui.playerId;
+        const partner = ui.briefing?.partners.some((x) => x.id === p.id);
         return <button key={p.id} type="button" className={`roster-person ${self ? 'roster-self' : ''}`}
           aria-pressed={(selected || ui.playerId) === p.id} onClick={() => setSelected(p.id)}
           style={{ '--department': departmentColor(department) } as CSSProperties}>
           <Portrait id={p.id} department={department} />
           <span className="roster-copy"><span className="roster-name">{p.name}{self && <small> You</small>}</span>
-            <span className="department-tag">{department}</span>
+            <span className="department-tag">{department}</span>{partner && <span className="partner-tag">partner</span>}
             <span className="roster-status"><span className="signal-dot" />{p.seatedAt ? 'At workstation' : 'In office'}</span>
           </span>
         </button>;
@@ -204,6 +205,7 @@ export function MissionPanel({ ui }: { ui: UiState }) {
       </div>
       {ladderLevel(ui.solo?.level) && <p className="mission-level" data-testid="mission-level">{ladderLevel(ui.solo?.level)!.briefing}</p>}
       <p className="mission-goal" data-testid="mission-goal">{ui.briefing.goal}</p>
+      {ui.briefing.partners.length > 0 && <p data-testid="mission-partners">Your {ui.briefing.partners.length === 1 ? 'partner' : 'partners'}: <strong>{ui.briefing.partners.map((p) => p.name).join(' and ')}</strong> (red for you on the map). Any of you can hand in what one of you read.</p>}
       <p>Your tools are in <code>{ui.briefing.toolsPath}</code> on your own PC (a hidden folder: <code>ls -a</code>).</p>
       <p className="mission-sub">Rumours about offices like this one:</p>
       <ul>
@@ -253,7 +255,10 @@ export function MatchOver({ ui }: { ui: UiState }) {
   const nextLevel = level && o.winner === 'hacker' && level < LADDER.length ? level + 1 : null;
   // The hacker can also win without the flag (reputation, parity): the reason below says how.
   const byFlag = o.reason === 'The hacker got the flag out.';
-  const title = o.winner === 'hacker'
+  const several = o.hackers.length > 1;
+  const title = several
+    ? (o.winner === 'hacker' ? (iAmHacker ? 'Your side wins.' : 'The hackers win.') : iAmHacker ? 'All of you were caught.' : 'Every hacker was caught. The company is safe.')
+    : o.winner === 'hacker'
     ? (iAmHacker ? (byFlag ? 'You got the flag out. You win.' : 'You win.') : byFlag ? 'The hacker got the flag out.' : 'The hacker wins.')
     : (iAmHacker ? 'You were caught.' : 'The hacker was caught. The company is safe.');
   return (
@@ -261,10 +266,10 @@ export function MatchOver({ ui }: { ui: UiState }) {
       <div className="match-over-box">
         <div className="eyebrow">MATCH OVER · {clockText(o.at)}</div>
         <h2>{title}</h2>
-        <p>{o.reason} The hacker was <strong data-testid="match-over-hacker">{o.hacker}</strong>{ui.party && <> ({ui.party.cast.find((c) => c.hacker)?.name ?? 'played by the computer'})</>}.</p>
+        <p>{o.reason} The {several ? 'hackers were' : 'hacker was'} <strong data-testid="match-over-hacker">{o.hacker}</strong>{ui.party && !several && <> ({ui.party.cast.find((c) => c.hacker)?.name ?? 'played by the computer'})</>}.</p>
         {ui.party && (
           <ul className="cast" data-testid="cast">
-            {ui.party.cast.map((c) => <li key={c.employee}><strong>{c.name}</strong> was {c.employee}{c.hacker && ', the hacker'}</li>)}
+            {ui.party.cast.map((c) => <li key={c.employee}><strong>{c.name}</strong> was {c.employee}{c.hacker && (several ? ', a hacker' : ', the hacker')}</li>)}
           </ul>
         )}
         {ui.debrief?.rating && <p className="match-over-rating" data-testid="rating">{ui.debrief.rating.title}</p>}

@@ -20,7 +20,7 @@ describe('the guard detains someone', () => {
     r.connect('o', 'p4');
     r.connect('t', 'p10');
     r.connect('s', 'p1');
-    r.game.world.mission.hacker = 'p4';
+    r.game.world.mission.hackers = ['p4'];
     nextTo(r, 't', 'p4');
     r.send('t', 'detain', { target: 'p4' });
     for (const c of ['o', 't', 's']) {
@@ -34,7 +34,7 @@ describe('the guard detains someone', () => {
     r.connect('o', 'p4');
     r.connect('t', 'p10');
     r.connect('s', 'p1');
-    r.game.world.mission.hacker = 'p9';
+    r.game.world.mission.hackers = ['p9'];
     nextTo(r, 't', 'p4');
     r.send('t', 'detain', { target: 'p4' });
     expect(r.last('s', 'match.over')).toBeUndefined();
@@ -49,7 +49,7 @@ describe('the guard detains someone', () => {
     r.connect('o', 'p4');
     r.connect('t', 'p10');
     r.connect('s', 'p1');
-    r.game.world.mission.hacker = 'p4';
+    r.game.world.mission.hackers = ['p4'];
     r.send('s', 'detain', { target: 'p4' });
     expect(r.notice('s')).toBe('Only the security guard can detain people.');
     expect(r.sitAt('o', 'p4', 'MKT-LT-11')).toBe(true); // Omar goes to his desk

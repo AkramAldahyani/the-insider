@@ -272,8 +272,10 @@ export type WeaknessId = 'weak-admin-password' | 'extra-sudo' | 'plaintext-passw
 
 /** The match's secrets (see mission/mission.ts). NEVER send this to a game client. */
 export interface Mission {
-  /** Player id of the hacker (null = this match has none yet). */
-  hacker: string | null;
+  /** Player ids of the hackers, usually one (empty = this match has none yet). Large matches have up to three, who know each other. */
+  hackers: string[];
+  /** Those of them who were found out and are out of the game. */
+  caught: string[];
   /** Where the flag is. */
   flag: { host: string; path: string } | null;
   /** The weaknesses switched on for this match. */
@@ -302,7 +304,7 @@ export interface TraceLine {
 export interface TrailEntry {
   /** Id of the master event. */
   event: number;
-  /** The player who was the hacker at that moment. */
+  /** The hacker who did it. */
   by: string;
   lines: TraceLine[];
 }

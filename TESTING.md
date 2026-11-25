@@ -581,7 +581,7 @@ Too easy or too hard? The numbers are in `packages/server/src/bots/hacker-pace.t
 
 ## AQ. Phase 6, part B: secret parts and the next match
 
-1. Two windows, bots on: start. Each window says *You are (not) the hacker* and who you are. With two people it is usually *not* for both. **Go to work** closes it; nobody can choose an employee.
+1. Two windows, bots on: start. Each window says *You are the hacker* or *You are not a hacker*, and who you are. With two people it is usually *not* for both. **Go to work** closes it; nobody can choose an employee.
 2. At 09:00 all eleven people are in the list on the right and stand at their desks. Nothing says which of them are people, and no lobby names appear anywhere.
 3. As the host set *Hacker* to *Always one of you* with two people: the start is refused (three are needed). The same without bots. With a third window it works, and exactly one of the three is the hacker.
 4. *Always the computer*: all windows say *not the hacker*.
@@ -589,6 +589,14 @@ Too easy or too hard? The numbers are in `packages/server/src/bots/hacker-pace.t
 6. End a match (the hacker hands in the flag, or is voted out or detained): the box says who the hacker was, with the person's name or *played by the computer*, and who played whom.
 7. **Back to the lobby** in one window only: that window shows the other one as *in the last match*, and the host cannot start yet. A new person can join meanwhile. When all are back and ready, the host starts: a new draw, 09:00, an empty board.
 8. *Look around the office* and then **Back to the lobby** in the bottom bar works too.
+
+## AR. Phase 6, part C: several hackers
+
+1. In a lobby with bots choose *2 hackers*: everybody sees *This match: 2 hackers*. Without bots and with three people the number stays one and the lobby says why.
+2. Start with three or more people. A hacker sees *You are a hacker* and the partner's name; the partner's name is red on the map and marked *partner* in the list. The others see nothing like it.
+3. Vote out or detain one hacker: everybody reads that they were a hacker and that one is still out there; reputation stays the same; the match goes on. That person watches.
+4. One hacker reads the flag and tells the other, who hands it in (after 3 game minutes): it counts.
+5. Catch the second one too: *Every hacker was caught.* The debrief shows for every step who did it.
 
 ## T. What you must NOT be able to see
 
@@ -621,7 +629,7 @@ the outstanding manual check of password masking at a real interactive keyboard.
 pnpm test
 ```
 
-Expected: `Test Files 55 passed (55)` and `Tests 690 passed (690)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
+Expected: `Test Files 56 passed (56)` and `Tests 710 passed (710)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
 
 On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent workers. This passed the complete suite during Phase 5F validation after three existing long-running tests timed out with unrestricted workers.
 
@@ -629,9 +637,9 @@ On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent
 pnpm e2e
 ```
 
-Expected: `16 passed` (10 to 14 minutes). Playwright starts its own games (ports 2577 and 5183: no bots, only the plaintext-password weakness; ports 2578 and 5184: solo matches at four times the speed), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
+Expected: `17 passed` (10 to 14 minutes). Playwright starts its own games (ports 2577 and 5183: no bots, only the plaintext-password weakness; ports 2578 and 5184: solo matches at four times the speed), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
 
-For stability verification, run `pnpm e2e --retries=0` ten times consecutively; each must report 16 passes.
+For stability verification, run `pnpm e2e --retries=0` ten times consecutively; each must report 17 passes.
 Retries also default to zero. All PC-sitting steps share a helper that waits for the hostname's hint,
 the server-confirmed stop, and the initial terminal screen. Movement uses state changes rather than
 fixed sleeps, and holds the key through server-opened automatic doors; Playwright result attachments

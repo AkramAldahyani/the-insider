@@ -372,7 +372,7 @@ export function debriefSteps(world: World): DebriefStep[] {
   }
 
   // Using a PC somebody left open writes no log line at all; the engine keeps its own record (auth/unattended.ts).
-  const hackers = new Set([...world.mission.trail.map((t) => t.by), ...(world.mission.hacker ? [world.mission.hacker] : [])]);
+  const hackers = new Set([...world.mission.trail.map((t) => t.by), ...world.mission.hackers]);
   for (const w of world.unattended) {
     for (const v of w.visitors) {
       if (!hackers.has(v.playerId) || v.playerId === w.ownerPlayer || w.ownerPlayer === null) continue;

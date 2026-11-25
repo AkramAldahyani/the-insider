@@ -40,9 +40,9 @@ describe('what a browser may send', () => {
   it('settings: only known fields with valid values', () => {
     const d = DEFAULT_PARTY_SETTINGS;
     expect(changeSettings(d, { difficulty: 'hard' })).toEqual({ ...d, difficulty: 'hard' });
-    expect(changeSettings(d, { bots: false, hacker: 'human', meetings: 'long', dev: true, seed: 4, weaknesses: [], hackerId: 'p1' })).toEqual({ ...d, bots: false, hacker: 'human', meetings: 'long' });
-    for (const bad of [null, 'hard', 7, [], { difficulty: 'impossible', meetings: 5, bots: 'no' }, { meetings: 'toString' }, { hacker: 'p4' }]) expect(changeSettings(d, bad)).toEqual(d);
-    expect(d).toEqual({ bots: true, hacker: 'auto', difficulty: 'normal', meetings: 'normal' });
+    expect(changeSettings(d, { bots: false, hacker: 'human', meetings: 'long', dev: true, seed: 4, weaknesses: [], hackerId: 'p1', hackers: 7 })).toEqual({ ...d, bots: false, hacker: 'human', meetings: 'long' });
+    for (const bad of [null, 'hard', 7, [], { difficulty: 'impossible', meetings: 5, bots: 'no' }, { meetings: 'toString' }, { hacker: 'p4' }, { hackers: -1 }, { hackers: '2' }, { hackers: 4 }]) expect(changeSettings(d, bad)).toEqual(d);
+    expect(d).toEqual({ bots: true, hacker: 'auto', hackers: 0, difficulty: 'normal', meetings: 'normal' });
   });
 });
 
@@ -116,7 +116,7 @@ describe('the rules of a lobby', () => {
   it('after a match everybody comes back when they like, and the next one waits for them', () => {
     const p = make('a', 'b', 'c');
     for (const x of ['b', 'c']) p.setReady(x, true);
-    p.begin();
+    p.begin(1);
     expect(p.view('a')).toMatchObject({ playing: true, cast: [] });
     p.back('a'); // (a room does not pass this on during a match)
     const cast = [{ name: 'a', employee: 'Sara', hacker: true }];
@@ -131,7 +131,7 @@ describe('the rules of a lobby', () => {
     expect(p.notYet()).toBe('');
     // New people may come in again, and the next match hides the old cast.
     expect(p.join('d', 'd')).toBe('');
-    p.begin();
+    p.begin(1);
     expect(p.view('a').cast).toEqual([]);
     expect(p.join('e', 'e')).not.toBe('');
   });
@@ -148,14 +148,14 @@ describe('the rules of a lobby', () => {
 
 describe('the match of a lobby', () => {
   const base = { scenario: clone(scenario), map: clone(tiledMap), mapName: 'office-small', dev: false, weaknesses: ['tailgate' as const], meetingTimes: { resultMs: 1000 } };
-  const draw = { hacker: 'p4', human: false };
+  const draw = { hackers: ['p4'], human: false };
 
   it('has what the host chose; the rest is the operator’s', () => {
-    const o = partyGameOptions(base, { bots: false, hacker: 'auto', difficulty: 'hard', meetings: 'long' }, 9, draw);
+    const o = partyGameOptions(base, { bots: false, hacker: 'auto', hackers: 0, difficulty: 'hard', meetings: 'long' }, 9, draw);
     expect(o).toMatchObject({ seed: 9, bots: false, dev: false, weaknesses: ['tailgate'], botOptions: { hackerDifficulty: 'hard' }, meetingTimes: { discussionMs: 150_000, votingMs: 60_000, resultMs: 1000 } });
     expect(o.soloPlayer).toBeUndefined();
     expect(partyGameOptions(base, DEFAULT_PARTY_SETTINGS, 9, draw).meetingTimes).toEqual({ resultMs: 1000 });
-    const short = new Recorder({ ...partyGameOptions(base, { bots: true, hacker: 'auto', difficulty: 'easy', meetings: 'short' }, 9, draw) });
+    const short = new Recorder({ ...partyGameOptions(base, { bots: true, hacker: 'auto', hackers: 0, difficulty: 'easy', meetings: 'short' }, 9, draw) });
     expect(short.game.bots).not.toBeNull();
     expect(base.meetingTimes).toEqual({ resultMs: 1000 });
   });
@@ -334,7 +334,7 @@ describe('over the network', () => {
     expect(b.party()).toMatchObject({ cast: [], playing: true });
     expect(b.party().members.every((m) => m.away)).toBe(true);
     // The match ends (as by force: how matches end is tested elsewhere).
-    (first as unknown as { endMatch(w: string, h: string, r: string): void }).endMatch('defenders', 'Nobody', 'Test.');
+    (first as unknown as { endMatch(w: string, r: string): void }).endMatch('defenders', 'Test.');
     await b.until((p) => !p.playing);
     const cast = b.party().cast;
     expect(cast.map((c) => c.name)).toEqual(['Anna', 'Ben']);
@@ -375,7 +375,7 @@ describe('over the network', () => {
     await a.until((p) => p.notYet === '' && !p.open);
     a.send('party.start', {});
     await b.until((p) => p.playing);
-    (game(a.room.roomId) as unknown as { endMatch(w: string, h: string, r: string): void }).endMatch('hacker', 'Nobody', 'Test.');
+    (game(a.room.roomId) as unknown as { endMatch(w: string, r: string): void }).endMatch('hacker', 'Test.');
     await b.until((p) => !p.playing);
     await expect(browser(a.room.roomId, 'Late')).rejects.toThrow('locked');
     // The host can remove somebody who never comes back from the debrief.

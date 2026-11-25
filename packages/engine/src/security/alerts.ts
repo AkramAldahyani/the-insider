@@ -19,6 +19,7 @@
  * a full office of bots and checks exactly that.
  */
 import { emit } from '../events/log';
+import { activeHackers } from '../mission/hackers';
 import { isoSecond } from '../core/time';
 import type { GameEvent, World } from '../types';
 
@@ -82,12 +83,12 @@ const OWN_SLIPS = new Set(['unlock.fail', 'login.fail', 'ssh.fail']);
  * hacker has done nothing new worth flagging (or there is no hacker).
  */
 export function escalate(world: World): GameEvent | null {
-  const hacker = world.mission.hacker;
-  if (!hacker || world.noise.from === null) return null;
+  const hackers = activeHackers(world); // whoever was caught is no news any more
+  if (hackers.length === 0 || world.noise.from === null) return null;
   const done = new Set(world.mission.escalated);
-  const own = world.players.find((p) => p.id === hacker)?.account;
-  const e = world.events.find((x) => x.actor === hacker && x.time >= world.noise.from! && !done.has(x.id) && ESCALATION_TYPES.has(x.type)
-    && !(OWN_SLIPS.has(x.type) && x.user === own)
+  const own = new Map(world.players.map((p) => [p.id, p.account]));
+  const e = world.events.find((x) => x.actor !== null && hackers.includes(x.actor) && x.time >= world.noise.from! && !done.has(x.id) && ESCALATION_TYPES.has(x.type)
+    && !(OWN_SLIPS.has(x.type) && x.user === own.get(x.actor))
     // An ordinary mail is work; only a phishing mail is worth a second look.
     && (x.type !== 'mail.send' || world.mail.messages.some((m) => m.id === x.details.id && m.headerFrom !== m.from))
     && (x.type !== 'file.read' || (!x.details.denied && watchedFile(world, x.host, String(x.details.path)) !== null)));

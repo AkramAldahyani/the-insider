@@ -101,6 +101,14 @@ export function PartyScreen({ party }: { party: PartyView }) {
             </select>
           </label>
           <label>
+            <span>How many</span>
+            <select data-testid="party-hackers" disabled={!host} value={s.hackers} onChange={(e) => store.send('party.settings', { hackers: Number(e.target.value) })}>
+              <option value={0}>As many as suit the match</option>
+              {[1, 2, 3].map((n) => <option key={n} value={n}>{n === 1 ? 'One hacker' : `${n} hackers`}</option>)}
+            </select>
+            <small data-testid="party-hacker-count">{s.hackers > party.hackers ? `Only ${party.hackers}: the defenders must keep the majority.` : `This match: ${party.hackers === 1 ? 'one hacker' : `${party.hackers} hackers`}.`}</small>
+          </label>
+          <label>
             <span>Difficulty</span>
             <select data-testid="party-difficulty" disabled={!host || !s.bots} value={s.difficulty} onChange={(e) => store.send('party.settings', { difficulty: e.target.value as SoloDifficulty })}>
               {SOLO_DIFFICULTIES.map((d) => <option key={d} value={d}>{DIFFICULTY_TEXT[d]}</option>)}
@@ -134,17 +142,20 @@ export function PartyScreen({ party }: { party: PartyView }) {
 export function RoleReveal({ ui }: { ui: UiState }) {
   if (!ui.reveal || !ui.card) return null;
   const hacker = ui.briefing !== null;
+  const partners = ui.briefing?.partners ?? [];
+  const count = ui.party?.hackers ?? 1;
   return (
     <div className="reveal" data-testid="reveal" role="dialog" aria-label="Your part">
       <div className={`reveal-box ${hacker ? 'reveal-hacker' : ''}`}>
         <div className="eyebrow">ONLY YOU SEE THIS</div>
-        <h2 data-testid="reveal-role">{hacker ? 'You are the hacker' : 'You are not the hacker'}</h2>
+        <h2 data-testid="reveal-role">{hacker ? (partners.length > 0 ? 'You are a hacker' : 'You are the hacker') : 'You are not a hacker'}</h2>
         <p>You are <strong>{ui.card.name}</strong>, {ui.card.title} ({ui.card.role.toLowerCase()}).</p>
         <p>
           {hacker
             ? 'Look like everybody else, get the flag off the admin server, and hand it in. Your private briefing is under M.'
-            : 'One of your colleagues is after a file on the admin server. Find out who, with evidence, before they hand it over.'}
+            : `${count === 1 ? 'One of your colleagues is' : `${count} of your colleagues are`} after a file on the admin server. Find out who, with evidence, before they hand it over.`}
         </p>
+        {partners.length > 0 && <p data-testid="reveal-partners">You are not alone: <strong>{partners.map((p) => p.name).join(' and ')}</strong>. Any of you can hand in the flag.</p>}
         <button type="button" className="menu-go" data-testid="reveal-close" autoFocus onClick={() => store.set({ reveal: false })}>Go to work</button>
       </div>
     </div>
