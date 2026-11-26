@@ -21,7 +21,7 @@ What exists:
 
 - a simulated office network: machines, users, files, logs, a shell, mail, a simulated web, badge and camera logs (`packages/engine`);
 - a game server that owns that world, the clock, the doors, the bots, the tasks and the cameras (`packages/server`);
-- a browser client: map, movement, PC terminal (`packages/client`);
+- a browser client: a home lobby where you dress your character and choose how to play, the lobby with friends, map, movement, PC terminal (`packages/client`);
 - a text CLI to use the simulation without graphics (`packages/cli`).
 
 Everything is simulated. No real commands are run, no real network is touched, and nothing here is a real exploit.
@@ -182,13 +182,13 @@ pnpm test
 pnpm typecheck
 ```
 
-838 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay), the server (movement, sitting, doors and badges, bots, bot hacker fairness, difficulty, fallback matches and interruptions, job tasks, CCTV, a three-hour soak run, whole matches against the bot hacker, map checks, and the visibility rule), and CLI mission startup and completion.
+841 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay), the server (movement, sitting, doors and badges, bots, bot hacker fairness, difficulty, fallback matches and interruptions, job tasks, CCTV, a three-hour soak run, whole matches against the bot hacker, map checks, and the visibility rule), and CLI mission startup and completion.
 
 ```bash
 pnpm e2e
 ```
 
-Twenty-three Playwright tests drive real Chromium clients through the game. Nineteen use their own server without bots (ports 2577 and 5183), so they never share an office with a game you have open; the other four play whole matches (solo as a defender, as the hacker and on the scenario ladder, and three friends from a lobby) on a second one (2578 and 5184). They cover the existing interactions plus two-client movement, responsive HUD layout, and stable canvas/camera sizing after repeated task-panel toggles. Screenshots go to `e2e/screenshots/` and `test-results/design/`. The first time, download the browser with:
+Twenty-four Playwright tests drive real Chromium clients through the game. Twenty use their own server without bots (ports 2577 and 5183), so they never share an office with a game you have open; the other four play whole matches (solo as a defender, as the hacker and on the scenario ladder, and three friends from a lobby) on a second one (2578 and 5184). They cover the existing interactions plus two-client movement, responsive HUD layout, and stable canvas/camera sizing after repeated task-panel toggles. Screenshots go to `e2e/screenshots/` and `test-results/design/`. The first time, download the browser with:
 
 ```bash
 pnpm exec playwright install chromium

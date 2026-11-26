@@ -454,3 +454,157 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .menu-place { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 14px 0; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--amber); background: #1c1a12; }
 .menu-place .menu-go { margin: 0; }
 .votes-needed { flex-basis: 100%; }
+
+/* ── The home lobby and the friends lobby: the office's own room, wall and floor ── */
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.home { height: 100%; display: grid; grid-template-rows: 54px auto minmax(0, 1fr); background: linear-gradient(110deg, #101d2c, #0b1320 50%, #101d2c); }
+.home-bar { display: flex; align-items: center; gap: 14px; padding: 0 18px; font-family: var(--mono); font-size: 13px; background: #0c1623; border-bottom: 1px solid var(--line); min-width: 0; }
+.home-tagline { color: var(--muted); font: 13px var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home .menu-place { margin: 12px 16px 0; }
+.home-main { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(340px, 0.75fr); gap: 16px; padding: 16px; min-height: 0; overflow: auto; }
+.home-note { color: var(--muted); font-size: 12.5px; line-height: 1.5; margin: 0; }
+
+/* The stage: a room as the map draws one. */
+.stage { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.stage-room { position: relative; display: flex; flex-direction: column; min-height: 300px; flex: 1; border: 1px solid #42596e; border-radius: 5px; overflow: clip; box-shadow: 0 10px 32px #0004; }
+.stage-wall { flex: none; height: 46px; display: flex; gap: 10%; padding: 0 8%; align-items: center; background: linear-gradient(#192334 0 5px, #738195 5px 7px, #3b475a 7px 26px, #283244 26px 31px, #192334 31px); box-shadow: 0 7px 0 #0a152340; }
+.stage-wall span { flex: 1; height: 13px; margin-top: -6px; border: 1px solid #142c3f; background: linear-gradient(#b2d5df 0 2px, #6896ac 2px); opacity: 0.9; }
+.stage-floor {
+  position: relative; flex: 1 0 auto; display: grid; place-items: center; align-content: center; gap: 10px; padding: 22px 16px 26px; margin: 0;
+  background-color: #385450;
+  background-image: linear-gradient(rgba(16, 35, 49, 0.16) 1px, transparent 1px), linear-gradient(90deg, rgba(16, 35, 49, 0.16) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 48px 48px, 48px 48px, 48px 16px;
+}
+.stage-spot { position: relative; display: grid; place-items: center; padding: 18px 60px 8px; border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 10px; background: rgba(11, 26, 32, 0.28); }
+.stage-shadow { width: 120px; height: 22px; margin-top: -14px; border-radius: 50%; background: rgba(7, 17, 30, 0.45); }
+.stage-plate input { width: 220px; max-width: 100%; padding: 7px 12px; text-align: center; font: 600 16px var(--sans); color: var(--text); background: #132131; border: 1px solid #42596e; border-radius: 4px; }
+.stage-plate input::placeholder { color: var(--muted); font-weight: 400; }
+.stage-plate input:focus-visible { outline: none; border-color: var(--green); box-shadow: 0 0 0 2px #8adbc140; }
+.stage-turn { display: flex; gap: 6px; }
+.stage-turn button { min-width: 38px; padding: 5px 10px; border: 1px solid #42596e; border-radius: 4px; background: #132131cc; color: var(--text); }
+.stage-turn button:hover { border-color: var(--green); }
+
+/* The character: one frame of the office's pixel sheet, made big. */
+.figure { display: inline-block; width: var(--w); height: var(--h); background-repeat: no-repeat; background-size: var(--sheet-w) auto; background-position: 0 var(--row); image-rendering: pixelated; }
+.figure-walking { animation: figure-walk 0.56s steps(4) infinite; }
+@keyframes figure-walk { from { background-position: 0 var(--row); } to { background-position: calc(-1 * var(--sheet-w)) var(--row); } }
+.stage-spot .figure:not(.figure-walking) { animation: figure-breathe 2.6s ease-in-out infinite; }
+@keyframes figure-breathe { 50% { transform: translateY(-3px); } }
+
+/* The wardrobe, styled like the office's side panels. */
+.wardrobe { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 18px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; background: linear-gradient(160deg, #17283a, #101b2a); }
+.wardrobe-row { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 8px; align-items: center; }
+.wardrobe-row:first-child, .wardrobe-wide, .wardrobe-note { grid-column: 1 / -1; }
+.wardrobe-name { color: var(--muted); font-size: 13px; }
+.wardrobe-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.swatch { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: #0c1928; cursor: pointer; }
+.swatch img { width: 30px; height: 30px; image-rendering: pixelated; }
+.swatch-dot { width: 20px; height: 20px; border-radius: 50%; box-shadow: inset 0 -3px 0 #00000033; }
+.swatch:hover { border-color: #58778a; }
+.swatch-on { border: 2px solid var(--green); background: #10262a; }
+.swatch:focus-visible, .mode:focus-visible, .play:focus-visible, .pick-options label:focus-within, .stage-turn button:focus-visible, .wardrobe-glasses input:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.wardrobe-glasses { cursor: pointer; }
+.wardrobe-glasses input { justify-self: start; width: 18px; height: 18px; accent-color: var(--green); }
+.wardrobe-note { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+
+/* The ways to play: rows like the office's roster, each with the colour of a part of the office. */
+.modes { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.mode-list { display: grid; gap: 6px; }
+.mode { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; text-align: left; padding: 10px 12px 10px 14px; border: 1px solid #2a3f55; border-left: 4px solid var(--mode); border-radius: 6px; background: #0c1928; color: var(--text); cursor: pointer; }
+.mode:hover { border-color: #3d5871; border-left-color: var(--mode); }
+.mode-on { background: #15263a; border-color: var(--mode); box-shadow: inset 0 0 0 1px #ffffff08; }
+.mode-name { font-weight: 700; font-size: 15px; }
+.mode-people { color: var(--muted); font: 11px var(--mono); align-self: center; }
+.mode-about { grid-column: 1 / -1; color: #b9c8d4; font-size: 13px; line-height: 1.4; }
+.mode:not(.mode-on) .mode-about { display: none; }
+.mode-options { display: grid; gap: 14px; padding: 14px; border: 1px solid var(--line); border-top: 3px solid var(--mode); border-radius: 6px; background: var(--panel); }
+.mode-lead { margin: 0; color: #c3d1dc; line-height: 1.5; }
+.pick { border: 0; margin: 0; padding: 0; min-width: 0; }
+.pick legend { padding: 0; margin-bottom: 7px; color: var(--muted); font-size: 13px; }
+.pick-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.pick-options label { position: relative; padding: 6px 11px; border: 1px solid var(--line); border-radius: 4px; background: #0c1928; font-size: 13.5px; cursor: pointer; }
+.pick-options input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.pick-options label.pick-on { border-color: var(--green); background: #10262a; color: var(--green); }
+.pick-about { margin: 7px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.join { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.join label { display: grid; gap: 5px; color: var(--muted); font-size: 13px; }
+.join input { width: 160px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-2); color: var(--text); font: 600 16px var(--mono); }
+.join input:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.modes .friends-hint { margin: 0; font-size: 13px; color: var(--amber); }
+.modes .ladder li { padding: 6px 8px; border-color: #2a3f55; background: #0c1928; }
+.modes .ladder li > button:first-child { flex: 1; text-align: left; padding: 4px; border: 0; background: none; color: inherit; cursor: pointer; }
+.modes .ladder li.ladder-on { border-color: var(--amber); }
+.modes .ladder .ladder-play { padding: 6px 14px; }
+
+/* The one big button: a key of the keyboard in the office's green. */
+.play {
+  width: 100%; min-height: 60px; padding: 12px 18px; border: 0; border-radius: 6px; cursor: pointer;
+  background: var(--green); color: #0b1a20; font: italic 850 21px var(--sans); letter-spacing: 0.02em;
+  box-shadow: inset 0 -5px 0 #4f9c86, 0 8px 24px #8adbc126; transition: transform 0.06s;
+}
+.play:hover:not(:disabled) { background: #9de6cf; }
+.play:active:not(:disabled) { transform: translateY(3px); box-shadow: inset 0 -2px 0 #4f9c86; }
+.play:disabled { background: #2a3d4f; color: #7f93a4; box-shadow: none; cursor: not-allowed; }
+.play.play-done { background: #2a3d4f; color: var(--green); box-shadow: inset 0 -5px 0 #1b2a39; }
+
+/* The friends lobby. */
+.lobby-code-label { color: var(--muted); font: 13px var(--sans); }
+.lobby-code { color: var(--green); font: 700 22px var(--mono); letter-spacing: 0.22em; }
+.lobby-count { color: var(--muted); font-size: 12px; }
+.lobby-floor { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; align-content: center; gap: 18px 14px; }
+.squad { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.squad-away .figure { opacity: 0.45; filter: grayscale(0.6); }
+.squad-plate { display: grid; justify-items: center; gap: 2px; padding: 4px 9px; border-radius: 4px; background: #132131; border: 1px solid #2c4256; max-width: 150px; }
+.squad-plate .party-name { font: 600 12.5px var(--sans); text-align: center; }
+.squad-status { font: 10.5px var(--mono); color: var(--muted); }
+.squad-ready .squad-plate { border-color: #4f9c86; }
+.squad-ready .squad-status { color: var(--green); }
+.squad .squad-host { color: var(--amber); }
+.squad-connection, .squad-in { color: var(--amber); }
+.squad-remove { padding: 2px 8px; font-size: 11px; border: 1px solid var(--line); border-radius: 4px; background: #132131; color: var(--muted); }
+.squad-remove:hover { color: var(--text); border-color: var(--red); }
+.invite { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.invite label { flex: 1; display: grid; gap: 5px; color: var(--muted); font-size: 13px; min-width: 220px; }
+.invite .party-link { width: 100%; }
+/* In the lobby the wardrobe is folded away until somebody wants to change. */
+.lobby-wardrobe { border: 1px solid var(--line); border-radius: 6px; background: #0f1a28; }
+.lobby-wardrobe summary { padding: 9px 14px; cursor: pointer; font-weight: 650; color: var(--text); list-style-position: inside; }
+.lobby-wardrobe summary:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.lobby-wardrobe[open] summary { border-bottom: 1px solid var(--line); }
+.lobby-wardrobe .wardrobe { border: 0; border-radius: 0 0 6px 6px; }
+.invite button { padding: 9px 16px; border: 1px solid var(--green); border-radius: 6px; background: var(--panel-2); color: var(--text); font-weight: 600; }
+.settings-title { margin: 0; font-size: 17px; }
+.settings-title small { color: var(--muted); font-weight: 400; font-size: 13px; }
+.lobby-settings { padding: 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); align-self: start; }
+.lobby-settings .party-settings { max-width: none; }
+.lobby-settings .party-settings label { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 6px 10px; }
+.lobby-settings .party-settings label.setting-check { display: flex; gap: 10px; }
+.lobby-settings .party-settings select { min-width: 0; width: 100%; font-size: 14px; }
+.lobby-settings .party-settings small { grid-column: 2; }
+.lobby-settings .party-note { margin: 0; }
+.lobby-leave { align-self: flex-start; }
+
+@media (max-width: 1100px) {
+  .wardrobe { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 900px) {
+  .home { grid-template-rows: 54px auto auto; overflow: auto; }
+  .home-main { grid-template-columns: minmax(0, 1fr); overflow: visible; grid-auto-rows: max-content; }
+  .stage-room { min-height: 330px; }
+  /* On a narrow screen: the character, then how to play, then the wardrobe. */
+  .home:not(.lobby) .stage { display: contents; }
+  .home:not(.lobby) .stage-room { order: 1; }
+  .home:not(.lobby) .modes { order: 2; }
+  .home:not(.lobby) .wardrobe { order: 3; }
+}
+@media (max-width: 600px) {
+  .home-tagline, .lobby-count { display: none; }
+  .stage-spot { padding: 18px 30px 6px; }
+  .wardrobe-row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .lobby-code { font-size: 18px; letter-spacing: 0.14em; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .figure-walking, .stage-spot .figure:not(.figure-walking) { animation: none; }
+  .play { transition: none; }
+}

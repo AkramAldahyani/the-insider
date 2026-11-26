@@ -7,6 +7,7 @@
  *
  * Everything a browser sends is checked here before it is used, as in solo.ts.
  */
+import type { Look } from './look';
 import { SOLO_DIFFICULTIES, type SoloDifficulty } from './solo';
 
 /** Name of the Colyseus room type for lobbies (each one is a room of its own). */
@@ -135,6 +136,8 @@ export interface PartyMember {
   away: boolean;
   /** The connection was lost; the place is kept for a while. (Not told during a match: there it would say who is a person.) */
   lost: boolean;
+  /** How their character looks in the lobby (look.ts). */
+  look: Look;
 }
 
 /** Who played whom. Told only when a match is over. */

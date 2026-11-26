@@ -5,7 +5,7 @@
  */
 import { randomInt } from 'node:crypto';
 import {
-  CODE_LENGTH, CODE_LETTERS, DEFAULT_PARTY_SETTINGS, PARTY_HAND_IN_MINUTES, LARGE_ALL_HANDS, PARTY_MIN, PARTY_MIN_HUMAN, PARTY_VOTES_NEEDED, officeFor, changeSettings, cleanName, hackerCount,
+  CODE_LENGTH, CODE_LETTERS, DEFAULT_PARTY_SETTINGS, PARTY_HAND_IN_MINUTES, LARGE_ALL_HANDS, PARTY_MIN, PARTY_MIN_HUMAN, PARTY_VOTES_NEEDED, officeFor, changeSettings, cleanName, hackerCount, parseLook,
   type PartyCast, type PartyMeetings, type PartyMember, type PartySettings, type PartyView,
 } from '@insider/shared';
 import { whoMayHack, type Deal } from './deal';
@@ -56,11 +56,11 @@ export class Party {
   }
 
   /** Somebody comes in. Returns why not, or "". The first one is the host. */
-  join(clientId: string, wanted: unknown): string {
+  join(clientId: string, wanted: unknown, look?: unknown): string {
     if (this.playing) return 'This match has already started.';
     if (!this.open) return 'The host has closed this lobby.';
     if (this.members.size >= this.size) return 'This lobby is full.';
-    this.members.set(clientId, { id: `m${++this.count}`, name: this.freeName(cleanName(wanted) || 'Player'), ready: false, away: false, lost: false });
+    this.members.set(clientId, { id: `m${++this.count}`, name: this.freeName(cleanName(wanted) || 'Player'), ready: false, away: false, lost: false, look: parseLook(look) });
     if (!this.host) this.host = clientId;
     return '';
   }
@@ -115,6 +115,12 @@ export class Party {
     return '';
   }
 
+  /** A member changes how their character looks (anything strange becomes the default look). */
+  setLook(clientId: string, look: unknown): void {
+    const member = this.members.get(clientId);
+    if (member) member.look = parseLook(look);
+  }
+
   setReady(clientId: string, ready: unknown): void {
     const member = this.members.get(clientId);
     if (member && !member.away && typeof ready === 'boolean') member.ready = ready;
@@ -166,7 +172,7 @@ export class Party {
       code: this.code,
       you: this.members.get(clientId)?.id ?? '',
       hostId: this.members.get(this.host)?.id ?? '',
-      members: [...this.members.values()].map((m) => ({ ...m, lost: m.lost && !this.playing })),
+      members: [...this.members.values()].map((m) => ({ ...m, look: { ...m.look }, lost: m.lost && !this.playing })),
       size: this.size,
       office: this.office(),
       desks: this.desks(),

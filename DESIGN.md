@@ -267,7 +267,9 @@ Default for 15 players:
 
 Decided in Phase 6 (the owner accepted these with the plan):
 
-- A match with friends starts in a **lobby** with a five-letter code. The host chooses the settings and starts; one room runs the lobby and then its match.
+- The page opens on the **home lobby**: the player's character stands in a room drawn like the office and can be dressed (hair, skin, hair colour, jacket, glasses); on the right are the ways to play, each with its options and one big button. The look is kept in the browser.
+- A match with friends starts in a **lobby** with a five-letter code. Everybody's character stands there in their own look; the host chooses the settings and starts; one room runs the lobby and then its match.
+- In a match a player sees their own character in their look, but everybody else sees the employee they play: a look of their own would tell people from bots.
 - The hacker is drawn from the human players if there are at least four, otherwise bots can be drawn too; the host can change this.
 - A human hacker in multiplayer must also wait between first reading the flag and handing it in: 5, 3 or 2 game minutes by the lobby's difficulty (owner's choice after the measurements of part J).
 - Jobs are drawn when the host starts; the hacker always poses as an ordinary employee. A person as the hacker needs at least three people. Lobby names appear only after the match (during it they would tell people from bots), and in a lobby's match everybody is at work from the first moment.

@@ -3,7 +3,7 @@
  * Only public employee id/department select cosmetics. No roles or private data.
  * This canvas source is shared by Phaser sprites and React portraits.
  */
-import type { Facing } from '@insider/shared';
+import { LOOK_HAIR, LOOK_OUTFITS, LOOK_SKINS, type Facing, type Look } from '@insider/shared';
 
 export const FRAME_W = 32;
 export const FRAME_H = 40;
@@ -25,16 +25,22 @@ function variant(id: string): number {
   return [...id].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 0) % 8;
 }
 
-export function characterSheet(id: string, department: string): HTMLCanvasElement {
+/**
+ * The four-by-four sheet of a character: an employee (from its id and department), or, with `look`,
+ * a player's own character from the lobby.
+ */
+export function characterSheet(id: string, department: string, look?: Look): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = FRAME_W * 4;
   canvas.height = FRAME_H * 4;
   const ctx = canvas.getContext('2d')!;
   ctx.imageSmoothingEnabled = false;
-  const v = variant(id);
-  const skin = ['#e5ae83', '#ba805c', '#efc6a0', '#cc956f'][v % 4];
-  const hair = ['#242937', '#47352f', '#302a38', '#805537'][v % 4];
-  const accent = departmentColor(department);
+  const v = look ? look.style : variant(id);
+  const skin = look ? LOOK_SKINS[look.skin] : ['#e5ae83', '#ba805c', '#efc6a0', '#cc956f'][v % 4];
+  const hair = look ? LOOK_HAIR[look.hair] : ['#242937', '#47352f', '#302a38', '#805537'][v % 4];
+  const accent = look ? LOOK_OUTFITS[look.outfit] : departmentColor(department);
+  // A look chooses glasses itself; an employee has them by its variant.
+  const glasses = look ? look.glasses : v === 0 || v === 5;
   for (let row = 0; row < 4; row++) for (let frame = 0; frame < 4; frame++) {
     ctx.save();
     ctx.translate(frame * FRAME_W, row * FRAME_H);
@@ -89,7 +95,7 @@ export function characterSheet(id: string, department: string): HTMLCanvasElemen
       r(10, 2 + bob, 12, 4, '#ddd1c6'); r(10, 18 + bob, 14, 3, '#b39f9e');
       if (back) r(9, 6 + bob, 13, 13, '#c5b5b3');
     }
-    if ((v === 0 || v === 5) && !back) { // glasses
+    if (glasses && !back) { // glasses
       r(side ? 19 : 10, 10 + bob, side ? 6 : 13, 1, '#182638');
       r(side ? 20 : 10, 11 + bob, 5, 3, '#182638');
       if (!side) r(18, 11 + bob, 5, 3, '#182638');
@@ -103,12 +109,20 @@ export function characterSheet(id: string, department: string): HTMLCanvasElemen
 }
 
 const portraits = new Map<string, string>();
-export function characterPortrait(id: string, department: string): string {
-  const key = `${id}:${department}`;
+export function characterPortrait(id: string, department: string, look?: Look): string {
+  const key = `${id}:${department}:${look ? JSON.stringify(look) : ''}`;
   if (!portraits.has(key)) {
     const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32;
-    canvas.getContext('2d')!.drawImage(characterSheet(id, department), 0, 0, 32, 32, 0, 0, 32, 32);
+    canvas.getContext('2d')!.drawImage(characterSheet(id, department, look), 0, 0, 32, 32, 0, 0, 32, 32);
     portraits.set(key, canvas.toDataURL());
   }
   return portraits.get(key)!;
+}
+
+const sheets = new Map<string, string>();
+/** A look's whole sheet as a picture, for the lobby (React draws it with CSS, frame by frame). */
+export function lookSheet(look: Look): string {
+  const key = JSON.stringify(look);
+  if (!sheets.has(key)) sheets.set(key, characterSheet('look', '', look).toDataURL());
+  return sheets.get(key)!;
 }

@@ -133,6 +133,7 @@ test('the line breaks and comes back, a reload goes back, and leaving ends the m
 
 test('a solo match survives a reload, and the player may also forget it', async ({ page }) => {
   await page.goto('/');
+  await page.getByTestId('mode-investigation').click();
   await page.getByTestId('menu-investigation').click();
   await expect(page.getByTestId('mode')).toBeVisible();
   const name = await page.getByTestId('card').innerText();

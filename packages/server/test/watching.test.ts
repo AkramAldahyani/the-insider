@@ -12,7 +12,7 @@ const CAST: Record<string, string> = { s: 'p1', r: 'p2', l: 'p3', o: 'p4', m: 'p
 const FAST = { discussionMs: 2000, votingMs: 2000, resultMs: 500, cooldownMs: 0, usesPerPlayer: 3 };
 /** Every message a browser can send, with contents that would do something. (A new message type must be added here: the type says so.) */
 const ALL_MESSAGES: Record<ClientMessageType, unknown[]> = {
-  'party.ready': [{ ready: true }], 'party.settings': [{ bots: false }], 'party.open': [{ open: true }], 'party.remove': [{ id: 'm1' }], 'party.start': [{}], 'party.back': [{}],
+  'party.ready': [{ ready: true }], 'party.settings': [{ bots: false }], 'party.open': [{ open: true }], 'party.remove': [{ id: 'm1' }], 'party.start': [{}], 'party.back': [{}], 'party.look': [{ style: 1 }],
   choose: [{ playerId: 'p5' }, { playerId: 'p2' }, { playerId: 'p5', hacker: true }],
   move: [{ dx: 1, dy: 1, sequence: 1 }], sit: [{ hostname: 'FIN-LT-04' }, { hostname: 'HR-LT-03' }], stand: [{}], tap: [{ door: 'D-SRV' }],
   'item.start': [{ item: 'usb', hostname: 'FIN-LT-04' }], 'item.stop': [{}], 'monitors.open': [{}], 'monitors.frame': [{ camera: 'CAM-01' }],

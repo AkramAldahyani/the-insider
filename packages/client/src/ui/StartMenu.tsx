@@ -1,13 +1,22 @@
 /**
- * The start menu: which kind of match to play (DESIGN.md section 1a).
- * It only collects the choice. The server checks it and decides the rest.
+ * The home lobby: the first screen (DESIGN.md section 1a).
+ *
+ * On the left the player's own character stands in a room of the office and can
+ * be dressed (look.ts). On the right are the ways to play, each with its own
+ * options, and one button that starts the chosen one. This screen only collects
+ * choices; the server checks them and decides the rest.
  */
-import { LADDER, SOLO_DIFFICULTIES, SOLO_ROLES, type SoloChoice, type SoloDifficulty, type SoloMode, type SoloRole } from '@insider/shared';
-import { useState } from 'react';
+import {
+  LADDER, NAME_LENGTH, CODE_LENGTH, SOLO_DIFFICULTIES, SOLO_ROLES, cleanName, parseCode,
+  type Facing, type Look, type SoloChoice, type SoloDifficulty, type SoloMode, type SoloRole,
+} from '@insider/shared';
+import { useState, type CSSProperties } from 'react';
 import { isOpen, type LadderProgress } from '../game/ladderProgress';
+import { invitedTo, readName, saveName } from '../game/playerName';
 import type { SavedPlace } from '../game/savedPlace';
 import { store } from '../game/store';
-import { FriendsCard } from './PartyScreen';
+import { Figure } from './Figure';
+import { Wardrobe } from './Wardrobe';
 
 export const MODE_TEXT: Record<SoloMode, { name: string }> = { investigation: { name: 'Investigation' }, infiltration: { name: 'Infiltration' } };
 
@@ -40,110 +49,181 @@ export function matchName(solo: SoloChoice): string {
 /** The choice that starts a level. Its role and difficulty are not used: a level is fixed. */
 export const levelChoice = (level: number): SoloChoice => ({ mode: 'infiltration', role: 'any', difficulty: 'normal', level });
 
-function Ladder({ progress }: { progress: LadderProgress }) {
+// ───────────────────────────── The ways to play ─────────────────────────────
+
+type Mode = 'friends' | 'investigation' | 'infiltration' | 'ladder' | 'office';
+/** Each way to play has the colour of a part of the office. */
+const MODES: { id: Mode; name: string; about: string; color: string; people: string }[] = [
+  { id: 'friends', name: 'Play with friends', about: 'A lobby with a code. Secret roles; the computer fills the empty desks.', color: '#8adbc1', people: '2–30 people' },
+  { id: 'investigation', name: 'Investigation', about: 'Somebody is after the file on the admin server. Find out who.', color: '#78bdec', people: 'Alone' },
+  { id: 'infiltration', name: 'Infiltration', about: 'You are the hacker. Get the file out without being caught.', color: '#e5484d', people: 'Alone' },
+  { id: 'ladder', name: 'Scenario ladder', about: 'Five fixed break-ins, each teaching one trick.', color: '#f2b134', people: 'Alone' },
+  { id: 'office', name: 'Shared office', about: 'One office for everybody who opens it. Pick any employee.', color: '#b6a2e4', people: 'Anybody' },
+];
+
+/** A row of choices that look like the office's badge readers: one is lit. */
+function Pick<T extends string>({ name, legend, value, options, set, label, testid }: {
+  name: string; legend: string; value: T; options: readonly T[]; set: (v: T) => void; label: (v: T) => { name: string; about?: string }; testid: (v: T) => string;
+}) {
   return (
-    <div className="menu-card">
-      <h2>Scenario ladder</h2>
-      <p>Five fixed infiltrations, each harder than the last and with something to learn. Winning one opens the next.</p>
-      <ol className="ladder">
-        {LADDER.map((l, i) => {
-          const n = i + 1;
-          const open = isOpen(n, progress);
-          const won = progress[n];
-          return (
-            <li key={l.name} className={open ? '' : 'ladder-closed'} data-testid={`ladder-${n}`}>
-              <div>
-                <strong>{n}. {l.name}</strong>
-                {won !== undefined && <span className="ladder-won"> won{won ? `: ${won}` : ''}</span>}
-                <small>{open ? l.briefing : 'Win the level before it first.'}</small>
-              </div>
-              <button type="button" className="menu-go" data-testid={`ladder-play-${n}`} disabled={!open} onClick={() => void store.startSolo(levelChoice(n))}>{won !== undefined ? 'Again' : 'Play'}</button>
-            </li>
-          );
-        })}
-      </ol>
-    </div>
+    <fieldset className="pick">
+      <legend>{legend}</legend>
+      <div className="pick-options">
+        {options.map((o) => (
+          <label key={o} className={o === value ? 'pick-on' : ''} title={label(o).about}>
+            <input type="radio" name={name} data-testid={testid(o)} checked={o === value} onChange={() => set(o)} />
+            <span>{label(o).name}</span>
+          </label>
+        ))}
+      </div>
+      {label(value).about && <p className="pick-about">{label(value).about}</p>}
+    </fieldset>
   );
 }
 
-export function StartMenu({ progress, place }: { progress: LadderProgress; place: SavedPlace | null }) {
+// ───────────────────────────── The character ─────────────────────────────
+
+const TURN: Facing[] = ['down', 'left', 'up', 'right'];
+
+function Stage({ look, name, setName }: { look: Look; name: string; setName: (name: string) => void }) {
+  const [turn, setTurn] = useState(0);
+  const [walking, setWalking] = useState(false);
+  return (
+    <section className="stage" aria-label="Your character">
+      <div className="stage-room">
+        <div className="stage-wall" aria-hidden="true"><span /><span /><span /><span /></div>
+        <div className="stage-floor">
+          <div className="stage-spot">
+            <Figure look={look} scale={5} facing={TURN[turn]} walking={walking} />
+            <span className="stage-shadow" aria-hidden="true" />
+          </div>
+          <label className="stage-plate">
+            <span className="visually-hidden">Your name</span>
+            <input data-testid="friends-name" value={name} maxLength={NAME_LENGTH} placeholder="Your name" autoComplete="off" spellCheck={false} onChange={(e) => setName(e.target.value)} />
+          </label>
+          <div className="stage-turn">
+            <button type="button" aria-label="Turn left" onClick={() => setTurn((t) => (t + 3) % 4)}>↺</button>
+            <button type="button" aria-pressed={walking} onClick={() => setWalking(!walking)}>{walking ? 'Stand' : 'Walk'}</button>
+            <button type="button" aria-label="Turn right" onClick={() => setTurn((t) => (t + 1) % 4)}>↻</button>
+          </div>
+        </div>
+      </div>
+      <Wardrobe look={look} />
+    </section>
+  );
+}
+
+// ───────────────────────────── The screen ─────────────────────────────
+
+export function StartMenu({ progress, place, look }: { progress: LadderProgress; place: SavedPlace | null; look: Look }) {
+  const invited = invitedTo();
+  const [mode, setMode] = useState<Mode>('friends');
+  const [name, setName] = useState(readName);
+  const [code, setCode] = useState(invited);
   const [role, setRole] = useState<SoloRole>('soc');
   const [difficulty, setDifficulty] = useState<SoloDifficulty>('normal');
   const [risk, setRisk] = useState<SoloDifficulty>('normal');
-  const choice: SoloChoice = { mode: 'investigation', role, difficulty };
+  const [level, setLevel] = useState(() => Math.max(1, ...LADDER.map((_, i) => i + 1).filter((n) => isOpen(n, progress))));
+  const ready = cleanName(name) !== '';
+  const valid = parseCode(code);
+  const friends = (start: () => Promise<void>) => {
+    saveName(cleanName(name));
+    void start();
+  };
+  const current = MODES.find((m) => m.id === mode)!;
+
+  /** What the big button does for the chosen way to play. */
+  const play: { text: string; testid: string; disabled: boolean; go: () => void } = {
+    friends: { text: 'Create a lobby', testid: 'friends-create', disabled: !ready, go: () => friends(() => store.createParty(cleanName(name))) },
+    investigation: { text: 'Start the investigation', testid: 'menu-investigation', disabled: false, go: () => void store.startSolo({ mode: 'investigation', role, difficulty }) },
+    infiltration: { text: 'Start the infiltration', testid: 'menu-infiltration', disabled: false, go: () => void store.startSolo({ mode: 'infiltration', role: 'any', difficulty: risk }) },
+    ladder: { text: `Play level ${level}`, testid: 'menu-ladder', disabled: !isOpen(level, progress), go: () => void store.startSolo(levelChoice(level)) },
+    office: { text: 'Enter the office', testid: 'menu-office', disabled: false, go: () => void store.enterOffice() },
+  }[mode];
+
   return (
-    <div className="start" data-testid="menu">
-      <div className="start-box">
-        <div className="eyebrow"><span className="signal-dot" /> NEXORA CORPORATION / EMPLOYEE ACCESS</div>
-        <h1>THE INSIDER</h1>
-        <p className="start-intro">An ordinary office. An extraordinary amount of evidence.</p>
-        {place && (
-          <div className="menu-place" role="status" data-testid="menu-place">
-            <span>You were in {place.code ? <>the lobby <strong>{place.code}</strong></> : place.solo ? <>a solo match (<strong>{matchName(place.solo)}</strong>)</> : 'a match'}. Your place may still be kept.</span>
-            <button type="button" className="menu-go" data-testid="menu-go-back" onClick={() => store.goBack()}>Go back to it</button>
-            <button type="button" data-testid="menu-forget" onClick={() => store.forgetPlace()}>No</button>
-          </div>
-        )}
-        <div className="menu-cards">
-          <FriendsCard />
-          <form className="menu-card" onSubmit={(e) => { e.preventDefault(); void store.startSolo(choice); }}>
-            <h2>Investigation</h2>
-            <p>
-              One of your colleagues is after a secret file on the admin server. Everybody except you is played by the
-              computer. Find out who it is from the evidence, then have them voted out or detained before the file is gone.
-            </p>
-            <div className="menu-options">
-              <fieldset>
-                <legend>Your job</legend>
-                {SOLO_ROLES.map((r) => (
-                  <label key={r}>
-                    <input type="radio" name="role" data-testid={`role-${r}`} checked={role === r} onChange={() => setRole(r)} />
-                    <span>{ROLE_TEXT[r].name}<small>{ROLE_TEXT[r].about}</small></span>
-                  </label>
-                ))}
-              </fieldset>
-              <fieldset>
-                <legend>Difficulty</legend>
-                {SOLO_DIFFICULTIES.map((d) => (
-                  <label key={d}>
-                    <input type="radio" name="difficulty" data-testid={`difficulty-${d}`} checked={difficulty === d} onChange={() => setDifficulty(d)} />
-                    <span>{DIFFICULTY_TEXT[d].name}<small>{DIFFICULTY_TEXT[d].about}</small></span>
-                  </label>
-                ))}
-              </fieldset>
-            </div>
-            <button type="submit" className="menu-go" data-testid="menu-investigation">Start the investigation</button>
-          </form>
-          <form className="menu-card" onSubmit={(e) => { e.preventDefault(); void store.startSolo({ mode: 'infiltration', role: 'any', difficulty: risk }); }}>
-            <h2>Infiltration</h2>
-            <p>
-              You are the hacker, posing as an ordinary employee. Get the secret file off the admin server and hand it in. The
-              computer plays your colleagues: they check their PCs, follow your traces, call meetings and vote, and a guard walks around.
-            </p>
-            <div className="menu-options">
-              <fieldset>
-                <legend>Difficulty</legend>
-                {SOLO_DIFFICULTIES.map((d) => (
-                  <label key={d}>
-                    <input type="radio" name="risk" data-testid={`risk-${d}`} checked={risk === d} onChange={() => setRisk(d)} />
-                    <span>{DIFFICULTY_TEXT[d].name}<small>{INFILTRATION_TEXT[d]}</small></span>
-                  </label>
-                ))}
-              </fieldset>
-            </div>
-            <button type="submit" className="menu-go" data-testid="menu-infiltration">Start the infiltration</button>
-          </form>
-          <Ladder progress={progress} />
-          <div className="menu-card">
-            <h2>Shared office</h2>
-            <p>Everybody who opens it plays in the same office. Choose any employee; empty desks are filled by the computer.</p>
-            <button type="button" className="menu-go" data-testid="menu-office" onClick={() => void store.enterOffice()}>Enter the office</button>
-          </div>
+    <div className="home" data-testid="menu">
+      <header className="home-bar">
+        <span className="hud-brand"><span className="brand-mark" />THE INSIDER</span>
+        <span className="home-tagline">An ordinary office. An extraordinary amount of evidence.</span>
+        <span className="hud-spacer" />
+        <span className="hud-location">NEXORA HQ <span className="signal-dot" /></span>
+      </header>
+      {place && (
+        <div className="menu-place" role="status" data-testid="menu-place">
+          <span>You were in {place.code ? <>the lobby <strong>{place.code}</strong></> : place.solo ? <>a solo match (<strong>{matchName(place.solo)}</strong>)</> : 'a match'}. Your place may still be kept.</span>
+          <button type="button" className="menu-go" data-testid="menu-go-back" onClick={() => store.goBack()}>Go back to it</button>
+          <button type="button" data-testid="menu-forget" onClick={() => store.forgetPlace()}>No</button>
         </div>
-        <p className="start-note">
-          Everything is simulated: no real commands run and no real network is touched.
-        </p>
-      </div>
+      )}
+      <main className="home-main">
+        <Stage look={look} name={name} setName={setName} />
+        <section className="modes" aria-label="How to play">
+          <div className="mode-list" role="tablist" aria-label="Ways to play">
+            {MODES.map((m) => (
+              <button key={m.id} type="button" role="tab" aria-selected={m.id === mode} data-testid={`mode-${m.id}`}
+                className={m.id === mode ? 'mode mode-on' : 'mode'} style={{ '--mode': m.color } as CSSProperties} onClick={() => setMode(m.id)}>
+                <span className="mode-name">{m.name}</span>
+                <span className="mode-people">{m.people}</span>
+                <span className="mode-about">{m.about}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="mode-options" role="tabpanel" style={{ '--mode': current.color } as CSSProperties}>
+            {mode === 'friends' && (
+              <>
+                <p className="mode-lead">Create a lobby and send its link to your friends, or join theirs with the five letters of its code.</p>
+                <form className="join" onSubmit={(e) => { e.preventDefault(); if (valid && ready) friends(() => store.joinParty(valid, cleanName(name))); }}>
+                  <label>
+                    <span>Code from a friend</span>
+                    <input className="friends-code" data-testid="friends-code" value={code} maxLength={CODE_LENGTH + 3} autoComplete="off" spellCheck={false} placeholder="BCDFG" onChange={(e) => setCode(e.target.value)} />
+                  </label>
+                  <button type="submit" className="menu-go" data-testid="friends-join" disabled={!ready || !valid}>Join the lobby</button>
+                </form>
+                {!ready && <p className="friends-hint">Type your name under your character first.</p>}
+              </>
+            )}
+            {mode === 'investigation' && (
+              <>
+                <Pick name="role" legend="Your job" value={role} options={SOLO_ROLES} set={setRole} label={(r) => ROLE_TEXT[r]} testid={(r) => `role-${r}`} />
+                <Pick name="difficulty" legend="Difficulty" value={difficulty} options={SOLO_DIFFICULTIES} set={setDifficulty} label={(d) => DIFFICULTY_TEXT[d]} testid={(d) => `difficulty-${d}`} />
+              </>
+            )}
+            {mode === 'infiltration' && (
+              <>
+                <p className="mode-lead">The computer plays your colleagues: they check their PCs, follow your traces, call meetings and vote.</p>
+                <Pick name="risk" legend="Difficulty" value={risk} options={SOLO_DIFFICULTIES} set={setRisk} label={(d) => ({ name: DIFFICULTY_TEXT[d].name, about: INFILTRATION_TEXT[d] })} testid={(d) => `risk-${d}`} />
+              </>
+            )}
+            {mode === 'ladder' && (
+              <ol className="ladder">
+                {LADDER.map((l, i) => {
+                  const n = i + 1;
+                  const open = isOpen(n, progress);
+                  const won = progress[n];
+                  return (
+                    <li key={l.name} className={`${open ? '' : 'ladder-closed'} ${n === level ? 'ladder-on' : ''}`} data-testid={`ladder-${n}`}>
+                      <button type="button" disabled={!open} onClick={() => setLevel(n)} aria-pressed={n === level}>
+                        <strong>{n}. {l.name}</strong>
+                        {won !== undefined && <span className="ladder-won"> won{won ? `: ${won}` : ''}</span>}
+                        <small>{open ? l.briefing : 'Win the level before it first.'}</small>
+                      </button>
+                      <button type="button" className="menu-go ladder-play" data-testid={`ladder-play-${n}`} disabled={!open} onClick={() => void store.startSolo(levelChoice(n))}>{won !== undefined ? 'Again' : 'Play'}</button>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+            {mode === 'office' && <p className="mode-lead">Walk in, choose who you are today, and work beside whoever else is there. Empty desks are filled by the computer.</p>}
+          </div>
+
+          <button type="button" className="play" data-testid={play.testid} disabled={play.disabled} onClick={play.go}>
+            {play.text}
+          </button>
+          <p className="home-note">Everything is simulated: no real commands run and no real network is touched.</p>
+        </section>
+      </main>
     </div>
   );
 }

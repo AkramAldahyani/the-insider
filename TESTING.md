@@ -4,8 +4,8 @@ Normal browser matches now include a simulated bot hacker. For the earlier offic
 set `BOT_HACKER=0` (PowerShell: `$env:BOT_HACKER=0`) before starting the server so it does not finish the
 match during unrelated checks. The Phase 5 F section below explicitly turns it back on. `BOTS=0` disables all bots.
 
-The page opens on a **start menu**. Every check below except AG and AH plays in the **Shared office**: press **Enter the
-office** first, also after a reload, then choose the employee.
+The page opens on the **home lobby** (section AZ). Every check below except AG and AH plays in the **Shared office**: choose
+*Shared office* on the right and press **Enter the office** first, also after a reload, then choose the employee.
 
 Manual checks for the current state of the game. Two parts:
 
@@ -487,7 +487,7 @@ Start with `pnpm dev` (the defaults; about 15 minutes) or quicker with `TIME_SPE
 
 ## AH. Phase 5a, part A: the start menu and solo matches
 
-1. `pnpm dev`: the page shows the menu. Choose *Security guard* and *Hard*, **Start the investigation**: you are Tariq, with the onboarding card open, and the top bar says *Investigation · Hard*. No list of employees appears.
+1. `pnpm dev`: the page shows the menu. Choose *Investigation* on the right, then *Security guard* and *Hard*, **Start the investigation**: you are Tariq, with the onboarding card open, and the top bar says *Investigation · Hard*. No list of employees appears.
 2. Open a second tab and start an investigation there too: it is another match (the first tab does not see anybody appear).
 3. **Leave** in the bottom bar asks; click again within 3 seconds: the menu. Not clicking again: nothing happens.
 4. Start *Employee* a few times: not always the same person. The briefing for hackers never appears.
@@ -570,8 +570,8 @@ Too easy or too hard? The numbers are in `packages/server/src/bots/hacker-pace.t
 
 ## AP. Phase 6, part A: lobbies
 
-1. `pnpm dev`, open two browser windows (one of them private, so that they remember different names). *Play with friends* is the first card of the menu.
-2. Without a name both buttons are off. Type a name, **Create a lobby**: a code of five letters, a link, and you as the host. **Start the match** is off and says two people are needed.
+1. `pnpm dev`, open two browser windows (one of them private, so that they remember different names). *Play with friends* is the first way to play on the right, chosen already.
+2. Without a name both buttons are off. Type a name on the plate under your character, **Create a lobby**: a code of five letters, a link, and you as the host. **Start the match** is off and says two people are needed.
 3. In the other window open the link (the code is filled in) or type the code in small letters, then **Join the lobby**. Both windows list both players. The same name twice becomes "Sam 2".
 4. As the host change the settings: the other window follows and cannot change them. The other player presses **I am ready**: now the host can start.
 5. Take the tick away from *More people may join*: a third window cannot join. **Remove** the second player: their window says so, and they cannot come back until the tick is there again.
@@ -665,6 +665,15 @@ On two or three computers at home ([docs/play-with-friends.md](docs/play-with-fr
 4. Call two; the third time it says you have called your two. The same button again at once: *works again in ... s*.
 5. The red button in the cafeteria: three all-hands meetings in the whole match, then *All 3 all-hands meetings of this match have been held.*
 6. `pnpm load 30 60 large` ends with *Good.*
+
+## AZ. The home lobby and characters
+
+1. `pnpm dev`: on the left your character stands in a room of the office (the same wall, windows and floor as the map), on the right the ways to play. ↺ ↻ turn it, **Walk** makes it walk on the spot.
+2. Under it the wardrobe: hair, skin, hair colour, jacket (the departments' colours), glasses. Every click changes the character at once. Reload: it is still dressed the same (remembered in this browser).
+3. Click each way to play: its colour line, its options and the big button change (*Create a lobby*, *Start the investigation*, *Start the infiltration*, *Play level n*, *Enter the office*).
+4. Two windows in a lobby: both characters stand side by side with their names, *host*, *ready* or *not ready* under them. In one window open **Change your look** and choose another jacket: the other window shows it at once.
+5. Start the match: you see your own character in your look; the other window sees you as the employee you play, like everybody else. Nothing in the match tells people from bots.
+6. Narrow the window to phone width: the character, then the ways to play, then the wardrobe; nothing is cut off and nothing scrolls sideways.
 
 ## T. What you must NOT be able to see
 

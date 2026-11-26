@@ -25,7 +25,7 @@ const DevPanel = import.meta.env.DEV ? lazy(() => import('./ui/DevPanel')) : nul
 export function App() {
   const ui = useSyncExternalStore(store.subscribe, store.getUi);
 
-  if (ui.phase === 'menu') return <StartMenu progress={ui.ladder} place={ui.place} />;
+  if (ui.phase === 'menu') return <StartMenu progress={ui.ladder} place={ui.place} look={ui.look} />;
   if (ui.phase === 'connecting') return ui.reconnecting ? <Reconnecting /> : <div className="center">Connecting to the office…</div>;
   if (ui.phase === 'error') {
     return (

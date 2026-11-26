@@ -5,7 +5,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { matchMaker } from '@colyseus/core';
 import {
-  CODE_LENGTH, CODE_LETTERS, DEFAULT_PARTY_SETTINGS, NAME_LENGTH, PARTY_REMOVED, PARTY_ROOM_NAME, ROOM_NAME, changeSettings, cleanName, parseCode,
+  CODE_LENGTH, CODE_LETTERS, DEFAULT_LOOK, DEFAULT_PARTY_SETTINGS, LOOK_OUTFITS, LOOK_STYLES, NAME_LENGTH, lookFromName, parseLook, PARTY_REMOVED, PARTY_ROOM_NAME, ROOM_NAME, changeSettings, cleanName, parseCode,
   type PartyView,
 } from '@insider/shared';
 import { createGameServer } from '../src/app';
@@ -45,6 +45,20 @@ describe('what a browser may send', () => {
     expect(d).toEqual({ bots: true, hacker: 'auto', hackers: 0, difficulty: 'normal', meetings: 'normal', office: 'auto' });
     expect(changeSettings(d, { office: 'large' }).office).toBe('large');
     for (const bad of ['huge', 5, null]) expect(changeSettings(d, { office: bad }).office).toBe('auto');
+  });
+
+  it('looks: small whole numbers in range, anything else becomes the default', () => {
+    const good = { style: 7, skin: 0, hair: 5, outfit: 7, glasses: true };
+    expect(parseLook(good)).toEqual(good);
+    expect(parseLook({ ...good, extra: 'x', __proto__: { glasses: true } })).toEqual(good);
+    for (const bad of [null, undefined, 'look', 5, []]) expect(parseLook(bad)).toEqual(DEFAULT_LOOK);
+    expect(parseLook({ style: LOOK_STYLES.length, skin: -1, hair: 1.5, outfit: '2', glasses: 'yes' })).toEqual(DEFAULT_LOOK);
+    expect(parseLook({ outfit: LOOK_OUTFITS.length - 1 })).toEqual({ ...DEFAULT_LOOK, outfit: LOOK_OUTFITS.length - 1 });
+    // A new player's first look comes from their name: always valid, the same for the same name, and varied.
+    const looks = ['Anna', 'Ben', 'Cleo', 'Dora', 'Eli', 'Fay', 'Gus', 'Hana', 'محمد', ''].map(lookFromName);
+    for (const l of looks) expect(parseLook(l)).toEqual(l);
+    expect(lookFromName('Anna')).toEqual(lookFromName('Anna'));
+    expect(new Set(looks.map((l) => JSON.stringify(l))).size).toBeGreaterThan(6);
   });
 });
 
@@ -136,6 +150,23 @@ describe('the rules of a lobby', () => {
     p.begin(1);
     expect(p.view('a').cast).toEqual([]);
     expect(p.join('e', 'e')).not.toBe('');
+  });
+
+  it('everybody keeps their own look, and a strange one becomes the default', () => {
+    const p = new Party('BCDFG', 4);
+    const anna = { style: 3, skin: 4, hair: 2, outfit: 6, glasses: true };
+    p.join('a', 'Anna', anna);
+    p.join('b', 'Ben', { style: 99 });
+    p.join('c', 'Cleo');
+    expect(p.view('a').members.map((m) => m.look)).toEqual([anna, DEFAULT_LOOK, DEFAULT_LOOK]);
+    p.setLook('b', { ...anna, glasses: false });
+    p.setLook('c', 'pink');
+    p.setLook('nobody', anna);
+    const view = p.view('b');
+    expect(view.members.map((m) => m.look)).toEqual([anna, { ...anna, glasses: false }, DEFAULT_LOOK]);
+    // What a member is sent is a copy: changing it changes nothing in the lobby.
+    view.members[0].look.style = 0;
+    expect(p.view('a').members[0].look).toEqual(anna);
   });
 
   it('what a member sees has no network ids', () => {
@@ -281,6 +312,19 @@ describe('over the network', () => {
     await other.leave();
     await gone(other.roomId);
     await leaveAll(a);
+  });
+
+  it('everybody sees the looks the others chose, and a change at once', async () => {
+    const look = { style: 2, skin: 5, hair: 3, outfit: 1, glasses: true };
+    const a = await browser(null, 'Anna', { look });
+    const b = await browser(a.room.roomId, 'Ben', { look: 'strange' });
+    await b.until((p) => p.members.length === 2);
+    expect(b.party().members.map((m) => m.look)).toEqual([look, DEFAULT_LOOK]);
+    b.send('party.look', { ...look, glasses: false });
+    await a.until((p) => p.members[1].look.glasses === false && p.members[1].look.style === 2);
+    b.send('party.look', null);
+    await a.until((p) => JSON.stringify(p.members[1].look) === JSON.stringify(DEFAULT_LOOK));
+    await leaveAll(a, b);
   });
 
   it('the host can close the lobby, open it again, and remove somebody', async () => {

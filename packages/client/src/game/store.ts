@@ -16,8 +16,9 @@ import { Client, type Room } from 'colyseus.js';
 import { readLadder, saveWin, type LadderProgress } from './ladderProgress';
 import { Movement } from './movement';
 import { readPlace, savePlace, type SavedPlace } from './savedPlace';
+import { readLook, saveLook } from './playerName';
 import {
-  PARTY_REMOVED, PARTY_ROOM_NAME, ROOM_NAME, SERVER_PORT, SOLO_ROOM_NAME, ladderLevel, parseOfficeMap, withCameras,
+  DEFAULT_LOOK, PARTY_REMOVED, PARTY_ROOM_NAME, type Look, ROOM_NAME, SERVER_PORT, SOLO_ROOM_NAME, ladderLevel, parseOfficeMap, withCameras,
   type ClientMessages, type EmployeeChoice, type EvidenceView, type MeetingView, type MissionBriefing, type OfficeMap, type OnboardingCard, type PartyView, type PublicDesk, type PublicDoor, type PublicPlayer,
   type ServerMessages, type SoloChoice, type TaskView, type TermScreen, type TiledMap,
 } from '@insider/shared';
@@ -63,6 +64,8 @@ export interface UiState {
   solo: SoloChoice | null;
   /** Levels of the scenario ladder won in this browser. */
   ladder: LadderProgress;
+  /** How this player's own character looks (lobby; and in a match for this player only). */
+  look: Look;
   error: string;
   scenarioName: string;
   employees: EmployeeChoice[];
@@ -147,7 +150,7 @@ type Listener = () => void;
 
 /** A page that has just been opened (or has just left a match). */
 const START: UiState = {
-  phase: 'menu', reconnecting: false, place: null, party: null, reveal: false, solo: null, ladder: {}, error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, debrief: null, debriefOpen: false, meeting: null, meetingAt: 0, chat: [], chatOpen: false, chatSecret: false, muted: [], fired: '', watch: '', zoom: 1, nearButton: false, nearTalk: false, talk: null, talkAt: 0, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
+  phase: 'menu', look: DEFAULT_LOOK, reconnecting: false, place: null, party: null, reveal: false, solo: null, ladder: {}, error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, debrief: null, debriefOpen: false, meeting: null, meetingAt: 0, chat: [], chatOpen: false, chatSecret: false, muted: [], fired: '', watch: '', zoom: 1, nearButton: false, nearTalk: false, talk: null, talkAt: 0, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
   clock: 0, speed: 1, roomName: '', nearDesk: '', nearDoor: '', nearDoorName: '', seatedAt: '', notice: '', tasks: [], tasksCompleted: 0, tasksOpen: true, devOpen: false, devLog: [],
 };
 
@@ -160,7 +163,7 @@ export class Store {
   /** The map file as Tiled wrote it (the scene reads the tile colours from it). */
   rawMap: TiledMap | null = null;
 
-  private ui: UiState = { ...START, ladder: readLadder(), place: readPlace() };
+  private ui: UiState = { ...START, ladder: readLadder(), place: readPlace(), look: readLook() };
   /** When the server was last heard (see SILENCE_MS). */
   private heardAt = 0;
   private listeners = new Set<Listener>();
@@ -263,6 +266,13 @@ export class Store {
     return this.join({ kind: 'solo', choice });
   }
 
+  /** A new look: remembered in this browser, and the lobby is told. */
+  setLook(look: Look): void {
+    saveLook(look);
+    this.set({ look });
+    if (this.ui.phase === 'party') this.send('party.look', look);
+  }
+
   /** Back to the start menu. Leaving a solo match ends it; in the shared office a bot takes over. */
   leave(): void {
     const room = this.room;
@@ -297,11 +307,11 @@ export class Store {
 
   /** After a lobby's match: back to the same lobby, without leaving the room. */
   backToParty(): void {
-    const { party, ladder } = this.ui;
+    const { party, ladder, look } = this.ui;
     this.movement = new Movement();
     this.termBacklog = [];
     window.clearTimeout(this.alertTimer);
-    this.set({ ...START, ladder, party, phase: 'party' });
+    this.set({ ...START, ladder, look, party, phase: 'party' });
     this.send('party.back', {});
   }
 
@@ -312,15 +322,15 @@ export class Store {
     this.termBacklog = [];
     window.clearTimeout(this.noticeTimer);
     window.clearTimeout(this.alertTimer);
-    this.set({ ...START, ladder: this.ui.ladder });
+    this.set({ ...START, ladder: this.ui.ladder, look: this.ui.look });
   }
 
   private connect(client: Client, to: Destination): Promise<Room<RoomState>> {
     switch (to.kind) {
       case 'office': return client.joinOrCreate(ROOM_NAME);
       case 'solo': return client.create(SOLO_ROOM_NAME, to.choice);
-      case 'create': return client.create(PARTY_ROOM_NAME, { name: to.name });
-      case 'join': return client.joinById(to.code, { name: to.name });
+      case 'create': return client.create(PARTY_ROOM_NAME, { name: to.name, look: this.ui.look });
+      case 'join': return client.joinById(to.code, { name: to.name, look: this.ui.look });
     }
   }
 

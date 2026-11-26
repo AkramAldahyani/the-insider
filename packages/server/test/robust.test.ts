@@ -330,7 +330,7 @@ describe('the front door', () => {
 
 describe('strange messages', () => {
   const TYPES: Record<ClientMessageType, true> = {
-    'party.ready': true, 'party.settings': true, 'party.open': true, 'party.remove': true, 'party.start': true, 'party.back': true, choose: true, move: true, sit: true, stand: true, tap: true,
+    'party.ready': true, 'party.settings': true, 'party.open': true, 'party.remove': true, 'party.start': true, 'party.back': true, 'party.look': true, choose: true, move: true, sit: true, stand: true, tap: true,
     'item.start': true, 'item.stop': true, 'monitors.open': true, 'monitors.frame': true, 'evidence.pin': true, 'evidence.unpin': true, detain: true, 'meeting.call': true, 'talk.call': true, 'meeting.accuse': true,
     'meeting.vote': true, 'chat.send': true, 'flag.submit': true, 'term.line': true, 'term.cancel': true, 'term.switchUser': true, 'dev.speed': true, 'dev.jump': true, 'dev.events': true, 'dev.teleport': true, 'dev.dump': true, 'dev.show': true,
   };

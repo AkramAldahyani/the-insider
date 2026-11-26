@@ -3,6 +3,28 @@
 This file says where the work stands, so a new session can continue from it alone.
 Update it at the end of every part.
 
+## The home lobby and characters (2026-11-26)
+
+The owner asked for a lobby "like Fortnite": a character to dress, ways to play to pick, in the map's colours and shapes.
+Phases 7 and 8 are paused at the owner's wish; the game works without them.
+
+- Home screen (`client/src/ui/StartMenu.tsx`): left the character on a stage (wall bands, windows and floor tiles of the
+  map), name plate, turn and walk; under it the wardrobe (`ui/Wardrobe.tsx`). Right the five ways to play as tabs
+  (`mode-friends`, `mode-investigation`, `mode-infiltration`, `mode-ladder`, `mode-office`), the options of the chosen one,
+  and ONE big button whose test id depends on the mode (`friends-create`, `menu-investigation`, `menu-infiltration`,
+  `menu-ladder`, `menu-office`). Browser tests must click the tab before its options or button.
+- Lobby (`ui/PartyScreen.tsx`): everybody stands on the floor in their look (smaller with more people), status under
+  each; invite link with Copy; "Change your look" folds out the wardrobe; settings and the big Start / I am ready on the right.
+- A look (`shared/src/look.ts`): five small numbers, `parseLook` turns anything strange into the default, a new player's
+  first look comes from their name (`lookFromName`). Kept in localStorage `insider-look`. Sent on create/join
+  (`look` option) and with `party.look`; the server stores it per member (`Party.setLook`) and the view sends copies.
+- Drawing: `characterSheet(id, department, look?)` in `characterArt.ts`; `Figure.tsx` shows one frame of the sheet large.
+- RULE: in a match the look is used ONLY for the player's own sprite on their own screen (`OfficeScene.addPlayer`).
+  Nothing about looks is in the match state, so the others always see the employee and cannot tell people from bots.
+- Tests: `party.test.ts` (parsing, lobby rules, over the network), e2e `party.spec.ts` "the home lobby" (dress, reload,
+  tabs, look seen by a friend, change in the lobby). Screenshots 35 and 36. TESTING.md section AZ.
+- 841 Vitest tests in 65 files, 24 Playwright (20 office, 4 match), build fine.
+
 ## Browser walk flake fixed (2026-11-24)
 
 - The detain browser test, repeated alone, failed 4 of 10 and then 8 of 30 ("No progress at waypoint"). Traced in

@@ -44,6 +44,7 @@ test('a defender follows the evidence to the bot hacker, has them voted out, and
   test.setTimeout(8 * 60_000);
   // 0. The start menu: an investigation as the SOC analyst. There is no employee to choose: she starts right away.
   await page.goto('/');
+  await page.getByTestId('mode-investigation').click();
   await page.getByTestId('role-soc').check();
   await page.getByTestId('difficulty-normal').check();
   await page.screenshot({ path: `${SHOTS}/21-start-menu.png` });

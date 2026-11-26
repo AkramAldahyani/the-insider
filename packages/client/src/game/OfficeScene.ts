@@ -226,9 +226,11 @@ export function createOfficeScene(store: Store): Phaser.Scene {
 
     private addPlayer(p: PublicPlayer): PlayerView {
       const department = store.getUi().employees.find((e) => e.id === p.id)?.department ?? '';
-      const key = `employee-${p.id}`;
+      // A player sees their OWN character with their look; everybody else (on every screen) is the employee.
+      const own = p.id === store.getUi().playerId;
+      const key = own ? `own-${JSON.stringify(store.getUi().look)}` : `employee-${p.id}`;
       if (!this.textures.exists(key)) {
-        const texture = this.textures.addCanvas(key, characterSheet(p.id, department))!;
+        const texture = this.textures.addCanvas(key, characterSheet(p.id, department, own ? store.getUi().look : undefined))!;
         texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
         for (let row = 0; row < 4; row++) for (let frame = 0; frame < 4; frame++) {
           texture.add(row * 4 + frame, 0, frame * FRAME_W, row * FRAME_H, FRAME_W, FRAME_H);

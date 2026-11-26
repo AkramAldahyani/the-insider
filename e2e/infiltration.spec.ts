@@ -10,6 +10,7 @@ const SHOTS = 'e2e/screenshots';
 test('the hacker gets the flag past the bots and waits for the contact before handing it in', async ({ page }) => {
   test.setTimeout(5 * 60_000);
   await page.goto('/');
+  await page.getByTestId('mode-infiltration').click();
   await page.getByTestId('risk-easy').check();
   await page.getByTestId('menu-infiltration').scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${SHOTS}/24-infiltration-menu.png` });
@@ -49,6 +50,7 @@ test('the hacker gets the flag past the bots and waits for the contact before ha
   // Back to the menu, and nothing of the hacker's briefing is left behind for the next match.
   await page.getByRole('button', { name: 'Close debrief' }).click();
   await page.getByTestId('to-menu').click();
+  await page.getByTestId('mode-investigation').click();
   await page.getByTestId('menu-investigation').click();
   await expect(page.getByTestId('mode')).toHaveText('Investigation · Normal');
   await page.keyboard.press('c');
@@ -59,6 +61,7 @@ test('the hacker gets the flag past the bots and waits for the contact before ha
 test('the scenario ladder: winning a level opens the next one, and the browser remembers it', async ({ page }) => {
   test.setTimeout(5 * 60_000);
   await page.goto('/');
+  await page.getByTestId('mode-ladder').click();
   await expect(page.getByTestId('ladder-play-2')).toBeDisabled();
   await expect(page.getByTestId('ladder-2')).toContainText('Win the level before it first.');
   await page.getByTestId('ladder-play-1').scrollIntoViewIfNeeded();
@@ -86,6 +89,7 @@ test('the scenario ladder: winning a level opens the next one, and the browser r
   await expect(page.getByTestId('mode')).toHaveText('Level 2 · The company password');
   await expect(page.getByTestId('card')).toContainText('Sara Alharbi');
   await page.reload();
+  await page.getByTestId('mode-ladder').click();
   await expect(page.getByTestId('ladder-1')).toContainText(`won: ${rating}`);
   await expect(page.getByTestId('ladder-play-2')).toBeEnabled();
   await expect(page.getByTestId('ladder-play-3')).toBeDisabled();

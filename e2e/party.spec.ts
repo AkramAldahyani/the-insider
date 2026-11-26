@@ -47,7 +47,7 @@ test('friends gather in a lobby with a code and start a match together', async (
   await expect(ben.getByTestId('party-hacker-count')).toHaveText('This match: one hacker.');
   await anna.screenshot({ path: 'e2e/screenshots/party.png' });
   await anna.setViewportSize({ width: 390, height: 844 });
-  expect(await anna.evaluate(() => document.querySelector('.start')!.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await anna.evaluate(() => document.querySelector('.lobby')!.scrollWidth <= window.innerWidth && document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await anna.setViewportSize({ width: 1280, height: 800 });
 
   // Cleo is removed, and told so.
@@ -84,6 +84,48 @@ test('friends gather in a lobby with a code and start a match together', async (
   await cleo.getByTestId('friends-join').click();
   await expect(cleo.getByText(`No open lobby has the code ${code}`)).toBeVisible();
   for (const page of [anna, ben, cleo, dora]) await page.context().close();
+});
+
+test('the home lobby: a character dressed at home stands in the lobby, and a change there reaches the friends', async ({ browser }) => {
+  // How a figure is drawn: its picture (the same look gives the same picture in every browser).
+  const picture = (page: Page, where: string) => page.locator(where).first().evaluate((e) => getComputedStyle(e).backgroundImage);
+  const anna = await person(browser, 'Anna');
+  // Dressing up: the big character changes with every choice, and the browser remembers it.
+  const before = await picture(anna, '.stage-spot .figure');
+  await anna.getByTestId('look-style-3').click();
+  await anna.getByTestId('look-outfit-6').click();
+  await anna.getByTestId('look-glasses').check();
+  await expect(anna.getByTestId('look-style-3')).toHaveAttribute('aria-checked', 'true');
+  const dressed = await picture(anna, '.stage-spot .figure');
+  expect(dressed).not.toBe(before);
+  await anna.reload();
+  await expect(anna.getByTestId('look-outfit-6')).toHaveAttribute('aria-checked', 'true');
+  expect(await picture(anna, '.stage-spot .figure')).toBe(dressed);
+  await anna.getByTestId('friends-name').fill('Anna'); // (a name is remembered once it is used)
+  // The ways to play are tabs; each shows its own options and its own big button.
+  await anna.getByTestId('mode-investigation').click();
+  await expect(anna.getByTestId('role-soc')).toBeVisible();
+  await expect(anna.getByTestId('menu-investigation')).toBeVisible();
+  await expect(anna.getByTestId('friends-create')).toHaveCount(0);
+  await anna.getByTestId('mode-friends').click();
+  await anna.screenshot({ path: 'e2e/screenshots/35-home-lobby.png' });
+
+  // In the lobby Ben sees Anna as she dressed herself.
+  await anna.getByTestId('friends-create').click();
+  const code = (await anna.getByTestId('party-code').textContent())!;
+  const ben = await person(browser, 'Ben');
+  await ben.getByTestId('friends-code').fill(code);
+  await ben.getByTestId('friends-join').click();
+  await expect(ben.getByTestId('party-members').locator('li')).toHaveCount(2);
+  expect(await picture(ben, '[data-testid=party-members] li:first-child .figure')).toBe(dressed);
+  // Ben changes his jacket in the lobby: Anna sees it at once.
+  const benBefore = await picture(anna, '[data-testid=party-members] li:nth-child(2) .figure');
+  await ben.getByTestId('lobby-wardrobe').locator('summary').click();
+  await ben.getByTestId('look-outfit-1').click();
+  await expect.poll(() => picture(anna, '[data-testid=party-members] li:nth-child(2) .figure')).not.toBe(benBefore);
+  expect(await picture(anna, '[data-testid=party-members] li:nth-child(2) .figure')).toBe(await picture(ben, '[data-testid=party-members] li:nth-child(2) .figure'));
+  await ben.screenshot({ path: 'e2e/screenshots/36-friends-lobby.png' });
+  for (const page of [anna, ben]) await page.context().close();
 });
 
 test('two hackers: the one who is a person sees the partner, the others see nothing', async ({ browser }) => {

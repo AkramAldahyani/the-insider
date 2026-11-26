@@ -43,7 +43,7 @@ export function partyRoom(base: OfficeGameOptions, { seed, limit = 20, large }: 
     }
 
     override onJoin(client: Client, request?: unknown): void {
-      const refused = this.party.join(client.sessionId, field(request, 'name'));
+      const refused = this.party.join(client.sessionId, field(request, 'name'), field(request, 'look'));
       if (refused) throw new Error(refused);
       this.sendParty();
     }
@@ -89,6 +89,10 @@ export function partyRoom(base: OfficeGameOptions, { seed, limit = 20, large }: 
       if (!party.has(client.sessionId) || party.playing) return;
       if (type === 'party.ready') {
         party.setReady(client.sessionId, field(payload, 'ready'));
+        return this.sendParty();
+      }
+      if (type === 'party.look') {
+        party.setLook(client.sessionId, payload);
         return this.sendParty();
       }
       if (type === 'party.back') {
