@@ -608,3 +608,167 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
   .figure-walking, .stage-spot .figure:not(.figure-walking) { animation: none; }
   .play { transition: none; }
 }
+
+/* ───────────── Learning: hints, the notebook, the training guide (Phase 7 ideas, 2026-11-26) ───────────── */
+.hud-tip {
+  position: absolute; left: 50%; bottom: 58px; transform: translateX(-50%); z-index: 7; display: flex; align-items: center; gap: 12px;
+  width: min(640px, calc(100% - 32px)); padding: 10px 12px 10px 14px; border-radius: 8px; border: 1px solid #4f9c86;
+  background: linear-gradient(160deg, #15302e, #0f2224); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); font-size: 13.5px; line-height: 1.45;
+  animation: tip-in 0.35s ease-out;
+}
+.hud-tip-label { flex: none; padding: 2px 8px; border-radius: 999px; background: var(--green); color: #0b1a1a; font: 700 11px var(--mono); }
+.hud-tip code, .guide-text code, .notebook code { font-family: var(--mono); color: var(--green); background: rgba(138, 219, 193, 0.08); padding: 0 4px; border-radius: 3px; }
+.hud-tip button { flex: none; margin-left: auto; }
+@keyframes tip-in { from { opacity: 0; transform: translate(-50%, 8px); } }
+
+.desk-tag { margin-left: 6px; font: 10px var(--mono); color: var(--muted); }
+.mode-done { margin-left: 6px; font: 600 11px var(--mono); color: var(--green); }
+.training-list { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+.ladder-job { color: var(--muted); font-size: 12.5px; }
+
+.notebook {
+  position: absolute; right: 12px; top: 66px; width: min(360px, calc(100% - 24px)); max-height: calc(100% - 120px); overflow: auto; z-index: 6;
+  padding: 12px 14px; border-radius: 8px; border: 1px solid var(--line); background: linear-gradient(160deg, #17283a, #101b2a);
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.55); font-size: 12.5px;
+}
+.notebook-head { display: flex; justify-content: space-between; align-items: center; font: 650 10px var(--mono); letter-spacing: 0.1em; color: var(--green); }
+.notebook-head button { background: none; border: 0; color: var(--green); font-size: 18px; line-height: 1; }
+.notebook-empty { color: var(--muted); }
+.notebook-pages { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.notebook-pages li, .notebook-preview { padding: 8px 10px; border-radius: 6px; background: #0c1928; border: 1px solid #22364b; }
+.notebook-pages p, .notebook-preview p { margin: 5px 0 0; color: var(--muted); line-height: 1.45; }
+.notebook-name { font-weight: 700; }
+.notebook-usage { display: block; margin-top: 4px; white-space: pre-wrap; }
+.notebook-sub { margin: 12px 0 6px; color: var(--muted); font-size: 11.5px; }
+.notebook-rest { display: flex; flex-wrap: wrap; gap: 4px; }
+.notebook-rest button { padding: 2px 7px; font: 11.5px var(--mono); border-radius: 4px; background: #0c1928; color: var(--muted); border: 1px solid var(--line); cursor: pointer; }
+.notebook-rest button:hover { color: var(--text); }
+/* The guide sits under the task list in the training day. */
+.game:has(.guide) .tasks { max-height: calc(100% - 340px); }
+.notebook-rest button[aria-pressed="true"] { border-color: var(--green); color: var(--green); }
+.notebook-preview { margin-top: 8px; }
+.notebook-foot { margin: 10px 0 0; color: var(--muted); font-size: 11.5px; }
+
+.guide {
+  position: absolute; left: 12px; bottom: 54px; z-index: 6; width: min(380px, calc(100% - 24px)); padding: 12px 14px;
+  border-radius: 8px; border: 1px solid #4f9c86; border-left: 4px solid var(--green);
+  background: linear-gradient(160deg, #15302e, #0f2224); box-shadow: 0 16px 50px rgba(0, 0, 0, 0.55);
+}
+.guide-head { display: flex; justify-content: space-between; gap: 8px; font: 10px var(--mono); letter-spacing: 0.06em; color: var(--green); }
+.guide-bar { height: 3px; margin: 8px 0 10px; border-radius: 2px; background: rgba(138, 219, 193, 0.18); overflow: hidden; }
+.guide-bar span { display: block; height: 100%; background: var(--green); transition: width 0.5s ease; }
+.guide-title { display: block; font-size: 15px; margin-bottom: 4px; }
+/* At a PC the guide stays in the left column, beside the terminal rather than over it. */
+.guide-seated { width: 248px; padding: 10px 12px; }
+.guide-seated .guide-text { font-size: 12.5px; }
+.guide-text { margin: 0; font-size: 13.5px; line-height: 1.5; color: #d7e6ea; }
+@media (max-width: 700px) {
+  .guide { bottom: 96px; }
+  .notebook { top: 60px; max-height: calc(100% - 170px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hud-tip { animation: none; }
+  .guide-bar span { transition: none; }
+}
+
+/* ───────────── Meetings as a show: the splash, the screen, the floor, the ballots ───────────── */
+.meeting-splash {
+  position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 6px; pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(120, 18, 24, 0.55), rgba(5, 6, 9, 0.2) 70%);
+  animation: splash 1.6s ease-out forwards;
+}
+.meeting-splash strong { font: italic 850 clamp(28px, 6vw, 56px) var(--sans); letter-spacing: 0.02em; color: #ffd5d6; text-transform: uppercase; text-shadow: 0 4px 0 #6d1418; }
+.meeting-splash > span:last-child { font: 13px var(--mono); color: #ffb3b5; letter-spacing: 0.1em; }
+.meeting-splash-stripe { width: min(520px, 80vw); height: 10px; background: repeating-linear-gradient(-45deg, #e5484d 0 14px, #2b0d10 14px 28px); border-radius: 2px; }
+@keyframes splash { 0% { opacity: 0; transform: scale(1.08); } 15% { opacity: 1; transform: scale(1); } 75% { opacity: 1; } 100% { opacity: 0; } }
+
+.projector { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: #0b1119; border: 1px solid #3d2a2f; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02); }
+.projector-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font: 10px var(--mono); letter-spacing: 0.12em; color: #f0cf7a; }
+.projector-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.projector-tabs button { font: 11px var(--sans); letter-spacing: 0; padding: 2px 8px; }
+.projector-tabs button[aria-pressed="true"] { border-color: #f0cf7a; color: #f0cf7a; }
+.projector-title { margin: 6px 0 8px; font-size: 14px; animation: rise 0.3s ease-out; }
+.projector-items { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+.projector-items li { padding: 7px 9px; border-radius: 6px; background: #f4ecd6; color: #1c2230; font-size: 12px; animation: rise 0.35s ease-out both; }
+.projector-items pre { margin: 4px 0 0; white-space: pre-wrap; word-break: break-word; font: 11px var(--mono); color: #2c3446; max-height: 4.6em; overflow: hidden; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+
+.floor { display: grid; gap: 2px; margin-top: 10px; padding: 9px 12px; border-radius: 8px; border: 1px solid #f2b134; background: linear-gradient(90deg, rgba(242, 177, 52, 0.16), rgba(242, 177, 52, 0.04)); font-size: 14px; animation: rise 0.3s ease-out; }
+.floor span { color: #e9d6a8; font-size: 12.5px; }
+
+.ballots { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0; }
+.ballot-column { min-width: 110px; padding: 6px 8px; border-radius: 6px; background: #0d1118; border: 1px solid var(--line); transition: border-color 0.3s, background 0.3s; }
+.ballot-out { border-color: #e5484d; background: #2a1216; }
+.ballot-name { display: block; font-size: 12px; font-weight: 650; margin-bottom: 4px; }
+.ballot-cards { display: flex; flex-wrap: wrap; gap: 3px; min-height: 18px; }
+.ballot-card { width: 12px; height: 16px; border-radius: 2px; background: #f4ecd6; box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4); animation: drop 0.25s ease-out; }
+@keyframes drop { from { opacity: 0; transform: translateY(-10px) rotate(-12deg); } }
+.meeting-result { position: relative; }
+.stamp {
+  position: absolute; right: 8px; top: 4px; padding: 4px 12px; border: 3px solid currentColor; border-radius: 6px; transform: rotate(-8deg);
+  font: 850 16px var(--sans); text-transform: uppercase; letter-spacing: 0.06em; animation: stamp 0.35s cubic-bezier(.2, 1.6, .4, 1) both; pointer-events: none;
+}
+.stamp-caught { color: var(--green); }
+.stamp-wrong { color: #ff8589; }
+@keyframes stamp { from { opacity: 0; transform: rotate(-8deg) scale(2.2); } }
+@media (prefers-reduced-motion: reduce) {
+  .meeting-splash, .projector-title, .projector-items li, .floor, .ballot-card, .stamp { animation: none; }
+}
+
+/* ───────────── Big moments: the secret part, the end of the match ───────────── */
+.reveal-box { animation: card-turn 0.7s cubic-bezier(.2, .9, .3, 1.15) both; transform-origin: center; }
+.reveal-box h2 { animation: rise 0.4s 0.45s ease-out both; }
+@keyframes card-turn { 0% { opacity: 0; transform: perspective(800px) rotateY(80deg) scale(0.9); } 100% { opacity: 1; transform: none; } }
+.match-over-box { animation: over-in 0.5s cubic-bezier(.2, .9, .3, 1.2) both; }
+.match-over-box h2 { animation: rise 0.4s 0.2s ease-out both; }
+.match-over-win .match-over-box { border-color: var(--green); box-shadow: 0 0 0 1px rgba(138, 219, 193, 0.25), 0 24px 80px rgba(0, 0, 0, 0.7); }
+.match-over-win .match-over-box h2 { color: var(--green); }
+.match-over-lose .match-over-box h2 { color: #ff8a8e; }
+@keyframes over-in { from { opacity: 0; transform: translateY(14px) scale(0.96); } }
+.hud-bottom [data-testid="sound-toggle"][aria-pressed="false"] { color: var(--muted); text-decoration: line-through; }
+@media (prefers-reduced-motion: reduce) {
+  .reveal-box, .reveal-box h2, .match-over-box, .match-over-box h2 { animation: none; }
+}
+
+/* ───────────── The minimap ───────────── */
+.minimap { position: absolute; right: 12px; bottom: 54px; z-index: 5; width: 212px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #0d1928; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); }
+.minimap-head { width: 100%; display: flex; justify-content: space-between; gap: 6px; padding: 6px 8px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--text); font: 650 10px var(--mono); letter-spacing: 0.08em; cursor: pointer; }
+.minimap-head span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.minimap-closed .minimap-head { border-bottom: 0; }
+.minimap canvas { display: block; width: 210px; margin: 0 auto; image-rendering: pixelated; }
+.minimap-key { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 5px 8px 6px; font-size: 10.5px; color: var(--muted); }
+.minimap-key span::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 50%; vertical-align: -1px; }
+.key-me::before { background: #8adbc1; }
+.key-desk::before { border: 2px solid #f2b134; border-radius: 1px !important; width: 5px !important; height: 5px !important; }
+.key-button::before { background: #e5484d; }
+.game:has(.minimap:not(.minimap-closed)) .roster { max-height: calc(100% - 66px - 54px - 230px); }
+@media (max-width: 700px) { .minimap { display: none; } }
+
+/* ───────────── The debrief's replay ───────────── */
+.replay { margin: 12px 0; padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: #0d1622; }
+.replay canvas { display: block; width: 100%; height: auto; border-radius: 4px; image-rendering: pixelated; }
+.replay-controls { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.replay-controls input[type="range"] { flex: 1; min-width: 160px; accent-color: var(--green); }
+.replay-clock { font: 12px var(--mono); color: var(--muted); }
+.replay-speed { display: flex; gap: 3px; }
+.replay-speed button { padding: 2px 7px; font: 11px var(--mono); }
+.replay-speed button[aria-pressed="true"] { border-color: var(--green); color: var(--green); }
+.replay-caption { margin: 8px 0 4px; font-size: 13px; min-height: 1.4em; }
+.replay-step { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; color: #0b1320; font: 700 10px var(--sans); margin-right: 4px; }
+.replay-key { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--muted); }
+.replay-key span::before { content: ''; display: inline-block; width: 9px; height: 9px; margin-right: 5px; border-radius: 50%; background: var(--c); vertical-align: -1px; }
+.debrief-show { margin: 2px 0 8px; font-size: 12px; padding: 3px 10px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel); color: inherit; }
+
+/* ───────────── Career: the rank, points after a match, earned jackets ───────────── */
+.rank-chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: #0f1b2a; font: 11px var(--mono); }
+.rank-name { color: var(--amber); font-weight: 700; }
+.rank-bar { width: 60px; height: 4px; border-radius: 2px; background: #22364b; overflow: hidden; }
+.rank-bar span { display: block; height: 100%; background: var(--amber); }
+.rank-points { color: var(--muted); }
+.gain { margin: 10px 0 4px; padding: 8px 10px; border-radius: 8px; border: 1px solid #5e4a1c; background: rgba(242, 177, 52, 0.08); font-size: 13px; animation: rise 0.4s 0.3s ease-out both; }
+.gain > strong { color: var(--amber); }
+.gain > span { color: var(--muted); }
+.gain-rank { margin-top: 4px; color: var(--text); }
+.swatch-locked { position: relative; opacity: 0.4; cursor: not-allowed; }
+.swatch-locked::after { content: ''; position: absolute; right: 2px; bottom: 2px; width: 9px; height: 7px; border-radius: 1px; background: #cfd8e3; box-shadow: 0 -4px 0 -2px #0b1320, 0 -4px 0 0 #cfd8e3; }
+@media (max-width: 600px) { .rank-bar, .rank-points { display: none; } }

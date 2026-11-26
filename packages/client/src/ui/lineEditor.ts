@@ -3,7 +3,9 @@
  *
  * The server only ever receives FINISHED lines. Everything before Enter -
  * typing, Backspace, the arrow keys, command history, hiding passwords - is
- * handled here, so it feels instant and the server stays simple.
+ * handled here, so it feels instant and the server stays simple. Only Tab asks
+ * the server (which files are there is the server's to know), and the answer
+ * is used only if the line has not changed meanwhile.
  *
  * xterm.js gives us raw key data ("a", "\r" for Enter, "\x1b[A" for Up...)
  * and draws whatever we write to it. This class keeps the text of the line
@@ -25,9 +27,15 @@ export interface EditorEvents {
   onEscape(): void;
   /** F2: switch user. */
   onSwitchUser(): void;
+  /** Tab at the end of a line: what could the last word become? (Answered with `completed`.) */
+  onComplete?(text: string): void;
 }
 
 const ESC = '\x1b';
+/** A new row on the terminal screen. */
+const NEWLINE = '\r\n';
+/** How long keys wait for the answer to Tab before they go on without it. */
+const COMPLETE_WAIT_MS = 1500;
 
 export class LineEditor {
   private prompt = '';
@@ -43,6 +51,9 @@ export class LineEditor {
   private cursorRow = 0;
   /** A line was sent and the answer has not arrived yet. */
   private waiting = false;
+  /** Tab was pressed and the server's answer has not arrived yet (keys wait, as they would in bash). */
+  private completing = false;
+  private completeTimer: ReturnType<typeof setTimeout> | undefined;
   /** Keys pressed while waiting. They are replayed when the answer arrives, so fast typing loses nothing. */
   private queued: string[] = [];
 
@@ -56,6 +67,7 @@ export class LineEditor {
     // If the server speaks while a line is half typed (the screen locked itself), start on a new row.
     if (!this.waiting && (this.text !== '' || this.cursorRow > 0)) this.screen.write('\r\n');
     this.waiting = false;
+    this.stopCompleting();
     let out = output.replace(/\r?\n/g, '\r\n');
     if (out !== '' && !out.endsWith('\n')) out += '\r\n';
     this.screen.write(out);
@@ -104,7 +116,7 @@ export class LineEditor {
 
   /** Feed with xterm's onData. One call may hold one key, or a whole pasted text. */
   input(data: string): void {
-    if (this.waiting && data !== ESC) {
+    if ((this.waiting || this.completing) && data !== ESC) {
       this.queued.push(data);
       return;
     }
@@ -125,8 +137,8 @@ export class LineEditor {
     // Plain characters and control keys (a paste arrives as many characters at once).
     for (let i = 0; i < data.length; i++) {
       const ch = data[i];
-      if (this.waiting) {
-        // Enter was in the middle of a paste: the rest waits for the answer.
+      if (this.waiting || this.completing) {
+        // Enter (or Tab) was in the middle of a paste: the rest waits for the answer.
         this.queued.push(data.slice(i));
         return;
       }
@@ -138,9 +150,51 @@ export class LineEditor {
       else if (ch === '\x15') this.erase(0, this.cursor); // Ctrl+U
       else if (ch === '\x0b') this.erase(this.cursor, this.text.length); // Ctrl+K
       else if (ch === '\x0c') this.clearScreen(); // Ctrl+L
-      else if (ch === '\t') this.insert('  ');
+      else if (ch === '\t') this.tab();
       else if (ch >= ' ') this.insert(ch);
     }
+  }
+
+  /** Tab: only at the end of a line, never in a password, and only if the server can be asked. */
+  private tab(): void {
+    if (this.masked || this.cursor !== this.text.length || !this.events.onComplete) return;
+    this.completing = true;
+    // Without an answer the keyboard must not stay blocked: after a moment the keys go on as typed.
+    this.completeTimer = setTimeout(() => this.release(), COMPLETE_WAIT_MS);
+    this.events.onComplete(this.text);
+  }
+
+  private stopCompleting(): void {
+    this.completing = false;
+    clearTimeout(this.completeTimer);
+  }
+
+  /** The completion is over (answered or given up): the keys typed meanwhile now count. */
+  private release(): void {
+    this.stopCompleting();
+    for (const data of this.queued.splice(0)) this.input(data);
+  }
+
+  /**
+   * The server's answer to Tab. Ignored when the line was changed meanwhile.
+   * Several possibilities are listed under the line, as bash does.
+   */
+  completed(asked: string, line: string, options: string[]): void {
+    if (!this.completing) return; // too late: the keys have gone on without it
+    if (this.waiting || this.masked || this.text !== asked) return this.release();
+    if (options.length > 1) {
+      this.finishLine();
+      const width = Math.max(...options.map((o) => o.length)) + 2;
+      const perRow = Math.max(1, Math.floor(Math.max(1, this.screen.cols) / width));
+      let out = '';
+      options.forEach((o, i) => { out += o.padEnd(width) + ((i + 1) % perRow === 0 ? NEWLINE : ''); });
+      if (options.length % perRow !== 0) out += NEWLINE;
+      this.screen.write(out);
+    }
+    this.text = line;
+    this.cursor = line.length;
+    this.redraw();
+    this.release();
   }
 
   private insert(chars: string): void {

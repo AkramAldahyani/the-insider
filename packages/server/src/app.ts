@@ -70,11 +70,14 @@ function parseWeaknesses(text = 'random'): WeaknessChoice {
 }
 
 /** "90,45,8" -> meeting phase lengths. Anything else stops the server with a clear message. */
-function parseMeetingSeconds(text?: string): { discussionMs: number; votingMs: number; resultMs: number } | undefined {
+/** "90,45,8" or "90,45,8,10": discussion, voting, result, and (optional) each accused's defence, in seconds. */
+function parseMeetingSeconds(text?: string): { discussionMs: number; votingMs: number; resultMs: number; defenceMs?: number } | undefined {
   if (!text) return undefined;
   const parts = text.split(',').map((t) => Number(t.trim()));
-  if (parts.length !== 3 || parts.some((n) => !(n > 0))) throw new Error(`MEETING_SECONDS must be three positive numbers like "90,45,8", not "${text}"`);
-  return { discussionMs: parts[0] * 1000, votingMs: parts[1] * 1000, resultMs: parts[2] * 1000 };
+  if ((parts.length !== 3 && parts.length !== 4) || parts.some((n, i) => !(n > 0 || (i === 3 && n === 0)))) {
+    throw new Error(`MEETING_SECONDS must be three or four positive numbers like "90,45,8" or "90,45,8,10", not "${text}"`);
+  }
+  return { discussionMs: parts[0] * 1000, votingMs: parts[1] * 1000, resultMs: parts[2] * 1000, ...(parts.length === 4 ? { defenceMs: parts[3] * 1000 } : {}) };
 }
 
 /** Loads the content files and returns what a room needs to create its game. */

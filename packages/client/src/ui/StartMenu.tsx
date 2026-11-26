@@ -7,7 +7,7 @@
  * choices; the server checks them and decides the rest.
  */
 import {
-  LADDER, NAME_LENGTH, CODE_LENGTH, SOLO_DIFFICULTIES, SOLO_ROLES, cleanName, parseCode,
+  DEFENDER_LADDER, LADDER, NAME_LENGTH, TRAINING_CHOICE, defenderChoice, CODE_LENGTH, SOLO_DIFFICULTIES, SOLO_ROLES, cleanName, parseCode,
   type Facing, type Look, type SoloChoice, type SoloDifficulty, type SoloMode, type SoloRole,
 } from '@insider/shared';
 import { useState, type CSSProperties } from 'react';
@@ -17,8 +17,9 @@ import type { SavedPlace } from '../game/savedPlace';
 import { store } from '../game/store';
 import { Figure } from './Figure';
 import { Wardrobe } from './Wardrobe';
+import { rankOf, type Career } from '../game/career';
 
-export const MODE_TEXT: Record<SoloMode, { name: string }> = { investigation: { name: 'Investigation' }, infiltration: { name: 'Infiltration' } };
+export const MODE_TEXT: Record<SoloMode, { name: string }> = { investigation: { name: 'Investigation' }, infiltration: { name: 'Infiltration' }, training: { name: 'Training day' } };
 
 export const DIFFICULTY_TEXT: Record<SoloDifficulty, { name: string; about: string }> = {
   easy: { name: 'Easy', about: 'The hacker only knows rumours and takes its time. Colleagues pin some clues on the board.' },
@@ -43,7 +44,9 @@ const ROLE_TEXT: Record<SoloRole, { name: string; about: string }> = {
 
 /** What the top bar calls a solo match. */
 export function matchName(solo: SoloChoice): string {
-  return solo.level ? `Level ${solo.level} · ${LADDER[solo.level - 1].name}` : `${MODE_TEXT[solo.mode].name} · ${DIFFICULTY_TEXT[solo.difficulty].name}`;
+  if (solo.mode === 'training') return MODE_TEXT.training.name;
+  if (solo.level) return solo.mode === 'investigation' ? `Defender ${solo.level} · ${DEFENDER_LADDER[solo.level - 1].name}` : `Level ${solo.level} · ${LADDER[solo.level - 1].name}`;
+  return `${MODE_TEXT[solo.mode].name} · ${DIFFICULTY_TEXT[solo.difficulty].name}`;
 }
 
 /** The choice that starts a level. Its role and difficulty are not used: a level is fixed. */
@@ -51,13 +54,21 @@ export const levelChoice = (level: number): SoloChoice => ({ mode: 'infiltration
 
 // ───────────────────────────── The ways to play ─────────────────────────────
 
-type Mode = 'friends' | 'investigation' | 'infiltration' | 'ladder' | 'office';
+type Mode = 'friends' | 'training' | 'investigation' | 'infiltration' | 'ladder' | 'office';
+/** The two ladders: fixed cases for defenders, fixed break-ins for hackers. */
+type Track = 'defender' | 'hacker';
+const TRACKS = ['defender', 'hacker'] as const;
+const TRACK_TEXT: Record<Track, { name: string; about: string }> = {
+  defender: { name: 'Defender ladder', about: 'Five cases, a different job and a different kind of evidence in each' },
+  hacker: { name: 'Hacker ladder', about: 'Five break-ins, each teaching one trick and how it is found' },
+};
 /** Each way to play has the colour of a part of the office. */
 const MODES: { id: Mode; name: string; about: string; color: string; people: string }[] = [
   { id: 'friends', name: 'Play with friends', about: 'A lobby with a code. Secret roles; the computer fills the empty desks.', color: '#8adbc1', people: '2–30 people' },
+  { id: 'training', name: 'Training day', about: 'Your first day in the security team, with a colleague who shows you each step.', color: '#74cbbb', people: 'Alone · new here?' },
   { id: 'investigation', name: 'Investigation', about: 'Somebody is after the file on the admin server. Find out who.', color: '#78bdec', people: 'Alone' },
   { id: 'infiltration', name: 'Infiltration', about: 'You are the hacker. Get the file out without being caught.', color: '#e5484d', people: 'Alone' },
-  { id: 'ladder', name: 'Scenario ladder', about: 'Five fixed break-ins, each teaching one trick.', color: '#f2b134', people: 'Alone' },
+  { id: 'ladder', name: 'Ladders', about: 'Fixed cases that get harder: learn to defend, or learn how break-ins work.', color: '#f2b134', people: 'Alone' },
   { id: 'office', name: 'Shared office', about: 'One office for everybody who opens it. Pick any employee.', color: '#b6a2e4', people: 'Anybody' },
 ];
 
@@ -113,9 +124,53 @@ function Stage({ look, name, setName }: { look: Look; name: string; setName: (na
   );
 }
 
+// ───────────────────────────── The ladders ─────────────────────────────
+
+/** The highest level of a ladder that is open (where a player most likely wants to go on). */
+const highestOpen = (count: number, progress: LadderProgress) => Math.max(1, ...Array.from({ length: count }, (_, i) => i + 1).filter((n) => isOpen(n, progress)));
+
+/** The levels of one ladder: the chosen one is played by the big button, or directly with its own. */
+function LadderList({ levels, progress, at, setAt, testid, play }: {
+  levels: { name: string; briefing: string; job?: string }[]; progress: LadderProgress; at: number; setAt: (n: number) => void; testid: string; play: (n: number) => void;
+}) {
+  return (
+    <ol className="ladder">
+      {levels.map((l, i) => {
+        const n = i + 1;
+        const open = isOpen(n, progress);
+        const won = progress[n];
+        return (
+          <li key={l.name} className={`${open ? '' : 'ladder-closed'} ${n === at ? 'ladder-on' : ''}`} data-testid={`${testid}-${n}`}>
+            <button type="button" disabled={!open} onClick={() => setAt(n)} aria-pressed={n === at}>
+              <strong>{n}. {l.name}</strong>
+              {l.job && <span className="ladder-job"> · {l.job}</span>}
+              {won !== undefined && <span className="ladder-won"> won{won ? `: ${won}` : ''}</span>}
+              <small>{open ? l.briefing : 'Win the level before it first.'}</small>
+            </button>
+            <button type="button" className="menu-go ladder-play" data-testid={`${testid}-play-${n}`} disabled={!open} onClick={() => play(n)}>{won !== undefined ? 'Again' : 'Play'}</button>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 // ───────────────────────────── The screen ─────────────────────────────
 
-export function StartMenu({ progress, place, look }: { progress: LadderProgress; place: SavedPlace | null; look: Look }) {
+/** The player's rank in the top bar, with how far it is to the next one. */
+function RankChip({ career }: { career: Career }) {
+  const rank = rankOf(career.points);
+  const share = rank.next ? (career.points - rank.from) / (rank.next.points - rank.from) : 1;
+  return (
+    <span className="rank-chip" data-testid="rank" title={`${career.matches} matches, ${career.wins} won, ${career.found} pieces of evidence pinned${rank.next ? `. ${rank.next.points - career.points} points to ${rank.next.name}` : ''}`}>
+      <span className="rank-name">{rank.name}</span>
+      <span className="rank-bar" aria-hidden="true"><span style={{ width: `${Math.round(share * 100)}%` }} /></span>
+      <span className="rank-points">{career.points} pts</span>
+    </span>
+  );
+}
+
+export function StartMenu({ progress, defenders, place, look, career }: { progress: LadderProgress; defenders: LadderProgress; place: SavedPlace | null; look: Look; career: Career }) {
   const invited = invitedTo();
   const [mode, setMode] = useState<Mode>('friends');
   const [name, setName] = useState(readName);
@@ -123,7 +178,9 @@ export function StartMenu({ progress, place, look }: { progress: LadderProgress;
   const [role, setRole] = useState<SoloRole>('soc');
   const [difficulty, setDifficulty] = useState<SoloDifficulty>('normal');
   const [risk, setRisk] = useState<SoloDifficulty>('normal');
-  const [level, setLevel] = useState(() => Math.max(1, ...LADDER.map((_, i) => i + 1).filter((n) => isOpen(n, progress))));
+  const [level, setLevel] = useState(() => highestOpen(LADDER.length, progress));
+  const [defenderAt, setDefenderAt] = useState(() => highestOpen(DEFENDER_LADDER.length, defenders));
+  const [track, setTrack] = useState<Track>('defender');
   const ready = cleanName(name) !== '';
   const valid = parseCode(code);
   const friends = (start: () => Promise<void>) => {
@@ -137,7 +194,10 @@ export function StartMenu({ progress, place, look }: { progress: LadderProgress;
     friends: { text: 'Create a lobby', testid: 'friends-create', disabled: !ready, go: () => friends(() => store.createParty(cleanName(name))) },
     investigation: { text: 'Start the investigation', testid: 'menu-investigation', disabled: false, go: () => void store.startSolo({ mode: 'investigation', role, difficulty }) },
     infiltration: { text: 'Start the infiltration', testid: 'menu-infiltration', disabled: false, go: () => void store.startSolo({ mode: 'infiltration', role: 'any', difficulty: risk }) },
-    ladder: { text: `Play level ${level}`, testid: 'menu-ladder', disabled: !isOpen(level, progress), go: () => void store.startSolo(levelChoice(level)) },
+    training: { text: defenders[0] !== undefined ? 'Do the training again' : 'Start the training day', testid: 'menu-training', disabled: false, go: () => void store.startSolo(TRAINING_CHOICE) },
+    ladder: track === 'hacker'
+      ? { text: `Play level ${level}`, testid: 'menu-ladder', disabled: !isOpen(level, progress), go: () => void store.startSolo(levelChoice(level)) }
+      : { text: `Play case ${defenderAt}`, testid: 'menu-ladder', disabled: !isOpen(defenderAt, defenders), go: () => void store.startSolo(defenderChoice(defenderAt)) },
     office: { text: 'Enter the office', testid: 'menu-office', disabled: false, go: () => void store.enterOffice() },
   }[mode];
 
@@ -147,6 +207,7 @@ export function StartMenu({ progress, place, look }: { progress: LadderProgress;
         <span className="hud-brand"><span className="brand-mark" />THE INSIDER</span>
         <span className="home-tagline">An ordinary office. An extraordinary amount of evidence.</span>
         <span className="hud-spacer" />
+        <RankChip career={career} />
         <span className="hud-location">NEXORA HQ <span className="signal-dot" /></span>
       </header>
       {place && (
@@ -163,7 +224,7 @@ export function StartMenu({ progress, place, look }: { progress: LadderProgress;
             {MODES.map((m) => (
               <button key={m.id} type="button" role="tab" aria-selected={m.id === mode} data-testid={`mode-${m.id}`}
                 className={m.id === mode ? 'mode mode-on' : 'mode'} style={{ '--mode': m.color } as CSSProperties} onClick={() => setMode(m.id)}>
-                <span className="mode-name">{m.name}</span>
+                <span className="mode-name">{m.name}{m.id === 'training' && defenders[0] !== undefined && <span className="mode-done"> done</span>}</span>
                 <span className="mode-people">{m.people}</span>
                 <span className="mode-about">{m.about}</span>
               </button>
@@ -196,24 +257,23 @@ export function StartMenu({ progress, place, look }: { progress: LadderProgress;
                 <Pick name="risk" legend="Difficulty" value={risk} options={SOLO_DIFFICULTIES} set={setRisk} label={(d) => ({ name: DIFFICULTY_TEXT[d].name, about: INFILTRATION_TEXT[d] })} testid={(d) => `risk-${d}`} />
               </>
             )}
+            {mode === 'training' && (
+              <>
+                <p className="mode-lead">You are the new SOC analyst. A colleague tells you what to do, one step at a time: sit down, log in, wait for the alert, follow it to a person, and make your case at a meeting.</p>
+                <ul className="training-list">
+                  <li>About twenty minutes. The intruder is slow today, and the guide waits for you.</li>
+                  <li>You learn the commands a real analyst uses, and where the evidence is.</li>
+                  {defenders[0] !== undefined && <li data-testid="training-done">Done: {defenders[0] || 'won'}. The defender ladder is next.</li>}
+                </ul>
+              </>
+            )}
             {mode === 'ladder' && (
-              <ol className="ladder">
-                {LADDER.map((l, i) => {
-                  const n = i + 1;
-                  const open = isOpen(n, progress);
-                  const won = progress[n];
-                  return (
-                    <li key={l.name} className={`${open ? '' : 'ladder-closed'} ${n === level ? 'ladder-on' : ''}`} data-testid={`ladder-${n}`}>
-                      <button type="button" disabled={!open} onClick={() => setLevel(n)} aria-pressed={n === level}>
-                        <strong>{n}. {l.name}</strong>
-                        {won !== undefined && <span className="ladder-won"> won{won ? `: ${won}` : ''}</span>}
-                        <small>{open ? l.briefing : 'Win the level before it first.'}</small>
-                      </button>
-                      <button type="button" className="menu-go ladder-play" data-testid={`ladder-play-${n}`} disabled={!open} onClick={() => void store.startSolo(levelChoice(n))}>{won !== undefined ? 'Again' : 'Play'}</button>
-                    </li>
-                  );
-                })}
-              </ol>
+              <>
+                <Pick name="track" legend="Which ladder" value={track} options={TRACKS} set={setTrack} label={(t) => TRACK_TEXT[t]} testid={(t) => `track-${t}`} />
+                {track === 'defender'
+                  ? <LadderList levels={DEFENDER_LADDER.map((l) => ({ name: l.name, briefing: l.briefing, job: ROLE_TEXT[l.role].name }))} progress={defenders} at={defenderAt} setAt={setDefenderAt} testid="defender" play={(n) => void store.startSolo(defenderChoice(n))} />
+                  : <LadderList levels={LADDER} progress={progress} at={level} setAt={setLevel} testid="ladder" play={(n) => void store.startSolo(levelChoice(n))} />}
+              </>
             )}
             {mode === 'office' && <p className="mode-lead">Walk in, choose who you are today, and work beside whoever else is there. Empty desks are filled by the computer.</p>}
           </div>

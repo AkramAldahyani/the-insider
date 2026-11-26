@@ -5,20 +5,23 @@
  * in a lobby, shown to the others at once (store.setLook).
  */
 import { LOOK_HAIR, LOOK_OUTFITS, LOOK_SKINS, LOOK_STYLES, type Look } from '@insider/shared';
-import type { CSSProperties, ReactNode } from 'react';
+import { useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
+import { OUTFIT_NAMES, outfitNeeds, outfitOpen } from '../game/career';
 import { characterPortrait } from '../game/characterArt';
 import { store } from '../game/store';
 
 /** One row of the wardrobe: little swatches or faces, one of them chosen. */
-function Swatches({ legend, count, value, set, show, title, testid, wide = false }: {
+function Swatches({ legend, count, value, set, show, title, testid, wide = false, locked = () => false }: {
   legend: string; count: number; value: number; set: (n: number) => void; show: (n: number) => ReactNode; title: (n: number) => string; testid: string; wide?: boolean;
+  /** Not earned yet: shown with a lock, and cannot be chosen. */
+  locked?: (n: number) => boolean;
 }) {
   return (
     <div className={`wardrobe-row ${wide ? 'wardrobe-wide' : ''}`} role="radiogroup" aria-label={legend}>
       <span className="wardrobe-name">{legend}</span>
       <div className="wardrobe-options">
         {Array.from({ length: count }, (_, n) => (
-          <button key={n} type="button" role="radio" aria-checked={n === value} title={title(n)} className={n === value ? 'swatch swatch-on' : 'swatch'} data-testid={`${testid}-${n}`} onClick={() => set(n)}>
+          <button key={n} type="button" role="radio" aria-checked={n === value} title={title(n)} disabled={locked(n)} className={`swatch ${n === value ? 'swatch-on' : ''} ${locked(n) ? 'swatch-locked' : ''}`} data-testid={`${testid}-${n}`} onClick={() => set(n)}>
             {show(n)}
           </button>
         ))}
@@ -28,6 +31,7 @@ function Swatches({ legend, count, value, set, show, title, testid, wide = false
 }
 
 export function Wardrobe({ look }: { look: Look }) {
+  const points = useSyncExternalStore(store.subscribe, () => store.getUi().career.points);
   const change = (patch: Partial<Look>) => store.setLook({ ...look, ...patch });
   const dot = (color: string) => <span className="swatch-dot" style={{ background: color } as CSSProperties} />;
   return (
@@ -36,7 +40,8 @@ export function Wardrobe({ look }: { look: Look }) {
         show={(n) => <img src={characterPortrait('look', '', { ...look, style: n })} alt="" width="32" height="32" />} />
       <Swatches legend="Skin" count={LOOK_SKINS.length} value={look.skin} testid="look-skin" title={(n) => `Skin ${n + 1}`} set={(skin) => change({ skin })} show={(n) => dot(LOOK_SKINS[n])} />
       <Swatches legend="Hair colour" count={LOOK_HAIR.length} value={look.hair} testid="look-hair" title={(n) => `Hair colour ${n + 1}`} set={(hair) => change({ hair })} show={(n) => dot(LOOK_HAIR[n])} />
-      <Swatches legend="Jacket" count={LOOK_OUTFITS.length} value={look.outfit} testid="look-outfit" wide title={(n) => `Jacket ${n + 1}`} set={(outfit) => change({ outfit })} show={(n) => dot(LOOK_OUTFITS[n])} />
+      <Swatches legend="Jacket" count={LOOK_OUTFITS.length} value={look.outfit} testid="look-outfit" wide
+        title={(n) => (outfitOpen(n, points) ? OUTFIT_NAMES[n] ?? `Jacket ${n + 1}` : outfitNeeds(n))} locked={(n) => !outfitOpen(n, points)} set={(outfit) => change({ outfit })} show={(n) => dot(LOOK_OUTFITS[n])} />
       <label className="wardrobe-row wardrobe-glasses">
         <span className="wardrobe-name">Glasses</span>
         <input type="checkbox" data-testid="look-glasses" checked={look.glasses} onChange={(e) => change({ glasses: e.target.checked })} />

@@ -675,6 +675,36 @@ On two or three computers at home ([docs/play-with-friends.md](docs/play-with-fr
 5. Start the match: you see your own character in your look; the other window sees you as the employee you play, like everybody else. Nothing in the match tells people from bots.
 6. Narrow the window to phone width: the character, then the ways to play, then the wardrobe; nothing is cut off and nothing scrolls sideways.
 
+## BA. Learning: Tab, the notebook, hints
+
+1. Start an Investigation (Easy), sit at your PC and log in. Type `whoa` and press **Tab**: it becomes `whoami `. Type `l` and Tab: the commands starting with l are listed under the line. `cat /etc/pa` + Tab gives `/etc/passwd`. `ls /root/` + Tab gives nothing (you may not look there).
+2. Press Enter on `whoami`: the note *New in your notebook: whoami*. **Notebook** in the terminal's title bar (or `H` when standing) shows it with its manual page; *Not tried yet* lists the others, and a click shows one.
+3. Reload the page and start another match: the notebook still has your commands.
+4. On Easy, stand still for a little more than a minute: a **Tip** appears at the bottom (first: how to sit down, then where the logs are...). **Got it** closes it; the next comes only after another while. On Hard there are none; as the hacker there are none.
+
+## BB. The training day and the defender ladder
+
+1. Menu, **Training day**, **Start the training day**. The top bar says *Training day*; bottom left the guide: *Step 1 of 10, Your card*. There is no case panel.
+2. Each step moves on when it is done: `C` closes the card, sitting at SOC-WS-01, logging in, `siem help`, a HIGH alert on your screen (`siem source=alert severity=high`, again every minute until it appears), three pins, a meeting, the end. A soft chime plays at each step.
+3. Win: *Next: The first alert*. On the menu, **Training day** says *done*, and **Ladders** → *Defender ladder* has case 1 open, 2 to 5 closed. Each case says which job you play.
+4. Case 3 (*The open screen*) is the security guard: the monitors and the badge log are what solve it.
+5. *Hacker ladder* in the same tab is the old scenario ladder.
+
+## BC. Meetings as a show, sounds, big moments
+
+1. Start an Investigation with short meetings (`MEETING_SECONDS=30,20,5,6`). Call a meeting: a red **Emergency meeting** splash for a moment, and a bell.
+2. Accuse with three pins: **On the screen** shows the accusation and its three pieces of evidence for everybody. With two accusations, buttons switch between them.
+3. When the discussion ends: *Defence*, and *NAME has the floor · 6 s* (each accused in turn). Nobody can vote or accuse meanwhile; the accused can write in the chat.
+4. The vote: then the ballots drop one by one into the columns, and only then the verdict, with a stamp (*Hacker caught* / *Wrong person*).
+5. A security alert plays a short alarm; the match's end a fanfare or a sad tune; typing at a PC ticks softly; the office hums quietly. **Sound on** in the bottom bar switches everything off (remembered).
+6. In a lobby's match the card with your secret part turns over with a sweep.
+
+## BD. Finding your way, the replay, ranks
+
+1. In a match: your own desk glows amber and says **YOUR DESK**. The office list on the right shows everybody's PC. The **map** in the bottom right corner shows the plan, you (green), your desk and the meeting button, and never anybody else. `−` folds it.
+2. After a match open the debrief: the **replay** shows the plan with the hacker's path. **Play** runs it (×30, ×60, ×120); the slider moves through the match; numbered marks are the steps, coloured found / seen / missed. *Show on the map* in a step jumps there.
+3. The match-over box says *+N points* and why. The menu's top bar shows your rank (*Intern*) and how far to the next. At *Junior analyst* the charcoal jacket opens in the wardrobe (until then it has a lock), at *Analyst* the gold one, at *Senior analyst* the white one.
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.

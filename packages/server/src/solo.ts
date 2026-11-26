@@ -5,11 +5,11 @@
  * comes from the server operator only.
  */
 import { ALL_WEAKNESSES, chooseWeaknesses, type Scenario, type WeaknessId } from '@insider/engine';
-import { SOLO_MEETINGS, ladderLevel, withCameras, type SoloChoice, type SoloDifficulty } from '@insider/shared';
+import { DEFENDER_LADDER, SOLO_MEETINGS, ladderLevel, withCameras, type SoloChoice, type SoloDifficulty } from '@insider/shared';
 import { INVESTIGATION_PACE } from './bots/investigation-pace';
 import { Random } from './bots/random';
 import type { OfficeGameOptions } from './game';
-import { LADDER_SETTINGS } from './ladder';
+import { DEFENDER_SETTINGS, LADDER_SETTINGS, TRAINING_SETTINGS, type DefenderSettings } from './ladder';
 
 /**
  * What a difficulty level of INVESTIGATION means, besides what the bot hacker
@@ -113,7 +113,26 @@ function ladderGameOptions(base: OfficeGameOptions, level: number): OfficeGameOp
   };
 }
 
+/**
+ * The training day, or a level of the defender ladder: an Investigation in which
+ * everything is fixed (ladder.ts). Who the player is follows from the job and the level's seed.
+ */
+function defenderGameOptions(base: OfficeGameOptions, role: SoloChoice['role'], s: DefenderSettings): OfficeGameOptions {
+  const playerId = pickPlayer(base, { mode: 'investigation', role, difficulty: 'normal' }, s.seed);
+  return {
+    ...base,
+    seed: s.seed,
+    bots: true,
+    botOptions: { ...base.botOptions, hacker: true, hackerDifficulty: s.hackerDifficulty, hackerPace: s.hackerPace, hackerNot: playerId, forgetLock: s.forgetLock, pinClues: s.pinClues },
+    weaknesses: s.weaknesses,
+    meetingTimes: { ...base.meetingTimes, usesPerPlayer: SOLO_MEETINGS },
+    soloPlayer: playerId,
+  };
+}
+
 export function soloGameOptions(base: OfficeGameOptions, choice: SoloChoice, seed: number): OfficeGameOptions {
+  if (choice.mode === 'training') return defenderGameOptions(base, 'soc', TRAINING_SETTINGS);
+  if (choice.mode === 'investigation' && choice.level !== undefined) return defenderGameOptions(base, DEFENDER_LADDER[choice.level - 1].role, DEFENDER_SETTINGS[choice.level - 1]);
   if (choice.level !== undefined) return ladderGameOptions(base, choice.level);
   const playerId = pickPlayer(base, choice, seed);
   // The operator may force certain weaknesses (VULNS, for tests); otherwise the level decides how many.

@@ -270,6 +270,10 @@ Decided in Phase 6 (the owner accepted these with the plan):
 - The page opens on the **home lobby**: the player's character stands in a room drawn like the office and can be dressed (hair, skin, hair colour, jacket, glasses); on the right are the ways to play, each with its options and one big button. The look is kept in the browser.
 - A match with friends starts in a **lobby** with a five-letter code. Everybody's character stands there in their own look; the host chooses the settings and starts; one room runs the lobby and then its match.
 - In a match a player sees their own character in their look, but everybody else sees the employee they play: a look of their own would tell people from bots.
+- **Training day:** one fixed, slow Investigation as the SOC analyst, with a guide that names the next step and notices when it is done (alert → address → PC → person → meeting).
+- **Defender ladder:** five fixed Investigations, each with another job and another way in, each teaching one kind of evidence; winning one opens the next. The hacker ladder (part G) is the other track.
+- **Help while playing:** Tab completes commands and file names (only what `ls` would show; no trace); a notebook keeps every command used with its manual page; defenders who seem stuck get general hints (sooner on Easy, never on Hard), which never know anything about the match.
+- **Career:** points for every match, five ranks, and three jackets that come with a rank. Kept in the browser until there are accounts.
 - The hacker is drawn from the human players if there are at least four, otherwise bots can be drawn too; the host can change this.
 - A human hacker in multiplayer must also wait between first reading the flag and handing it in: 5, 3 or 2 game minutes by the lobby's difficulty (owner's choice after the measurements of part J).
 - Jobs are drawn when the host starts; the hacker always poses as an ordinary employee. A person as the hacker needs at least three people. Lobby names appear only after the match (during it they would tell people from bots), and in a lobby's match everybody is at work from the first moment.
@@ -370,6 +374,8 @@ Decided in Phase 3:
 
 ## 9. Meetings, evidence and voting
 
+Added after Phase 6: the accusation's evidence goes up on a shared screen; after the discussion each accused has the floor for 10 seconds (at most three) before the vote; the ballots are shown one by one (only whose name is on each), then the verdict.
+
 - **Emergency button** in the meeting room (limited uses per player).
 - **Shared evidence board:** players pin log lines, command outputs, CCTV snapshots and badge entries with one click from any viewer.
 - **Accusation** requires linking **at least 3 pieces of evidence** to the accused.
@@ -413,6 +419,8 @@ Decided in Phase 3 (bot employees; the bot hacker, chat and voting come in Phase
 ---
 
 ## 11. Post-match debrief (key learning feature)
+
+Added after Phase 6: a **replay on the map**. The server keeps each hacker's position every 10 game seconds (sent only in the debrief), and the page draws the path over time with every step where it was taken, coloured by found / seen / missed.
 
 After each match, show a full timeline replay: every hacker action, the evidence it produced, who found what, and which clues were missed — with short explanations of the real-world technique, referencing **MITRE ATT&CK** technique IDs.
 

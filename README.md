@@ -1,352 +1,378 @@
+<div align="center">
+
 # The Insider
 
-A multiplayer social-deduction game that teaches real Linux forensics. The full design is in [DESIGN.md](DESIGN.md).
+**An ordinary office. An extraordinary amount of evidence.**
 
-**Current state: Phases 1 to 5 and the solo modes (5a) are done; multiplayer (Phase 6) is done: lobbies for up to 30 people (a small office of 11 desks and a large one of 30) with secret roles, up to three hackers, chat, watching after being voted out, coming back after a lost connection, and bots that fill up and help to judge while people are few, department meetings in the large office, and one address for friends at home work (Parts A to J).** The page opens on a start menu: a private Investigation match against bots (choose a job and a difficulty), a private Infiltration match (you are the hacker), a ladder of five fixed infiltrations (progress is kept in the browser), a lobby for friends (create one, share its code or link, get ready, and the host starts the match; jobs and the hacker are drawn secretly, and after the debrief everybody can return to the same lobby), or the shared office. In solo matches the bots judge the evidence behind an accusation and vote on it, and the debrief rates the investigation. Investigation is playable with every job, and Infiltration as the hacker: the bots notice traces, follow addresses, watch cameras, call meetings and vote. Roles are in (each player's card shows their role and what it allows, and the office has a SOC analyst), the SOC analyst's PC has a SIEM search over every machine's logs (`siem`), the security office's monitors show the camera recordings and the badge log, findings can be pinned to a shared evidence board (`B`), the emergency button in the meeting room starts a meeting with chat, accusations backed by evidence, and a vote, the guard can detain someone caught in the act (`X`), and the helpdesk's PC has a console to lock any PC remotely and reset passwords (`helpdesk`). Bot employees check their own PCs, remember what they saw, tell meetings about it, and vote only on what they know. Phase 4 parts A-H are complete, including the simulated remote tools, phishing, log cleaner, and CLI hacker support. Phase 5 H adds parity, reputation loss, and anti-stall escalation. Phase 5 F is complete: a simulated bot hacker now plays by default. After a match, the debrief shows every step of the hacker, the evidence it left, what was found or missed, and the MITRE ATT&CK technique (Phase 5 I). The bot hacker plays at a human pace, and whole matches are tested (Phase 5 J).
+A multiplayer social-deduction game that teaches real Linux forensics.
+One of your colleagues is stealing a file from the admin server. Find out who, with evidence, before they hand it over.
 
-**A living office.** You walk around an office full of bot employees, sit at any PC and use its simulated Linux shell. Bots work, write mail, browse and take breaks, so evidence accumulates even while you stand still. The hacker has a private toolkit, a USB stick (hold `U` at an unlocked PC) and shoulder surfing. Reading the server's flag and submitting it from the briefing ends the match. See [visual upgrade notes](docs/design/visual-upgrade.md) for the current procedural art and [progress](PROGRESS.md) for each completed part.
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-20%2B-417e38?logo=nodedotjs&logoColor=white)
+![pnpm](https://img.shields.io/badge/pnpm-workspace-f69220?logo=pnpm&logoColor=white)
+![Phaser](https://img.shields.io/badge/Phaser-3-8a2be2)
+![Colyseus](https://img.shields.io/badge/Colyseus-0.16-1f2937)
+![Tests](https://img.shields.io/badge/tests-Vitest%20%2B%20Playwright-6e9f18)
 
-The two Phase 4 E tools appear in the hacker's private `~/.tools/README`:
+<img src="e2e/screenshots/35-home-lobby.png" alt="The home lobby: a character on a stage in the office, the wardrobe, and the ways to play" width="820">
 
-| Game command | Behavior |
-|---|---|
-| `~/.tools/phish USER` | Sends one simulated IT reset message. The recipient can inspect its headers with `mail NUMBER`, then follow the displayed game link with `curl URL`. Following submits the recipient's fictional credential once; reading or using `curl -I` does not. Results are private files in the sender's `~/.tools/loot/phish-ID.txt`. Cooldown: 60 game seconds. |
-| `~/.tools/clean LOG "TEXT"` | Removes lines containing literal text from a writable virtual file under `/var/log`, leaving a visible tampering marker. Most logs require root. Cooldown: 30 game seconds. |
+</div>
 
-Bots read reset messages and have a seeded 30% chance of following each message's link. Investigators can
-correlate mail headers, mail delivery, DNS and proxy records. Cleaning affects the selected virtual file;
-the master history, journal history and evidence already pinned to the board remain available.
+---
 
-What exists:
+## Contents
 
-- a simulated office network: machines, users, files, logs, a shell, mail, a simulated web, badge and camera logs (`packages/engine`);
-- a game server that owns that world, the clock, the doors, the bots, the tasks and the cameras (`packages/server`);
-- a browser client: a home lobby where you dress your character and choose how to play, the lobby with friends, map, movement, PC terminal (`packages/client`);
-- a text CLI to use the simulation without graphics (`packages/cli`).
+- [What it is](#what-it-is)
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Quick start](#quick-start)
+- [How to play](#how-to-play)
+- [Game modes](#game-modes)
+- [Architecture](#architecture)
+- [Configuration](#configuration)
+- [The command-line client](#the-command-line-client)
+- [Testing](#testing)
+- [Project layout](#project-layout)
+- [Simulation notes](#simulation-notes)
+- [Extending the game](#extending-the-game)
+- [Safety](#safety)
+- [Roadmap](#roadmap)
+- [Documentation](#documentation)
 
-Everything is simulated. No real commands are run, no real network is touched, and nothing here is a real exploit.
+## What it is
 
-## Requirements
+The Insider is played in a small company, Nexora, drawn as a top-down pixel office. Everybody has a desk, a badge and a PC with a Linux shell. One of the employees (a person or the computer) is a hacker who wants a file from the admin server.
 
-- Node.js 20 or newer (developed on Node 24)
-- pnpm (this repo pins `pnpm@12.21.0`)
+- **Defenders** read logs, follow IP addresses to PCs and PCs to people, look at cameras and badge logs, pin evidence to a shared board, and convince the others at a meeting.
+- **The hacker** looks like everybody else, uses simulated tools, borrows open screens, and has to get the file out before the evidence piles up.
 
-If typing `pnpm` gives "command not found", use one of these:
+Everything a player does leaves real-looking traces: `auth.log`, `last`, DHCP leases, proxy and DNS logs, badge taps, camera pictures. The forensics are real; the attacks are not.
 
-```bash
-corepack enable
-```
+> **Everything is simulated.** The game runs a pretend office network inside its own engine. No real command is run, no real network is touched, and nothing here is a real exploit.
 
-```bash
-npm install -g pnpm
-```
+## Features
 
-Or leave pnpm uninstalled and put `corepack` in front of every command below (`corepack pnpm install`, `corepack pnpm cli`, …). Corepack ships with Node.
+**Ways to play**
+- **Play with friends:** a lobby with a five-letter code for 2 to 30 people, secret roles, up to three hackers, and the computer filling empty desks.
+- **Training day:** a guided first case as the SOC analyst, step by step.
+- **Investigation** and **Infiltration:** solo matches against bots, as a defender or as the hacker, in three difficulties.
+- **Ladders:** five fixed cases for defenders and five fixed break-ins for hackers, each teaching one kind of evidence.
+- **Shared office:** walk in and work beside whoever is there.
 
-## Install
+**Learning built in**
+- **Tab completion** of commands and file names (only what `ls` would show you).
+- **A notebook** (`H`) of every command you have used, with its manual page.
+- **Gentle hints** for defenders who seem stuck (often on Easy, never on Hard).
+- **The debrief:** every step of the hacker, the evidence it left, what was found or missed, the MITRE ATT&CK technique, and a **replay on the map**.
+
+**A living office**
+- Bot employees work, write mail, browse, take breaks, check their PCs, notice things and vote. On screen nobody can tell bots from people.
+- Badge doors, cameras, a security office with monitors, a SIEM for the SOC analyst, a helpdesk console, a guard who can detain.
+
+**Meetings as a show**
+- The evidence against the accused goes up on a shared screen, each accused person gets the floor to answer, and the ballots are turned over one by one.
+
+**Your own character**
+- A home lobby with a character you dress (hair, skin, jacket, glasses), ranks and points for every match, and jackets that come with a rank.
+
+## Screenshots
+
+| The office | A meeting | The debrief |
+|---|---|---|
+| <img src="e2e/screenshots/2-office-and-card.png" alt="The office with the onboarding card" width="300"> | <img src="e2e/screenshots/22-evidence-judged.png" alt="An emergency meeting with evidence" width="300"> | <img src="e2e/screenshots/20-match-debrief.png" alt="The debrief after a match" width="300"> |
+
+| The lobby with friends | At a PC | The SOC analyst's trail |
+|---|---|---|
+| <img src="e2e/screenshots/36-friends-lobby.png" alt="Friends in a lobby" width="300"> | <img src="e2e/screenshots/5-shell.png" alt="A shell on a PC" width="300"> | <img src="e2e/screenshots/19-soc-trail.png" alt="Evidence found with the SIEM" width="300"> |
+
+## Quick start
+
+**Requirements:** Node.js 20 or newer (developed on Node 24) and pnpm (the repository pins `pnpm@12.21.0`).
+
+If `pnpm` is not found, run `corepack enable`, or put `corepack` in front of every command (`corepack pnpm install`). Corepack ships with Node.
 
 ```bash
 pnpm install
 ```
 
-## Play with friends at home
-
-```bash
-pnpm start
-```
-
-This builds the page and starts everything on one address that other computers in the same home network can open. The step-by-step guide is [docs/play-with-friends.md](docs/play-with-friends.md).
-
-## Play in the browser
+**Play on this computer:**
 
 ```bash
 pnpm dev
 ```
 
-This starts the game server (port 2567) and the web page. Open http://localhost:5173. (For development: only this computer can connect.)
+Open http://localhost:5173. New here? Choose **Training day**.
 
-1. Choose an employee. You appear next to their desk with an onboarding card (username, password, PC, badge). Everyone you did not choose is played by a bot.
-   On screen they look exactly like people; nothing tells you who is a bot.
-2. Walk with `WASD` or the arrow keys. Stand at a desk's chair and press `E` to use that PC.
-3. Type in the terminal. `Esc` stands up; the PC stays exactly as you left it.
-4. Your task list (top left) gives you ordinary work to do. Each step shows a command that does it; the step is ticked off when you really typed it (or stood in the room it names).
+**Play with friends at home:**
+
+```bash
+pnpm start
+```
+
+This builds the page and serves the game on one address that other computers in the same home network can open. Step by step: [docs/play-with-friends.md](docs/play-with-friends.md).
+
+## How to play
+
+1. On the home screen, type your name under your character, dress it if you like, choose a way to play and press the big button.
+2. Your **card** (`C`) has your username, password, PC and badge. Walk to your desk and press `E` to sit down.
+3. Log in and investigate. Select a telling line with the mouse and press **Pin selection**: the board (`B`) keeps it.
+4. When three clues point at one person, press the emergency button in the meeting room, accuse with your evidence, and vote.
 
 | Key | Where | What it does |
 |---|---|---|
-| `WASD` / arrows | office | walk |
-| `E` | at a desk | sit down and use the PC |
-| `E` | at a door with a reader | tap your badge |
-| `C` | office | show / hide your onboarding card |
-| `T` | office | show / hide your task list |
-| `B` | office | show / hide the shared evidence board |
-| `M` | office | hacker only: show / hide the private briefing |
-| `U` (hold) | at a desk, standing | hacker only: plug in the USB stick (5 s) |
-| `` ` `` (backtick) | office | developer panel (development only) |
-| `Esc` | terminal | stand up |
+| `W A S D` / arrows | office | walk |
+| `E` | at a desk / door / button | use the PC / tap your badge / call a meeting |
+| `C` | office | your onboarding card |
+| `T` | office | your job tasks |
+| `B` | office | the shared evidence board |
+| `H` | office | your notebook of commands |
+| `M` | office | your case (defenders) or your private briefing (the hacker) |
+| `X` | next to somebody | security guard only: detain (press twice) |
+| `U` (hold) | at a desk | hacker only: plug in the USB stick (5 s) |
+| `Enter` | office | chat (only the people in the same room hear you) |
+| `Tab` | terminal | complete a command or file name |
+| `↑` `↓` | terminal | earlier lines |
 | `Ctrl+C` | terminal | cancel the line or the password question |
 | `F2` | lock screen | switch user |
-| `↑` `↓` `←` `→` `Home` `End` | terminal | history and line editing |
+| `Esc` | terminal | stand up (the PC stays exactly as you left it) |
 
-On the map, a monitor is green when unlocked, amber when locked (with the user's name) and grey at the login prompt. Muted red camera housings mark CCTV locations. A teal outline marks the desk or badge door in reach.
+On the map a monitor is green when unlocked, amber when locked (with the user's name) and grey at the login prompt. Your own desk glows, and the minimap in the corner shows where you are. Doors with a small box have a badge reader; dark red doors open only for certain badges, and every tap is written to `/var/log/badge/access.log` on `SEC-SRV-01`.
 
-**Doors.** A closed door is a solid bar across the doorway. Doors with a small box beside them have a badge reader: stand at the door and press `E`. The reader is white by default. If your badge is accepted it turns green and the door opens for 3 seconds (anyone can walk through while it is open); if declined, it turns red. It returns to white when the door closes or the denial indicator clears. Dark red doors (server room, security office) open only for certain badges; your onboarding card says what yours opens. Doors without a box open by themselves. Every tap is written to `/var/log/badge/access.log` on `SEC-SRV-01`, which the security guard and the sysadmin can read over ssh.
-
-Other commands:
-
-| Command | What it does |
-|---|---|
-| `pnpm server` | only the game server |
-| `pnpm client` | only the web page |
-| `pnpm build` | production build of the web page (`packages/client/dist`) |
-| `BOTS=0 pnpm dev` | an empty office without bot employees (PowerShell: `$env:BOTS=0; pnpm dev`) |
-| `BOT_HACKER=0 pnpm dev` | ordinary employee bots without an automated hacker (PowerShell: `$env:BOT_HACKER=0; pnpm dev`) |
-| `BOT_HACKER_DIFFICULTY=easy pnpm dev` | bot knowledge: `easy`, `normal` (default), or `hard` (PowerShell: `$env:BOT_HACKER_DIFFICULTY='easy'; pnpm dev`) |
-| `BOT_HACKER_PACE=fast pnpm dev` | a bot hacker without pauses, for demonstrations (PowerShell: `$env:BOT_HACKER_PACE='fast'; pnpm dev`) |
-| `pnpm start` | the game for friends at home: page and server on one address (port 2567), no developer panel |
-| `pnpm load` | load test: 30 pretend players for a minute (`pnpm load 55 120`: 55 for two minutes) |
-| `pnpm map` | regenerate `maps/office-small.json` and `maps/office-large.json` from `maps/build-office.ts` (overwrites edits made in Tiled) |
-| `pnpm scenario` | regenerate `scenarios/nexora-large.json` (30 people) from `scenarios/nexora-small.json` and `scenarios/build-large.ts` |
-
-Server settings are environment variables: `GAME_PORT` (2567), `GAME_HOST` (network address to listen on; this computer only in development, all with `pnpm start`), `SCENARIO` (`nexora-small`), `MAP` (`office-small`), `SEED` (the shared office uses 1 unless it is set; every solo match and lobby gets a new one unless it is set), `SOLO_LIMIT` (how many solo matches may run at the same time, 20), `LOBBY_LIMIT` (how many lobbies, 20), `TIME_SPEED` (game seconds per real second, 1), `BOTS` (`0` = an empty office with no bot employees), `MEETING_SECONDS` (meeting discussion, voting and result lengths, `90,45,8`), `STALL_MINUTES` (anti-stall: every N game minutes one of the hacker's actions is flagged HIGH in the SIEM, `10`, `0` = off), `VULNS` (today's weaknesses: `random` by default, `none`, or a list such as `extra-sudo,tailgate`), and `NODE_ENV=production` to switch the developer tools off.
-
-With bots enabled, one eligible employee is chosen uniformly using the match seed, independently of weaknesses
-and who received mistaken sudo. It starts its mission after several game minutes of
-ordinary work following arrival (how long depends on the difficulty), pauses between its steps, and uses only the simulated tools and movement rules. Its actions leave logs
-and physical evidence; meetings interrupt it, and the guard or a vote can stop it. `BOT_HACKER=0` disables this
-controller while leaving employee bots active. Human hacker selection remains available: taking over the bot
-hacker's employee preserves that role, while explicitly choosing another hacker stops the previous controller.
-The bot can fail when routes are blocked; it never receives the flag or extra privileges automatically.
-
-`BOT_HACKER_DIFFICULTY` controls starting knowledge. **Easy** gets the human rumours and tests them through
-simulated terminals. **Normal** (default) knows a seeded subset of enabled weaknesses; **Hard** has full weakness
-knowledge. Normal confirms half, rounded down, or uses a seeded 50% confirmation chance when only one weakness
-is enabled. Failed attempts leave normal evidence and lead to other routes, including physical observation.
-The developer panel's **mission** view shows the setting. Restart the server to change it; invalid values fail startup.
-
-The difficulty also sets the bot's pace. If nobody stops it, a match usually takes 19 to 35 game minutes on Easy, 14 to 28 on
-Normal and 11 to 16 on Hard; after it has read the flag (a HIGH alert) it still works normally for a few minutes before handing
-it in. `BOT_HACKER_PACE=fast` removes the pauses. On a day without a direct way in, it waits for a chance and can take hours (never in a solo match).
-
-## Run the CLI
-
-```bash
-pnpm cli
-```
-
-Options: `pnpm cli --seed 42` (another random seed) and `pnpm cli --scenario nexora-small` (a scenario id or a path to a `.json` file).
-
-To play as the hacker, choose a player ID or account:
-
-```bash
-pnpm cli --hacker p4 --seed 42
-pnpm cli --hacker o.farouk --vulns plaintext-password
-```
-
-`--hacker` selects that player, installs their simulated tools, and shows the mission briefing. Weaknesses are
-seeded random by default in hacker mode. `--vulns` accepts `random`, `none`, or a comma-separated list of
-`weak-admin-password`, `extra-sudo`, `plaintext-password`, `careless-admin`, and `tailgate` (only those supported
-by the scenario apply). Without either option, the original CLI starts with no hacker and no weaknesses.
-The CLI is a simulation/debug sandbox: it exposes scenario credentials and permits switching players. It runs
-the engine without the browser server's bots, movement, physical interactions or meetings.
-
-The CLI prints the players and their credentials, then waits for input. Lines starting with `:` are CLI commands; everything else is typed into the PC you are sitting at.
-
-| CLI command | What it does |
-|---|---|
-| `:sit <hostname>` | Sit at a PC. You get a login prompt, a lock screen, or an open shell, depending on how it was left. |
-| `:leave` | Stand up. The PC stays exactly as it is (locked or unlocked). |
-| `:switch` | On a lock screen: switch user (log in as someone else; the locked session stays). |
-| `:as <player>` | Become another player (`p1`…`p5`). This is who is *physically* at the keyboard. |
-| `:players` / `:hosts` | List players with credentials / machines with IP, MAC and screen state. |
-| `:briefing` | Show the mission while playing as the selected hacker. Switching players with `:as` does not transfer that role. |
-| `:flag <text>` | Submit the flag. The current player must be the hacker and must have read it in this match. |
-| `:time` / `:time +5m` | Show / advance game time (`s`, `m`, `h`, `d`, e.g. `+1h30m`). |
-| `:events [N]` | Debug view of the master event log (last N entries). |
-| `:dump [file]` | Save the whole world to JSON (default: `dumps/`). |
-| `:help` / `:quit` | Help / exit. |
-
-Passwords show as `*` while you type them. Game time also advances by the real time that passes between your inputs. A screen never locks itself: lock it with `loginctl lock-session`.
-
-After a successful flag submission, gameplay and game time stop. You can still use `:events`, `:dump`, `:hosts`,
-`:players`, `:time`, `:briefing` and `:help` to inspect the result. Use `:quit` and launch the CLI again for a new match.
-
-A step-by-step tour with expected results is in [TESTING.md](TESTING.md).
-
-## Run the tests
-
-```bash
-pnpm test
-```
-
-```bash
-pnpm typecheck
-```
-
-841 Vitest tests cover the engine (mail, web and DNS logs, background noise, permissions, ssh logging and source IPs, sudo, su, history, DHCP, lock/unlock, unattended-PC records, switch user, pipes, deterministic replay), the server (movement, sitting, doors and badges, bots, bot hacker fairness, difficulty, fallback matches and interruptions, job tasks, CCTV, a three-hour soak run, whole matches against the bot hacker, map checks, and the visibility rule), and CLI mission startup and completion.
-
-```bash
-pnpm e2e
-```
-
-Twenty-four Playwright tests drive real Chromium clients through the game. Twenty use their own server without bots (ports 2577 and 5183), so they never share an office with a game you have open; the other four play whole matches (solo as a defender, as the hacker and on the scenario ladder, and three friends from a lobby) on a second one (2578 and 5184). They cover the existing interactions plus two-client movement, responsive HUD layout, and stable canvas/camera sizing after repeated task-panel toggles. Screenshots go to `e2e/screenshots/` and `test-results/design/`. The first time, download the browser with:
-
-```bash
-pnpm exec playwright install chromium
-```
-
-## Project layout
-
-```
-scenarios/            office definitions (data only)
-maps/                 office maps in Tiled JSON format, and the script that generated the first one
-e2e/                  Playwright browser tests and their screenshots
-scripts/dev.mjs       starts server + web page together
-packages/shared/      message types, map format, movement rules and route finding used by server AND client
-packages/server/      the game server (Colyseus)
-  src/game.ts         one match: world + players' bodies; all rules, no networking
-  src/visibility.ts   the ONLY place that builds data sent to a browser
-  src/OfficeRoom.ts   thin network wrapper around game.ts
-  src/state.ts        the public state synced to every browser
-  src/mapCheck.ts     start-up check: map and scenario agree (desks, doors, badges, cameras, reachability)
-  src/doors.ts        doors: closed = wall, badge taps, 3 s open, passage counting
-  src/tasks.ts        job tasks: handed out, ticked off from what really happened
-  src/cctv.ts         cameras: snapshots of who is in view
-  src/bots/           bot employees
-    manager.ts        one bot per employee nobody plays; arrival; observations
-    mover.ts          walking a route at human speed, through doors
-    brain.ts          the daily routine as a behaviour tree (tree.ts)
-    random.ts         the bots' own seeded random numbers
-packages/client/      the browser game
-  src/game/store.ts   connection + the data React, Phaser and xterm share
-  src/game/           Phaser scene (map, players, monitors) and keyboard
-  src/ui/             terminal window, line editor, HUD, start menu, start screen, card, dev panel
-packages/engine/      the simulation: pure TypeScript, no I/O, no Node APIs
-  src/core/           clock, background noise, random numbers, scenario format, world builder
-  src/fs/             virtual filesystem and permission checks
-  src/auth/           /etc/passwd & co, passwords, sudo rules, login sessions
-  src/net/            DHCP (with lease history) and DNS
-  src/physical/       badge taps, door and camera events (the logs on SEC-SRV-01)
-  src/proc/           process table
-  src/events/         master event log and the log lines made from it
-  src/shell/          lexer, parser, expansion, executor, prompt
-  src/commands/       the shell commands, grouped by topic
-  src/terminal.ts     openTerminal / sendInput (login, lock screen, prompts)
-  test/               Vitest tests
-packages/cli/         the terminal REPL (the only place that reads files or the keyboard)
-```
-
-## How the browser game fits together
-
-```
-keyboard -> client --(move / sit / line)--> server (OfficeGame) --> engine World
-client <--(state patches: positions, desks, clock)--------+
-client <--(messages: text of the PC I am sitting at)------+
-```
-
-**The server decides everything.** The browser sends what the player wants ("walk left", "sit here", "this line"). The server moves the player, checks walls and the distance to the desk, runs the line in the engine and sends back the result. 20 times a second it advances the game clock by the real time that passed.
-
-**The visibility rule.** The server knows every password and the true identity behind every action. A browser receives only: the public physical state (where people are, who sits where, whether each monitor is locked), its own onboarding card, and the text on the screen of the PC it is sitting at. Every outgoing payload is built field by field in `visibility.ts`; nothing from the engine is passed through whole. Tests record every message, and every byte on a real connection, and check that no other password and no master-log entry is in them.
-
-**The map** is a Tiled JSON file. Open `maps/office-small.json` in [Tiled](https://www.mapeditor.org) to edit it. Each object in the `desks` layer has a `hostname` property naming a scenario host; if the two lists differ, the server stops at start-up and prints every mismatch.
-
-**Bots are ordinary bodies.** A bot is the same kind of object as a human player and acts through the same functions (walk, tap a badge, sit, type a line), so it is bound by the same rules and leaves the same logs. A browser receives a bot exactly like a human: the same fields and nothing else. The only difference is where the decisions come from: a keyboard, or `bots/brain.ts`. Bots have their own seeded random numbers, so a match replays identically.
-
-**Doors** are pieces of wall that can be switched off. Closed, a door's tiles are solid; a granted badge tap makes them walkable for 3 seconds for anyone, which is what makes tailgating possible.
-
-**Evidence the office produces by itself** (all readable with the shell on the machine that stores it):
+**Where the evidence is:**
 
 | What | Where |
 |---|---|
-| Badge taps, granted and denied | `SEC-SRV-01:/var/log/badge/access.log` |
-| Door open/close with the number of people who passed | `SEC-SRV-01:/var/log/badge/doors.log` |
-| Camera motion (head count and snapshot id, no names) | `SEC-SRV-01:/var/log/cctv/motion.log` |
-| Mail traffic; each user's mailbox | `ADMIN-SRV-01:/var/log/mail.log`, `/var/mail/USER` |
-| Web requests (PC, account, URL, size) | `ADMIN-SRV-01:/var/log/squid/access.log` |
-| Name lookups | `ADMIN-SRV-01:/var/log/named/queries.log` |
-| Connections to a machine's ssh port | that machine's `kern.log` / `dmesg` (`[UFW ALLOW]`) |
-| Logins, sudo, locks, cron, timers, clock sync | each machine's `auth.log` and `syslog` |
+| Logins, sudo, locks, cron, clock sync | each machine's `auth.log` and `syslog`; `last`, `who`, `w` |
+| Which PC had an address | `ADMIN-SRV-01:/var/lib/dhcp/dhcpd.leases`, or `siem source=dhcp` |
+| Badge taps; doors and how many passed | `SEC-SRV-01:/var/log/badge/access.log`, `doors.log` |
+| Camera motion | `SEC-SRV-01:/var/log/cctv/motion.log`; the pictures on the security monitors |
+| Mail traffic and mailboxes | `ADMIN-SRV-01:/var/log/mail.log`, `/var/mail/USER` |
+| Web requests and name lookups | `ADMIN-SRV-01:/var/log/squid/access.log`, `/var/log/named/queries.log` |
+| Security alerts | `SEC-SRV-01:/var/log/security/alerts.log`, or `siem source=alert` |
 
-`SEC-SRV-01` has no screen: reach it with `ssh SEC-SRV-01` as the security guard or the sysadmin.
+**The hacker's toolkit** (simulated) is in `~/.tools` on their own PC, with a README. Two examples:
 
-**The developer panel** can show the master event log, which bodies are bots, camera snapshots and any file, so it is locked twice: the server ignores `dev.*` messages unless it runs in development mode, and the production build of the page does not contain the panel.
+| Game command | What it does |
+|---|---|
+| `~/.tools/phish USER` | Sends one simulated "IT reset" message. Headers (`mail NUMBER`) show where it really came from. Cooldown 60 game seconds. |
+| `~/.tools/clean LOG "TEXT"` | Removes lines from a writable log under `/var/log`, leaving a visible tampering marker. Cooldown 30 game seconds. |
 
-## Engine API in one minute
+## Game modes
+
+| Mode | Players | You are | You win when |
+|---|---|---|---|
+| Play with friends | 2–30 people + bots | a secret role | defenders: every hacker is voted out or detained; hackers: the flag is handed in, or the defenders lose the majority |
+| Training day | 1 + bots | the SOC analyst, with a guide | the intruder is voted out |
+| Investigation | 1 + bots | a defender (any job) | the bot hacker is voted out or detained |
+| Infiltration | 1 + bots | the hacker | the flag is handed in without being caught |
+| Defender ladder | 1 + bots | a fixed job per case | the case is solved; the next one opens |
+| Hacker ladder | 1 + bots | the hacker | the break-in works; the next one opens |
+| Shared office | anybody | the employee you choose | as in Investigation |
+
+The difficulty decides how many ways into the office there are today, how often colleagues leave screens open, and what the computer hacker knows. In lobbies the host chooses it, along with the number of hackers, meeting lengths and the office size (11 or 30 desks).
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph Browser
+    UI[React: menus, HUD, panels]
+    MAP[Phaser: the office]
+    TERM[xterm.js: the PC screen]
+    STORE[(store.ts)]
+    UI <--> STORE
+    MAP <--> STORE
+    TERM <--> STORE
+  end
+  subgraph Server
+    ROOM[Colyseus rooms]
+    GAME[game.ts: one match]
+    VIS[visibility.ts]
+    BOTS[bots]
+    ROOM --> GAME
+    GAME --> VIS
+    BOTS --> GAME
+  end
+  ENGINE[[engine: the simulated network]]
+  STORE -- "wishes: walk, sit, a line, a vote" --> ROOM
+  VIS -- "only what this player may know" --> STORE
+  GAME --> ENGINE
+```
+
+| Package | What it is |
+|---|---|
+| `packages/engine` | The simulation: machines, users, files, logs, a shell with pipes and redirection, mail, web, DHCP, DNS, badges and cameras. Pure TypeScript, deterministic, no I/O. |
+| `packages/server` | The game server (Colyseus): matches, bodies, doors, bots, meetings, evidence, the debrief, lobbies. |
+| `packages/client` | The browser game: React, Phaser and xterm.js around one store. |
+| `packages/shared` | Message types, the map format, movement rules, lobby and look rules used by both sides. |
+| `packages/cli` | A text client for the engine without graphics. |
+
+Principles the code keeps to:
+
+- **The server decides everything.** The browser only sends what the player wants ("walk left", "sit here", "this line"); the server checks it and answers.
+- **The visibility rule.** The server knows every password and who really did what. A browser receives only the public physical state, its own card, and the text on the screen it sits at. Every outgoing message is built field by field in `visibility.ts`, and tests record every byte to prove that nothing secret leaks. The debrief is sent only after the match.
+- **Bots are ordinary bodies.** A bot walks, taps badges, sits and types through the same functions as a person, so it leaves the same logs and looks the same on every screen.
+- **Deterministic.** The engine never reads the real clock or `Math.random()`. Same seed and same inputs give the same world, and the whole world is plain JSON (a save file).
+- **Events first, logs second.** Every action is recorded in a master event list (the truth, never shown) and then written as the realistic log lines a defender would find.
 
 ```ts
 import { createWorld, openTerminal, sendInput, advanceTime, serializeWorld } from '@insider/engine';
 
 const world = createWorld(scenario, 1);                 // scenario = parsed JSON, 1 = seed
 const t = openTerminal(world, 'FIN-LT-07', 'p1');       // player p1 sits at a PC
-const r = sendInput(world, t.terminalId, 'whoami');     // type one line
-// r = { output, prompt, events, awaitingInput?: { masked } }
-advanceTime(world, 5 * 60_000);                         // 5 minutes of game time
-const save = serializeWorld(world);                     // complete state as JSON
+const r = sendInput(world, t.terminalId, 'whoami');     // type one line: { output, prompt, events, awaitingInput? }
+advanceTime(world, 5 * 60_000);                         // five minutes of game time
+const save = serializeWorld(world);                     // the complete state as JSON
 ```
 
-When `awaitingInput` is present, the next `sendInput` is the answer to a question (a login name, a password) rather than a shell command, and `masked` says whether to hide the typing.
+## Configuration
 
-## How the main pieces work
+| Command | What it does |
+|---|---|
+| `pnpm dev` | server (port 2567) and page (port 5173), this computer only, with the developer panel (`` ` ``) |
+| `pnpm start` | the game for friends at home: page and server on one address, no developer panel |
+| `pnpm server` / `pnpm client` | only the server / only the page |
+| `pnpm build` | production build of the page (`packages/client/dist`) |
+| `pnpm load` | load test: 30 pretend players for a minute (`pnpm load 55 120`: 55 for two minutes) |
+| `pnpm map` / `pnpm scenario` | regenerate the office maps / the 30-person scenario |
 
-**One plain-JSON world.** All state lives in a single `World` object made only of JSON values. That is the save file, and it can be saved even in the middle of a password prompt.
+Server settings are environment variables (PowerShell: `$env:NAME='value'; pnpm dev`):
 
-**Deterministic.** The engine never reads the real clock or `Math.random()`. Time moves only when the caller says so, and random numbers come from a seeded generator stored in the world. Same seed and same inputs give exactly the same world.
+| Variable | Default | Meaning |
+|---|---|---|
+| `GAME_PORT` | `2567` | the server's port |
+| `GAME_HOST` | this computer (dev), all (start) | the network address to listen on |
+| `SCENARIO` / `MAP` | `nexora-small` / `office-small` | the shared office's company and map |
+| `SEED` | new for every match | fixed random numbers (the shared office uses 1) |
+| `SOLO_LIMIT` / `LOBBY_LIMIT` | `20` / `20` | solo matches / lobbies at the same time |
+| `TIME_SPEED` | `1` | game seconds per real second |
+| `BOTS` | on | `0` = an empty office |
+| `BOT_HACKER` | on | `0` = bots without a computer hacker |
+| `BOT_HACKER_DIFFICULTY` | `normal` | what the computer hacker knows: `easy`, `normal`, `hard` |
+| `BOT_HACKER_PACE` | `normal` | `fast` = no pauses, for demonstrations |
+| `MEETING_SECONDS` | `90,45,8,10` | discussion, voting, result, and each accused's defence |
+| `STALL_MINUTES` | `10` | every N game minutes one hacker action is flagged again (`0` = off) |
+| `VULNS` | `random` | today's weaknesses: `random`, `none`, or a list like `extra-sudo,tailgate` |
+| `NODE_ENV` | | `production` switches the developer tools off |
 
-**Events first, logs second.** Every meaningful action calls `emit()`, which appends to the master event list (the ground truth, never shown to players) and then writes the realistic log lines a defender would find. Each event records the *account* used and, separately, the *player* physically at the keyboard.
+## The command-line client
 
-**Logs are real files.** `/var/log/auth.log` and `/var/log/syslog` are ordinary files in the virtual filesystem, so `cat`, `grep` and `tail` work on them. `last`, `who` and `w` read the per-host login records; `journalctl` and `dmesg` read the journal.
+```bash
+pnpm cli
+pnpm cli --hacker p4 --seed 42
+pnpm cli --hacker o.farouk --vulns plaintext-password
+```
 
-**Accounts are real files too.** The engine parses `/etc/passwd`, `/etc/shadow`, `/etc/group` and `/etc/sudoers` each time it needs them, so what a player sees with `cat` is what the engine enforces.
+The CLI is a sandbox for the engine: it prints every player with their credentials, and every line that does not start with `:` is typed into the PC you sit at. It has no bots, movement or meetings.
 
-**One screen per PC.** A terminal belongs to a host, not to a player, and holds a stack of shells (ssh and `su` push, `exit` pops). Walking away changes nothing, which is how "someone used my unlocked PC" works.
+| CLI command | What it does |
+|---|---|
+| `:sit HOST` / `:leave` | sit at a PC / stand up (the PC stays as it is) |
+| `:switch` | switch user on a lock screen |
+| `:as PLAYER` | become another player (who is physically at the keyboard) |
+| `:players` / `:hosts` | players with credentials / machines with IP, MAC and screen state |
+| `:briefing` / `:flag TEXT` | the hacker's mission / hand in the flag |
+| `:time` / `:time +5m` | show / advance game time |
+| `:events [N]` / `:dump [file]` | the master event log / save the world as JSON |
+| `:help` / `:quit` | help / exit |
 
-**Interactive commands.** When `ssh`, `su` or `sudo` needs a password, the rest of the command line is stored as data and resumed after the answer, so `sudo cat /etc/shadow | grep root > out.txt` still pipes and redirects correctly.
+## Testing
 
-## Behaviour worth knowing
+```bash
+pnpm typecheck
+pnpm test
+pnpm e2e
+```
 
-- **`.bash_history` is written when a shell exits**, as in real bash. `history` shows the in-memory list. A shell killed with `kill -9` saves nothing; lines starting with a space are never recorded.
-- **ssh is logged on the target with the source IP of the previous hop.** Pivoting A → B → C leaves only B's address on C.
-- **sudo asks for your own password and remembers it for 15 minutes per shell.** Every use, allowed or refused, goes to `auth.log`.
-- **A workstation's owner is in group `adm`** on their own machine, so employees can read their own logs. On the server only the sysadmin is.
-- **`dmesg` is readable by everyone.** Real Ubuntu restricts it to root; it is open here so employees can later check their own PC for USB events.
-- **`last`, `who` and `w` use a 10-character user column** instead of cutting names to 8 like the real tools.
-- **Hourly cron lines and DHCP renewals** are generated as time passes, so logs keep growing.
-- **No auto-lock.** A PC stays unlocked until someone locks it. The engine records every stretch of time a PC stood open while its user was away, and who sat at it meanwhile (`world.unattended`, for the Phase 5 debrief; never sent to players).
-- **Arrivals.** Picking an employee writes their arrival at the main entrance in the badge log; leaving the game writes their departure.
-- **Ended sessions are forgotten** from memory (matches have no time limit); `last`, `auth.log` and `.bash_history` keep the record.
-- **Switch user.** A lock screen accepts any account of that machine as a second login; the locked session stays underneath and returns when the second one logs out.
-- **Remote `loginctl lock-session` / `unlock-session`** write a `REMOTE …` line with the source IP to that machine's `auth.log`.
-- **Every master event has an `origin`**: `physical`, `remote` or `system`.
+- **Vitest** (`pnpm test`, 867 tests in 68 files) covers the engine (logs, permissions, ssh and source addresses, sudo, history, DHCP, locks, pipes, completion, deterministic replay), the server (movement, doors, bots, the computer hacker, difficulty, tasks, cameras, meetings and the defence, lobbies, reconnecting, rate limits, whole matches and multi-hour soak runs, every ladder level) and the visibility rule.
+- **Playwright** (`pnpm e2e`, 26 tests) drives real Chromium browsers: two servers, one empty office for interaction tests and one for whole matches (solo, ladders and friends in a lobby). Screenshots go to `e2e/screenshots/`. The first time: `pnpm exec playwright install chromium`.
+- Manual checks, step by step with what you should see: [TESTING.md](TESTING.md).
 
-## Known simplifications
+## Project layout
 
-- After `ssh`, `su` or `exit` switches shells, the rest of that command line is dropped (`ssh host; ls` does not run `ls` afterwards).
-- `ssh host command` (remote command without logging in) is not supported; `scp` copies single files only.
-- No symlinks, no background jobs (`&`), no shell scripts: files can be read but not executed.
-- `less` prints the file; there is no pager.
-- A screen locked remotely while a password question (ssh, sudo) is open drops that question.
-- Humans start at their desk without an arrival line in today's badge log; bots walk in through the main entrance and (mostly) have one.
-- Camera snapshots are recorded but there is no viewer yet (Phase 5); the developer panel can print one.
-- Movement in the browser is not predicted locally: your character follows the server's position, which is smooth on a local network but would lag on a slow connection.
-- Reloading the page starts you again at the start screen; the PCs keep their state.
+```
+packages/engine/      the simulation (pure TypeScript, no I/O)
+  src/core/           clock, background noise, random numbers, scenario format, world builder
+  src/fs/             virtual filesystem and permissions
+  src/auth/           passwd, shadow, sudoers, sessions
+  src/net/            DHCP and DNS
+  src/physical/       badges, doors, cameras
+  src/events/         the master event log and the log lines made from it
+  src/shell/          lexer, parser, expansion, executor, prompt
+  src/commands/       the shell commands and their manual pages
+  src/terminal.ts     sitting, typing, lock screens, Tab completion
+packages/server/      the game server
+  src/game.ts         one match: all rules, no networking
+  src/visibility.ts   the ONLY place that builds data for a browser
+  src/meeting.ts      meetings: discussion, defence, voting, result
+  src/debrief.ts      what really happened, and the hacker's path for the replay
+  src/solo.ts         solo matches, the training day and the ladders
+  src/party.ts        lobbies
+  src/bots/           bot employees and the computer hacker
+packages/client/      the browser game
+  src/game/           store, Phaser scene, sounds, notebook, hints, training guide, career
+  src/ui/             home lobby, lobby, HUD, terminal, meeting, debrief and replay, minimap
+packages/shared/      types and rules for both sides
+packages/cli/         the text client
+scenarios/            the companies (data only)
+maps/                 the offices (Tiled JSON) and the script that builds them
+e2e/                  browser tests and their screenshots
+```
 
-## Adding a scenario
+## Simulation notes
 
-Copy [scenarios/nexora-small.json](scenarios/nexora-small.json) and edit it. The format is documented field by field in [packages/engine/src/core/scenario.ts](packages/engine/src/core/scenario.ts). In short:
+<details>
+<summary>Behaviour worth knowing</summary>
 
-- `accounts`: username, full name, password and a `strength` (0–100, for the future password cracker).
-- `hosts`: hostname, MAC, department, which accounts exist there, who has sudo, optional `staticIp`, files, crontabs, and who is logged in at the screen when the game starts (`locked` or `unlocked`).
-- `dhcp`: the address pool, plus optional old leases.
-- `history`: past logins, failed logins and sudo use. They are replayed through the same code as live actions, so old log lines look exactly like new ones.
-- `players`: who sits where, and their `role` (bots use it for their routine and tasks).
-- `accounts[].badge`: badge number and the restricted zones it opens. `badgeSystem`: which host stores the badge and camera logs.
-- `tasks`: job tasks (see the comments on `ScenarioTask`). `mail`: mail server and old messages. `web`: the simulated sites and the proxy.
+- `.bash_history` is written when a shell exits, as in real bash; lines starting with a space are never recorded.
+- ssh is logged on the target with the address of the previous hop: pivoting A → B → C leaves only B's address on C.
+- sudo asks for your own password, remembers it for 15 minutes per shell, and logs every use.
+- A workstation's owner is in group `adm` on their own machine; on the servers only the administrator is.
+- No auto-lock: a PC stays open until somebody locks it, and the engine records who sat at an open PC meanwhile.
+- A lock screen offers "switch user": the locked session stays underneath.
+- Remote `loginctl lock-session` writes a `REMOTE` line with the source address.
+- Tab completion leaves no trace: no event, no history line, no access time.
 
-A host with `"headless": true` is a box in a rack: no desk, ssh only.
+</details>
 
-For the browser game, every other host also needs a desk on the map (an object in the `desks` layer with that `hostname`, and a point in `spawns` with `desk` set to it).
+<details>
+<summary>Known simplifications</summary>
 
-The CLI lists every `.json` file in `scenarios/`. A scenario with mistakes (unknown user, bad MAC…) is rejected at start with a list of problems.
+- After `ssh`, `su` or `exit` switches shells, the rest of that command line is dropped.
+- `ssh host command` is not supported; `scp` copies single files only.
+- No symlinks, background jobs or shell scripts; `less` prints the file.
+- Movement is not predicted in the browser: fine on a home network, laggy on a slow one.
+- Progress (ladders, notebook, career, look) is kept in the browser until there are accounts.
 
-## Adding a shell command
+</details>
 
-Write a `Handler` in one of the files in [packages/engine/src/commands/](packages/engine/src/commands/), add it to that file's exported map, and add a manual entry in `help.ts`. A handler receives its arguments and stdin as text and returns `{ stdout, stderr, exit }`; pipes and redirection are handled for it.
+## Extending the game
+
+**A new company:** copy [scenarios/nexora-small.json](scenarios/nexora-small.json). The format is documented field by field in [packages/engine/src/core/scenario.ts](packages/engine/src/core/scenario.ts): accounts, hosts, DHCP, past logins, players and their jobs, badges, tasks, mail and web. Every host with a screen needs a desk on the map; the server checks map and scenario at start-up and lists every mismatch.
+
+**A new shell command:** write a `Handler` in [packages/engine/src/commands/](packages/engine/src/commands/), add it to that file's map, and give it a manual page in `help.ts` (it then appears in `help`, `man`, Tab completion and the notebook).
+
+**A new map:** open `maps/office-small.json` in [Tiled](https://www.mapeditor.org). Each object in the `desks` layer names a scenario host.
+
+## Safety
+
+The Insider teaches defence by showing what attacks leave behind. All "hacking" is game logic acting on simulated machines inside the engine: no real exploits, malware, network scanning or access to the host computer. The computer hacker only uses the same simulated tools and rules as a person, and the debrief explains how each step is detected.
+
+## Roadmap
+
+| Phase | What | State |
+|---|---|---|
+| 1–4 | The engine, the office in the browser, bots, the hacker's tools | done |
+| 5 / 5a | Investigation, meetings, the debrief; solo modes and the hacker ladder | done |
+| 6 | Multiplayer: lobbies, secret roles, chat, reconnecting, up to 30 people | done |
+| after 6 | Home lobby and characters; training day and defender ladder; Tab, notebook, hints; meetings as a show; sounds; minimap; replay; ranks | done |
+| 7 | One licensed pixel-art pack, maps made in Tiled, real sounds | paused |
+| 8 | Internet hosting, accounts, reporting | paused |
+
+## Documentation
+
+- [DESIGN.md](DESIGN.md): the full game design
+- [PROGRESS.md](PROGRESS.md): what was built in each part, and what the next part must know
+- [TESTING.md](TESTING.md): manual checks with expected results
+- [docs/play-with-friends.md](docs/play-with-friends.md): playing at home with friends
+- [docs/design/visual-upgrade.md](docs/design/visual-upgrade.md): the current procedural art

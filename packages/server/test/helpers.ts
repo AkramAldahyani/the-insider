@@ -29,7 +29,9 @@ export class Recorder {
 
   constructor(options: Partial<OfficeGameOptions> = {}) {
     // Tests get an empty office unless they ask for bots: other people walking about would make most checks unpredictable.
+    // Tests about meetings without a defence phase in the middle (meetings.test.ts has its own about the defence).
     this.game = new OfficeGame({ ...loaded, scenario: clone(scenario), map: clone(tiledMap), dev: false, bots: false, weaknesses: ['tailgate'], ...options,
+      meetingTimes: { defenceMs: 0, ...options.meetingTimes },
       // Office tests run without a bot hacker, and route tests with one that does not dawdle.
       // Tests about whole matches and their pace pass their own options (hackerPace: undefined = as in a real game).
       botOptions: { hacker: false, hackerPace: FAST_PACE, ...options.botOptions },
@@ -40,10 +42,21 @@ export class Recorder {
     return this.game.map;
   }
 
+  /**
+   * The shell's manual each browser got on connect. It is kept apart from `sent`: it is the same fixed text for
+   * everybody (what `help` and `man` print), and the tests that search all messages for words such as "USB" would
+   * find them there. visibility.test.ts checks it on its own.
+   */
+  manuals = new Map<string, unknown>();
+
   /** Collects what the game queued, like the room does after every step. */
   flush(): void {
     this.states.push(clone(this.game.publicState()));
     for (const m of this.game.drain()) {
+      if (m.type === 'manual') {
+        this.manuals.set(m.to, clone(m.payload));
+        continue;
+      }
       if (!this.sent.has(m.to)) this.sent.set(m.to, []);
       this.sent.get(m.to)!.push(clone(m));
     }

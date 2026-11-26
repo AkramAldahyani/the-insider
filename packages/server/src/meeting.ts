@@ -5,6 +5,8 @@
  *     -> everybody is brought to the meeting table and stands still
  *   DISCUSSION (90 s): meeting chat; anybody alive may ACCUSE someone, which
  *     needs at least 3 items of the evidence board linked to the accused
+ *   DEFENCE (10 s for each accused, at most three): the accused have the floor,
+ *     one after the other, to answer in the chat before anybody votes
  *   VOTING (45 s): each living player votes for one of the accused, or skip
  *   RESULT (8 s): the most votes wins; a tie, or skip winning, fires nobody.
  *     The hacker voted out = the defenders win. An innocent person voted out
@@ -16,10 +18,15 @@
  * whatever speed the game clock runs at.
  */
 
-export type MeetingPhase = 'discussion' | 'voting' | 'result';
+export type MeetingPhase = 'discussion' | 'defence' | 'voting' | 'result';
+
+/** At most this many accused get the floor in the defence (the vote is about all of them anyway). */
+export const MAX_FLOOR = 3;
 
 export interface MeetingTimes {
   discussionMs: number;
+  /** How long EACH accused has the floor before the vote (0 = no defence). */
+  defenceMs: number;
   votingMs: number;
   resultMs: number;
   /** Real time after a meeting before the button works again. */
@@ -32,7 +39,7 @@ export interface MeetingTimes {
   perMatch: number;
 }
 
-export const DEFAULT_MEETING_TIMES: MeetingTimes = { discussionMs: 90_000, votingMs: 45_000, resultMs: 8_000, cooldownMs: 60_000, usesPerPlayer: 1, votesNeeded: 1, perMatch: Infinity };
+export const DEFAULT_MEETING_TIMES: MeetingTimes = { discussionMs: 90_000, defenceMs: 10_000, votingMs: 45_000, resultMs: 8_000, cooldownMs: 60_000, usesPerPlayer: 1, votesNeeded: 1, perMatch: Infinity };
 
 export interface Accusation {
   /** "A1" */
@@ -64,6 +71,9 @@ export interface Meeting {
   /** Real milliseconds left in this phase. */
   leftMs: number;
   accusations: Accusation[];
+  /** The defence: the accused in the order they speak, and whose turn it is (an index into `floor`). */
+  floor: string[];
+  floorAt: number;
   /** voter id -> suspect id or "skip". */
   votes: Record<string, string>;
   /** Everyone alive when the meeting was called (only they may vote). */
@@ -117,7 +127,7 @@ export class Meetings {
     this.used.set(playerId, (this.used.get(playerId) ?? 0) + 1);
     this.current = {
       number: this.history.length + 1, calledById: playerId, startedAt: gameTime,
-      phase: 'discussion', leftMs: this.times.discussionMs, accusations: [], votes: {}, voters: [...voters], passed: [], result: null,
+      phase: 'discussion', leftMs: this.times.discussionMs, accusations: [], floor: [], floorAt: 0, votes: {}, voters: [...voters], passed: [], result: null,
     };
     this.history.push(this.current);
     return this.current;
@@ -156,7 +166,7 @@ export class Meetings {
    * Advances the timers. Returns what happened: a phase change, the moment a
    * result is decided (so the game can fire someone), or the end.
    */
-  tick(realMs: number, isHacker: (playerId: string) => boolean): 'voting' | 'decided' | 'ended' | null {
+  tick(realMs: number, isHacker: (playerId: string) => boolean): 'defence' | 'floor' | 'voting' | 'decided' | 'ended' | null {
     if (!this.current) {
       this.cooldownLeft = Math.max(0, this.cooldownLeft - realMs);
       return null;
@@ -165,18 +175,38 @@ export class Meetings {
     // Everybody has voted: no need to wait for the clock.
     if (m.phase === 'voting' && m.voters.every((v) => m.votes[v] !== undefined || m.passed.includes(v))) m.leftMs = 0;
     m.leftMs -= realMs;
+    if (m.phase === 'defence' && m.leftMs > 0) {
+      // The next accused has the floor when the one before has had their time.
+      const at = Math.min(m.floor.length - 1, Math.floor((m.floor.length * this.times.defenceMs - m.leftMs) / this.times.defenceMs));
+      if (at !== m.floorAt) {
+        m.floorAt = at;
+        return 'floor';
+      }
+    }
     if (m.leftMs > 0) return null;
     if (m.phase === 'discussion') {
       // Nobody was accused: there is nothing to vote on.
       if (m.accusations.length === 0) return this.decide(isHacker);
-      m.phase = 'voting';
-      m.leftMs = this.times.votingMs;
-      return 'voting';
+      if (this.times.defenceMs > 0) {
+        m.phase = 'defence';
+        m.floor = [...new Set(m.accusations.map((a) => a.suspectId))].slice(0, MAX_FLOOR);
+        m.floorAt = 0;
+        m.leftMs = m.floor.length * this.times.defenceMs;
+        return 'defence';
+      }
+      return this.startVoting(m);
     }
+    if (m.phase === 'defence') return this.startVoting(m);
     if (m.phase === 'voting') return this.decide(isHacker);
     this.current = null;
     this.cooldownLeft = this.times.cooldownMs;
     return 'ended';
+  }
+
+  private startVoting(m: Meeting): 'voting' {
+    m.phase = 'voting';
+    m.leftMs = this.times.votingMs;
+    return 'voting';
   }
 
   private decide(isHacker: (playerId: string) => boolean): 'decided' {

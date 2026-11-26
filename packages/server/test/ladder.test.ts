@@ -3,7 +3,7 @@
  * briefing hints at, and from level to level it gets harder to be careless.
  */
 import { describe, expect, it } from 'vitest';
-import { LADDER, ladderLevel, parseOfficeMap, parseSoloChoice, withCameras, type DebriefView, type MissionBriefing } from '@insider/shared';
+import { LADDER, defenderChoice, ladderLevel, parseOfficeMap, parseSoloChoice, withCameras, type DebriefView, type MissionBriefing } from '@insider/shared';
 import { LADDER_SETTINGS } from '../src/ladder';
 import { checkMapAgainstScenario } from '../src/mapCheck';
 import { soloGameOptions } from '../src/solo';
@@ -92,11 +92,11 @@ function play(level: number, how: How, startMinutes: number): Recorder {
 const winner = (r: Recorder) => r.game.over?.winner;
 
 describe('asking for a level', () => {
-  it('a whole number of a level that exists, only in Infiltration', () => {
+  it('a whole number of a level that exists; in an Investigation it is a level of the defender ladder', () => {
     expect(parseSoloChoice(choice(1))).toEqual(choice(1));
     expect(parseSoloChoice(choice(LADDER.length))).toEqual(choice(LADDER.length));
     for (const level of [0, 6, -1, 1.5, '1', null, NaN, Infinity, [1]]) expect(parseSoloChoice({ ...choice(1), level }), String(level)).toBeNull();
-    expect(parseSoloChoice({ ...choice(1), mode: 'investigation' })).toBeNull();
+    expect(parseSoloChoice({ ...choice(1), mode: 'investigation' })).toEqual(defenderChoice(1));
     expect(parseSoloChoice({ mode: 'infiltration', role: 'any', difficulty: 'easy', level: undefined })).toEqual({ mode: 'infiltration', role: 'any', difficulty: 'easy' });
   });
 

@@ -50,13 +50,30 @@ export interface DebriefInput {
   reputation: number;
 }
 
+/** The replay: a hacker's position every this many game milliseconds, and at most this many points each. */
+export const PATH_STEP_MS = 10_000;
+const MAX_PATH = 3000;
+
 export class Debrief {
   /** Evidence -> players who had it on their screen. */
   private readonly seen = new Map<string, Set<string>>();
   private readonly pictures: { playerId: string; camera: string; time: number; names: string[] }[] = [];
   private cache: { size: number; evidence: DebriefEvidence[] } = { size: -1, evidence: [] };
+  /** Where each hacker walked: player id -> points (for the replay; nobody sees it before the end). */
+  private readonly paths = new Map<string, { time: number; x: number; y: number }[]>();
 
   constructor(private readonly world: World) {}
+
+  /** A hacker was here at this game time (the game calls this every PATH_STEP_MS). Long matches keep the first MAX_PATH points. */
+  notePosition(playerId: string, time: number, x: number, y: number): void {
+    const points = this.paths.get(playerId) ?? [];
+    if (points.length >= MAX_PATH) return;
+    const last = points[points.length - 1];
+    // Standing still adds nothing new but the time: the replay waits there by itself.
+    if (last && Math.abs(last.x - x) < 1 && Math.abs(last.y - y) < 1 && points.length > 1 && points[points.length - 2].x === last.x && points[points.length - 2].y === last.y) last.time = time;
+    else points.push({ time, x: Math.round(x), y: Math.round(y) });
+    this.paths.set(playerId, points);
+  }
 
   /** Everything findable so far (rebuilt only when the hacker did something new). */
   private evidence(): DebriefEvidence[] {
@@ -123,6 +140,7 @@ export class Debrief {
         wasHacker: m.result?.wasHacker ?? false,
       })),
       detentions: input.detentions.map((d) => ({ time: d.time, guard: this.name(d.guardId), target: this.name(d.targetId), right: d.wasHacker })),
+      paths: [...this.paths].filter(([id]) => hackers.has(id)).map(([id, points]) => ({ name: this.name(id), points: points.map((p) => ({ ...p })) })),
     };
     return this.redact(view);
   }

@@ -71,10 +71,12 @@ export interface MeetingView {
   /** How many times this player may still press the emergency button. */
   usesLeft: number;
   number: number;
-  phase: 'discussion' | 'voting' | 'result' | '';
+  phase: 'discussion' | 'defence' | 'voting' | 'result' | '';
   calledBy: string;
   /** Real milliseconds left in this phase when the message was sent. */
   endsIn: number;
+  /** The defence: who has the floor now, which turn of how many, and the real milliseconds left of it (null in other phases). */
+  floor: { id: string; name: string; turn: number; of: number; endsIn: number } | null;
   accusations: { id: string; accuser: string; suspectId: string; suspect: string; evidence: string[] }[];
   /** Names of those who have voted (not what they voted). */
   voted: string[];
@@ -157,6 +159,8 @@ export interface DebriefView {
     fired: string; wasHacker: boolean;
   }[];
   detentions: { time: number; guard: string; target: string; right: boolean }[];
+  /** Where each hacker walked (a point every few game seconds), for the replay on the map. */
+  paths: { name: string; points: { time: number; x: number; y: number }[] }[];
   /** Only in solo matches. */
   rating?: RatingView;
 }
@@ -277,6 +281,14 @@ export interface TermScreen {
   canSwitchUser: boolean;
 }
 
+/** One page of the shell's manual (the same text as `man NAME`). */
+export interface ManualPage {
+  name: string;
+  summary: string;
+  usage: string;
+  about: string;
+}
+
 export interface ServerMessages {
   /** The lobby this browser is in (sent whenever something about it changes). */
   party: PartyView;
@@ -292,6 +304,10 @@ export interface ServerMessages {
   'term.output': TermScreen;
   /** The player is no longer at a PC. */
   'term.close': { reason: string };
+  /** The answer to Tab: `text` is what was asked about, `line` the completed line, `options` what it could become (when several). */
+  'term.complete': { text: string; line: string; options: string[] };
+  /** Sent with the welcome: the manual of the simulated shell (what `help` and `man` print), for the player's notebook. */
+  manual: { pages: ManualPage[] };
   /** The player's own task list (sent whenever it changes). */
   tasks: { tasks: TaskView[]; completed: number };
   /**
@@ -397,6 +413,8 @@ export interface ClientMessages {
   'flag.submit': { text: string };
   /** One finished line typed at the PC. */
   'term.line': { text: string };
+  /** Tab: complete the last word of this half-typed line. Nothing is run and nothing is logged. */
+  'term.complete': { text: string };
   /** Ctrl+C. */
   'term.cancel': Record<string, never>;
   /** "Switch user" on a lock screen. */

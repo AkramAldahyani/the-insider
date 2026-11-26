@@ -332,7 +332,7 @@ describe('strange messages', () => {
   const TYPES: Record<ClientMessageType, true> = {
     'party.ready': true, 'party.settings': true, 'party.open': true, 'party.remove': true, 'party.start': true, 'party.back': true, 'party.look': true, choose: true, move: true, sit: true, stand: true, tap: true,
     'item.start': true, 'item.stop': true, 'monitors.open': true, 'monitors.frame': true, 'evidence.pin': true, 'evidence.unpin': true, detain: true, 'meeting.call': true, 'talk.call': true, 'meeting.accuse': true,
-    'meeting.vote': true, 'chat.send': true, 'flag.submit': true, 'term.line': true, 'term.cancel': true, 'term.switchUser': true, 'dev.speed': true, 'dev.jump': true, 'dev.events': true, 'dev.teleport': true, 'dev.dump': true, 'dev.show': true,
+    'meeting.vote': true, 'chat.send': true, 'flag.submit': true, 'term.line': true, 'term.complete': true, 'term.cancel': true, 'term.switchUser': true, 'dev.speed': true, 'dev.jump': true, 'dev.events': true, 'dev.teleport': true, 'dev.dump': true, 'dev.show': true,
   };
   const STRANGE: unknown[] = [undefined, null, true, 0, -1, NaN, Infinity, 1e308, '', 'x', 'x'.repeat(5000), [], [[]], {}, { length: 5 }, '__proto__', 'constructor', 'p1', 'p4', 'E1', 'CAM-01', 'screen', 'snapshot', 'log', 'badges', 'usb', 'skip', 'FIN-LT-07', new Date(0), () => 1, Symbol.iterator, { toString: null }, { valueOf: () => { throw new Error('x'); } }, 10n];
   const FIELDS = ['playerId', 'hacker', 'dx', 'dy', 'sequence', 'hostname', 'door', 'item', 'camera', 'time', 'kind', 'text', 'snapshot', 'source', 'id', 'target', 'suspect', 'evidence', 'channel', 'multiplier', 'duration', 'count', 'what', 'arg', 'ready', 'open', 'name'];

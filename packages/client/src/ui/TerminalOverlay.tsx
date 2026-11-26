@@ -8,12 +8,14 @@
  *   Esc     stand up (the PC stays exactly as it is)
  *   Ctrl+C  cancel the line / the password question
  *   F2      switch user (only on a lock screen)
+ *   Tab     complete a command or file name (asks the server)
  */
 import { FitAddon } from '@xterm/addon-fit';
 import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import { useEffect, useRef, useState } from 'react';
 import type { TermScreen } from '@insider/shared';
+import { playSound } from '../game/sound';
 import { store } from '../game/store';
 import { LineEditor } from './lineEditor';
 
@@ -43,14 +45,22 @@ export function TerminalOverlay({ hostname }: { hostname: string }) {
     selection.current = () => term.getSelection();
 
     const editor = new LineEditor(term, {
-      onLine: (text) => store.send('term.line', { text: text.slice(0, 2000) }),
+      onLine: (text) => {
+        store.used(text);
+        store.send('term.line', { text: text.slice(0, 2000) });
+      },
+      onComplete: (text) => store.send('term.complete', { text: text.slice(0, 2000) }),
       onCancel: () => store.send('term.cancel', {}),
       onEscape: () => store.send('stand', {}),
       onSwitchUser: () => store.send('term.switchUser', {}),
     });
-    const typing = term.onData((data) => editor.input(data));
+    const typing = term.onData((data) => {
+      if (data.length === 1 && data >= ' ') playSound('key');
+      editor.input(data);
+    });
 
     const stopListening = store.onTerm((event) => {
+      if (event.kind === 'complete') return editor.completed(event.text, event.line, event.options);
       if (event.kind === 'open') term.reset();
       editor.show(event.screen.output, event.screen.prompt, event.screen.masked);
       setScreen(event.screen);
@@ -86,11 +96,12 @@ export function TerminalOverlay({ hostname }: { hostname: string }) {
               else store.send('evidence.pin', { kind: 'screen', text: text.slice(0, 1500) });
             }}
           >Pin selection</button>
+          <button type="button" data-testid="term-notebook" onMouseDown={(e) => e.preventDefault()} onClick={() => store.set({ notebookOpen: !store.getUi().notebookOpen })}>Notebook</button>
           <button type="button" onClick={() => store.send('stand', {})}>Stand up (Esc)</button>
         </div>
         <div className="term-body" ref={holder} />
         <div className="term-help">
-          Enter: run · Ctrl+C: cancel · ↑ ↓: history · Esc: stand up — the PC stays exactly as you leave it
+          Enter: run · Tab: complete · ↑ ↓: history · Ctrl+C: cancel · Esc: stand up — the PC stays exactly as you leave it
         </div>
       </div>
     </div>

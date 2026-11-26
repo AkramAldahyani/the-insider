@@ -22,8 +22,13 @@ export interface Look {
 export const LOOK_STYLES = ['Short', 'Long', 'Bun', 'Headscarf', 'Side part', 'Bob', 'Beard', 'Headset'] as const;
 export const LOOK_SKINS = ['#efc6a0', '#e5ae83', '#cc956f', '#ba805c', '#8f5f43', '#6b4532'] as const;
 export const LOOK_HAIR = ['#242937', '#47352f', '#805537', '#b98a4e', '#8a8f99', '#a34a3f'] as const;
-/** Jackets: the departments' colours of the office, and two more. */
-export const LOOK_OUTFITS = ['#78bdec', '#d99bc5', '#e4bc70', '#74cbbb', '#dd8993', '#b6a2e4', '#f09a6b', '#a6b99a'] as const;
+/**
+ * Jackets: the departments' colours of the office and two more (free), then three
+ * that come with a rank (client/src/game/career.ts): charcoal, gold, white.
+ */
+export const LOOK_OUTFITS = ['#78bdec', '#d99bc5', '#e4bc70', '#74cbbb', '#dd8993', '#b6a2e4', '#f09a6b', '#a6b99a', '#4a5262', '#d9b44a', '#e8edf1'] as const;
+/** How many jackets everybody has from the start (the first ones in LOOK_OUTFITS). */
+export const FREE_OUTFITS = 8;
 
 export const DEFAULT_LOOK: Look = { style: 0, skin: 1, hair: 0, outfit: 3, glasses: false };
 
@@ -44,5 +49,5 @@ export function parseLook(value: unknown): Look {
 /** A look for somebody new, from their name (so that two new players rarely look alike). */
 export function lookFromName(name: string): Look {
   const n = [...name].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0, 7);
-  return { style: n % LOOK_STYLES.length, skin: (n >>> 3) % LOOK_SKINS.length, hair: (n >>> 6) % LOOK_HAIR.length, outfit: (n >>> 9) % LOOK_OUTFITS.length, glasses: (n >>> 12) % 3 === 0 };
+  return { style: n % LOOK_STYLES.length, skin: (n >>> 3) % LOOK_SKINS.length, hair: (n >>> 6) % LOOK_HAIR.length, outfit: (n >>> 9) % FREE_OUTFITS, glasses: (n >>> 12) % 3 === 0 };
 }

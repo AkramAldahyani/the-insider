@@ -3,7 +3,7 @@
  * and shows it). It explains the goal, what convinces the colleagues, and where
  * this job finds things out. It knows nothing about the hacker.
  */
-import { PARTY_VOTES_NEEDED } from '@insider/shared';
+import { PARTY_VOTES_NEEDED, defenderLevel } from '@insider/shared';
 import type { ReactNode } from 'react';
 import { store, type UiState } from '../game/store';
 
@@ -17,13 +17,16 @@ const JOB: Record<string, ReactNode> = {
 };
 
 export function CasePanel({ ui }: { ui: UiState }) {
-  if ((!ui.solo && !ui.party) || ui.briefing || !ui.briefingOpen || ui.meeting?.active) return null;
+  // The training day has its guide instead.
+  if ((!ui.solo && !ui.party) || ui.solo?.mode === 'training' || ui.briefing || !ui.briefingOpen || ui.meeting?.active) return null;
+  const level = defenderLevel(ui.solo);
   return (
     <div className="mission case" data-testid="case">
       <div className="mission-head">
         <span>YOUR CASE</span>
         <button type="button" onClick={() => store.set({ briefingOpen: false })} aria-label="Close case">×</button>
       </div>
+      {level && <p className="mission-level" data-testid="case-level"><strong>{level.name}.</strong> {level.briefing}</p>}
       <p className="mission-goal">Find out which colleague is after the file on the admin server, before they hand it over.</p>
       <p>{JOB[ui.card?.role ?? ''] ?? JOB['Employee']}</p>
       <p>

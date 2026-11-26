@@ -94,8 +94,8 @@ describe('calling a meeting', () => {
 
 describe('accusing and voting', () => {
   /** Sara pins 3 items, Maha calls a meeting, Sara accuses Omar. */
-  function accused(hacker: string | null): Recorder {
-    const r = new Recorder({ meetingTimes: FAST });
+  function accused(hacker: string | null, times: Partial<typeof FAST & { defenceMs: number }> = FAST): Recorder {
+    const r = new Recorder({ meetingTimes: { ...FAST, ...times } });
     if (hacker) {
       r.connect('o');
       r.send('o', 'choose', { playerId: 'p4', hacker: hacker === 'p4' });
@@ -122,6 +122,27 @@ describe('accusing and voting', () => {
     expect(r.notice('m')).toBe('Choose someone else who is still at the company.');
     r.send('s', 'meeting.accuse', { suspect: 'p9', evidence: ['E1', 'E2', 'E3'] });
     expect(r.notice('s')).toBe('You have already made an accusation in this meeting.');
+  });
+
+  it('the defence: after the discussion each accused has the floor, then the vote; nobody votes or accuses meanwhile', () => {
+    const r = accused(null, { defenceMs: 3000 });
+    r.send('m', 'meeting.accuse', { suspect: 'p1', evidence: ['E1', 'E2', 'E3'] });
+    r.tick(seconds(5.2));
+    // Omar first (the first accused), then Sara.
+    expect(view(r, 's')).toMatchObject({ phase: 'defence', floor: { id: 'p4', name: 'Omar Farouk', turn: 1, of: 2 } });
+    expect(view(r, 's').floor!.endsIn).toBeGreaterThan(2000);
+    r.send('s', 'meeting.vote', { target: 'p4' });
+    expect(r.notice('s')).toBe('There is no vote right now.');
+    r.send('o', 'meeting.accuse', { suspect: 'p9', evidence: ['E1', 'E2', 'E3'] });
+    expect(r.notice('o')).toBe('Accusations can only be made during the discussion.');
+    // The accused can answer: the meeting chat works.
+    r.send('o', 'chat.send', { text: 'I was at my desk all morning.' });
+    r.tick(seconds(3));
+    expect(view(r, 'm')).toMatchObject({ phase: 'defence', floor: { id: 'p1', name: 'Sara Alharbi', turn: 2, of: 2 } });
+    r.tick(seconds(3.2));
+    expect(view(r, 'm')).toMatchObject({ phase: 'voting', floor: null });
+    r.send('s', 'meeting.vote', { target: 'p4' });
+    expect(view(r, 's').myVote).toBe('p4');
   });
 
   it('voting: one vote each, only for an accused person or skip; who voted is public, not what', () => {

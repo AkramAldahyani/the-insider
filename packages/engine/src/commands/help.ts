@@ -88,3 +88,15 @@ const clear: Handler = () => ({ stdout: '\x1b[H\x1b[2J\x1b[3J' });
 
 export const helpCommands: Record<string, Handler> = { help, man, clear };
 export const MANUAL_NAMES = Object.keys(MANUAL);
+
+/** One manual page, for the player's notebook in the browser (the same text `help` and `man` print). */
+export interface ManualPage {
+  name: string;
+  summary: string;
+  usage: string;
+  about: string;
+}
+
+/** Every manual page, sorted by name. Nothing secret: it is what `help` and `man` show anybody. */
+export const manualPages = (): ManualPage[] =>
+  Object.keys(MANUAL).sort().map((name) => ({ name, summary: MANUAL[name][0], usage: MANUAL[name][1], about: MANUAL[name][2] }));

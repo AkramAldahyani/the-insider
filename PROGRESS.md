@@ -3,6 +3,41 @@
 This file says where the work stands, so a new session can continue from it alone.
 Update it at the end of every part.
 
+## Learning, meetings, sounds, minimap, replay, ranks (2026-11-26, after the lobby)
+
+The owner asked for all eight ideas proposed after the lobby, and a professional README. Done, in this order:
+
+- **Tab completion**: engine `completeInput` (terminal.ts): command names at a command's start (also after | ; && sudo man), file
+  names elsewhere, only in folders the user may list, never in a password or on a lock screen, and NO trace (no event, no history,
+  no atime: it does not use listDir). Message `term.complete` both ways; the line editor uses an answer only if the line is unchanged.
+- **Notebook** (`H`, or the button in the terminal's title): `manual` message sent WITH THE WELCOME (on connect it was lost: the first messages of a room can arrive before the page listens) (engine `manualPages`, the `help`/`man`
+  texts); the page keeps only COMMAND NAMES of typed lines (`game/notebook.ts`, localStorage `insider-notebook`).
+- **Hints** (`game/hints.ts`): defenders only, general advice only (nothing about the match), after 75 s (Easy) / 150 s (Normal)
+  without progress, never on Hard or for the hacker or in the training day.
+- **Training day** (mode `training`) and **defender ladder** (`level` on an Investigation): texts in `shared/defenderLadder.ts`,
+  settings in `server/ladder.ts` (`TRAINING_SETTINGS`, `DEFENDER_SETTINGS`: seed, weaknesses, hacker knowledge, pace). The
+  computer hacker does only what it always does; a level fixes timing and weaknesses. Seed 306 for case 3 (seed 303 took 72 game
+  minutes). The guide is `client/game/training.ts` (never goes back). Progress: `insider-defender-ladder` (0 = training).
+  `hackerLevel(solo)` / `defenderLevel(solo)` keep the two ladders apart (cameras only for hacker levels).
+- **Meetings**: phase `defence` between discussion and voting (`defenceMs` per accused, at most 3; `MeetingView.floor`).
+  `MEETING_SECONDS` takes an optional 4th number. Tests' Recorder sets `defenceMs: 0` unless a test asks (meetings.test.ts does).
+  The page: splash, "On the screen" (the accusation's evidence), the floor banner, ballots one by one (within the first 45% of the
+  result time), stamp.
+- **Sounds** (`game/sound.ts`): generated, with a quiet office hum; one switch in the bottom bar (`insider-sound`).
+- **Minimap** (`ui/Minimap.tsx`, plan in `ui/officePlan.ts`): only the player, their desk and the button, NEVER other people.
+  Own desk glows with "YOUR DESK"; the office list shows everybody's PC (public: the start screen lists it).
+- **Replay** (`ui/ReplayMap.tsx`): `DebriefView.paths`, each hacker's position every 10 game s (`debrief.ts notePosition`, at most
+  3000 points), only in the debrief.
+- **Career** (`game/career.ts`): points per match (counted once), five ranks, jackets 8-10 of `LOOK_OUTFITS` come with a rank
+  (`FREE_OUTFITS` = 8; `lookFromName` never picks an earned one). Cosmetic and per browser.
+- README rewritten (contents, screenshots, quick start, keys, modes, architecture diagram, configuration table, safety, roadmap).
+- Tests: engine `completion.test.ts`, client `learning.test.ts` (first client unit tests), server `defender-ladder.test.ts`
+  (every level and the training: right job, never the hacker, the hacker acts and wins when left alone in 8-45 game minutes),
+  meetings defence, e2e `learning.spec.ts`, and the match spec checks the screen, the floor, the verdict, the replay and the points.
+- Checked: 867 Vitest tests in 68 files; 26 Playwright (22 office, 4 match), build fine. Fixed on the way: a lobby test that
+  failed one run in eleven (the drawn hacker was the one who stayed; now the computer is the hacker there), a lobby test that
+  chose the jacket Ben already wore (one in eight), and the desk frame no longer pulses (the canvas test compares pixels).
+
 ## The home lobby and characters (2026-11-26)
 
 The owner asked for a lobby "like Fortnite": a character to dress, ways to play to pick, in the map's colours and shapes.

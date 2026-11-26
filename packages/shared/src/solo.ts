@@ -8,6 +8,7 @@
  * tools, or the hacker's name this way).
  */
 
+import { DEFENDER_LADDER } from './defenderLadder';
 import { LADDER } from './ladder';
 
 /** Name of the Colyseus room type for solo matches (each one is a room of its own). */
@@ -16,8 +17,11 @@ export const SOLO_ROOM_NAME = 'solo';
 /** Emergency meetings the player of a solo match may call (the shared office allows one). */
 export const SOLO_MEETINGS = 2;
 
-/** Investigation: the player defends. Infiltration: the player is the hacker, posing as an ordinary employee. */
-export const SOLO_MODES = ['investigation', 'infiltration'] as const;
+/**
+ * Investigation: the player defends. Infiltration: the player is the hacker, posing as an ordinary employee.
+ * Training: the training day, a slow Investigation with a guide (defenderLadder.ts).
+ */
+export const SOLO_MODES = ['investigation', 'infiltration', 'training'] as const;
 export type SoloMode = (typeof SOLO_MODES)[number];
 
 /** Whose job to play; "any" lets the server pick a person. */
@@ -31,7 +35,10 @@ export interface SoloChoice {
   mode: SoloMode;
   role: SoloRole;
   difficulty: SoloDifficulty;
-  /** Infiltration only: a level of the scenario ladder (1 = the first). Everything else is then fixed by the level. */
+  /**
+   * A level of a ladder (1 = the first): of the hacker ladder in an Infiltration, of the defender ladder in an
+   * Investigation. Everything else is then fixed by the level.
+   */
   level?: number;
 }
 
@@ -44,9 +51,13 @@ export function parseSoloChoice(value: unknown): SoloChoice | null {
   const r = one(SOLO_ROLES, role);
   const d = one(SOLO_DIFFICULTIES, difficulty);
   if (!m || !r || !d) return null;
+  // The training day is always the same: the SOC analyst, slowly.
+  if (m === 'training') return { mode: 'training', role: 'soc', difficulty: 'easy' };
   // The hacker is one of the ordinary employees, as in every match.
   if (m === 'infiltration' && r !== 'any' && r !== 'employee') return null;
   if (level === undefined) return { mode: m, role: r, difficulty: d };
-  if (m !== 'infiltration' || typeof level !== 'number' || !Number.isInteger(level) || level < 1 || level > LADDER.length) return null;
-  return { mode: m, role: r, difficulty: d, level };
+  const levels = m === 'infiltration' ? LADDER.length : DEFENDER_LADDER.length;
+  if (typeof level !== 'number' || !Number.isInteger(level) || level < 1 || level > levels) return null;
+  // A defender level decides the job itself.
+  return { mode: m, role: m === 'investigation' ? DEFENDER_LADDER[level - 1].role : r, difficulty: d, level };
 }

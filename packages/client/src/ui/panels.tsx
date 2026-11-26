@@ -1,5 +1,5 @@
 /** The small React pieces around the map: start screen, HUD and onboarding card. */
-import { HACKERS_GONE, HACKER_GONE, LADDER, ladderLevel, type EmployeeChoice, type OnboardingCard as Card } from '@insider/shared';
+import { DEFENDER_LADDER, HACKERS_GONE, HACKER_GONE, LADDER, defenderChoice, defenderLevel, hackerLevel, type EmployeeChoice, type OnboardingCard as Card } from '@insider/shared';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { store, type UiState } from '../game/store';
 import { characterPortrait, departmentColor } from '../game/characterArt';
@@ -104,16 +104,25 @@ export function Hud({ ui }: { ui: UiState }) {
           <span><kbd>E</kbd> <span className="key-caption">PC / badge</span></span>
           <button type="button" onClick={() => store.set({ cardOpen: !ui.cardOpen })}><kbd>C</kbd> My card</button>
           <button type="button" onClick={() => store.set({ tasksOpen: !ui.tasksOpen })}><kbd>T</kbd> Tasks</button>
+          <button type="button" data-testid="notebook-button" onClick={() => store.set({ notebookOpen: !ui.notebookOpen })}><kbd>H</kbd> Notebook</button>
         </>}
         <button type="button" data-testid="board-button" onClick={() => store.set({ boardOpen: !ui.boardOpen })}><kbd>B</kbd> Evidence ({ui.board.length})</button>
         {!ui.solo && !ui.fired && <button type="button" data-testid="chat-button" onClick={() => store.set({ chatOpen: !ui.chatOpen })}><kbd>Enter</kbd> Chat</button>}
         {ui.debrief && <button type="button" data-testid="hud-debrief" onClick={() => store.set({ debriefOpen: true })}>Debrief</button>}
         {ui.party && ui.debrief && <button type="button" data-testid="hud-back-to-party" onClick={() => store.backToParty()}>Back to the lobby</button>}
+        <button type="button" data-testid="sound-toggle" aria-pressed={ui.sound} title={ui.sound ? 'Sound on: click to switch it off' : 'Sound off: click to switch it on'} onClick={() => store.toggleSound()}>{ui.sound ? 'Sound on' : 'Sound off'}</button>
         <LeaveButton ui={ui} />
         {ui.dev && <span className="dev-shortcut"><kbd>`</kbd> Dev</span>}
       </div>
       <PlayerRoster ui={ui} />
       {ui.notice && <div className="hud-notice" role="status" data-testid="notice">{ui.notice}</div>}
+      {ui.hint && (
+        <div className="hud-tip" role="status" data-testid="tip">
+          <span className="hud-tip-label">Tip</span>
+          <span><Commands text={ui.hint} /></span>
+          <button type="button" onClick={() => store.dismissHint()}>Got it</button>
+        </div>
+      )}
       {ui.nearDesk && !ui.seatedAt && (
         <div className="hud-hint" data-testid="hint">
           Press <kbd>E</kbd> to use {ui.nearDesk}
@@ -152,6 +161,11 @@ export function Hud({ ui }: { ui: UiState }) {
   );
 }
 
+/** A text in which `commands` are written in backticks: they are shown as code. */
+export function Commands({ text }: { text: string }) {
+  return <>{text.split('`').map((part, i) => (i % 2 === 1 ? <code key={i}>{part}</code> : part))}</>;
+}
+
 /** Leaving ends a solo match, so the first click only asks. */
 function LeaveButton({ ui }: { ui: UiState }) {
   const [asked, setAsked] = useState(false);
@@ -181,7 +195,8 @@ function PlayerRoster({ ui }: { ui: UiState }) {
     </button>
     {open && <div className="roster-list">
       {people.map((p) => {
-        const department = ui.employees.find((e) => e.id === p.id)?.department ?? 'Employee';
+        const employee = ui.employees.find((e) => e.id === p.id);
+        const department = employee?.department ?? 'Employee';
         const self = p.id === ui.playerId;
         const partner = ui.briefing?.partners.some((x) => x.id === p.id);
         return <button key={p.id} type="button" className={`roster-person ${self ? 'roster-self' : ''}`}
@@ -189,7 +204,7 @@ function PlayerRoster({ ui }: { ui: UiState }) {
           style={{ '--department': departmentColor(department) } as CSSProperties}>
           <Portrait id={p.id} department={department} />
           <span className="roster-copy"><span className="roster-name">{p.name}{self && <small> You</small>}</span>
-            <span className="department-tag">{department}</span>{partner && <span className="partner-tag">partner</span>}
+            <span className="department-tag">{department}</span>{employee?.desk && <span className="desk-tag" data-testid={`desk-of-${p.id}`}>{employee.desk}</span>}{partner && <span className="partner-tag">partner</span>}
             <span className="roster-status"><span className="signal-dot" />{p.seatedAt ? 'At workstation' : 'In office'}</span>
           </span>
         </button>;
@@ -211,7 +226,7 @@ export function MissionPanel({ ui }: { ui: UiState }) {
         <span>YOUR MISSION · PRIVATE</span>
         <button type="button" onClick={() => store.set({ briefingOpen: false })} aria-label="Close briefing">×</button>
       </div>
-      {ladderLevel(ui.solo?.level) && <p className="mission-level" data-testid="mission-level">{ladderLevel(ui.solo?.level)!.briefing}</p>}
+      {hackerLevel(ui.solo) && <p className="mission-level" data-testid="mission-level">{hackerLevel(ui.solo)!.briefing}</p>}
       <p className="mission-goal" data-testid="mission-goal">{ui.briefing.goal}</p>
       {ui.briefing.partners.length > 0 && <p data-testid="mission-partners">Your {ui.briefing.partners.length === 1 ? 'partner' : 'partners'}: <strong>{ui.briefing.partners.map((p) => p.name).join(' and ')}</strong> (red for you on the map). Any of you can hand in what one of you read.</p>}
       <p>Your tools are in <code>{ui.briefing.toolsPath}</code> on your own PC (a hidden folder: <code>ls -a</code>).</p>
@@ -260,7 +275,12 @@ export function MatchOver({ ui }: { ui: UiState }) {
   const o = ui.matchOver;
   const iAmHacker = ui.briefing !== null;
   const level = ui.solo?.level;
-  const nextLevel = level && o.winner === 'hacker' && level < LADDER.length ? level + 1 : null;
+  // The next level of the ladder this one belongs to (after the training day: the first case of the defender ladder).
+  const next = ui.solo?.mode === 'training' && o.winner === 'defenders' ? { choice: defenderChoice(1), name: DEFENDER_LADDER[0].name }
+    : hackerLevel(ui.solo) && level && o.winner === 'hacker' && level < LADDER.length ? { choice: levelChoice(level + 1), name: LADDER[level].name }
+    : defenderLevel(ui.solo) && level && o.winner === 'defenders' && level < DEFENDER_LADDER.length ? { choice: defenderChoice(level + 1), name: DEFENDER_LADDER[level].name }
+    : null;
+  const lesson = (hackerLevel(ui.solo) ?? defenderLevel(ui.solo))?.lesson;
   // The hacker can also win without the flag (reputation, parity): the reason below says how.
   const byFlag = o.reason === 'The hacker got the flag out.';
   const several = o.hackers.length > 1;
@@ -271,7 +291,7 @@ export function MatchOver({ ui }: { ui: UiState }) {
     ? (iAmHacker ? (byFlag ? 'You got the flag out. You win.' : 'You win.') : byFlag ? 'The hacker got the flag out.' : 'The hacker wins.')
     : gaveUp ? 'The hacker gave up. The company is safe.' : (iAmHacker ? 'You were caught.' : 'The hacker was caught. The company is safe.');
   return (
-    <div className="match-over" data-testid="match-over">
+    <div className={`match-over ${o.winner === (iAmHacker ? 'hacker' : 'defenders') ? 'match-over-win' : 'match-over-lose'}`} data-testid="match-over">
       <div className="match-over-box">
         <div className="eyebrow">MATCH OVER · {clockText(o.at)}</div>
         <h2>{title}</h2>
@@ -282,11 +302,17 @@ export function MatchOver({ ui }: { ui: UiState }) {
           </ul>
         )}
         {ui.debrief?.rating && <p className="match-over-rating" data-testid="rating">{ui.debrief.rating.title}</p>}
-        {ladderLevel(ui.solo?.level) && <p data-testid="lesson">{ladderLevel(ui.solo?.level)!.lesson}</p>}
+        {lesson && <p data-testid="lesson">{lesson}</p>}
+        {ui.gain && (
+          <div className="gain" data-testid="gain">
+            <strong>+{ui.gain.points} points</strong> <span>{ui.gain.reasons.join(' · ')}</span>
+            {ui.gain.rankUp && <div className="gain-rank" data-testid="rank-up">New rank: <strong>{ui.gain.rankUp}</strong>{ui.gain.unlocked.length > 0 && <> · new in your wardrobe: {ui.gain.unlocked.join(', ')}</>}</div>}
+          </div>
+        )}
         <p className="start-note">The debrief shows everything they did, the evidence it left, and what was found or missed.</p>
         <div className="match-over-buttons">
           {ui.debrief && <button type="button" className="match-over-main" data-testid="open-debrief" onClick={() => store.set({ debriefOpen: true })}>See the debrief</button>}
-          {nextLevel && <button type="button" className="match-over-main" data-testid="next-level" onClick={() => void store.playAgain(levelChoice(nextLevel))}>Next: {LADDER[nextLevel - 1].name}</button>}
+          {next && <button type="button" className="match-over-main" data-testid="next-level" onClick={() => void store.playAgain(next.choice)}>Next: {next.name}</button>}
           {ui.party && <button type="button" className="match-over-main" data-testid="back-to-party" onClick={() => store.backToParty()}>Back to the lobby</button>}
           {!ui.party && <button type="button" data-testid="play-again" onClick={() => void store.playAgain()}>Play again</button>}
           <button type="button" data-testid="to-menu" onClick={() => store.leave()}>Back to the menu</button>

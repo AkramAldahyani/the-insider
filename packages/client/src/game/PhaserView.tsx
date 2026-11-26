@@ -150,6 +150,7 @@ export function PhaserView() {
         else store.send('monitors.open', {});
       } else if (event.code === 'KeyC') store.set({ cardOpen: !ui.cardOpen });
       else if (event.code === 'KeyT') store.set({ tasksOpen: !ui.tasksOpen });
+      else if (event.code === 'KeyH') store.set({ notebookOpen: !ui.notebookOpen });
       else if (event.code === 'KeyB') store.set({ boardOpen: !ui.boardOpen });
       else if (event.code === 'KeyM' && (ui.briefing || ui.solo || ui.party)) store.set({ briefingOpen: !ui.briefingOpen });
       else if (event.code === 'KeyU' && ui.briefing && ui.nearDesk) {
@@ -157,7 +158,7 @@ export function PhaserView() {
         usb = true;
         store.send('item.start', { item: 'usb', hostname: ui.nearDesk });
       }
-      else if (event.code === 'Escape') store.set({ cardOpen: false, monitors: null, monitorFrame: null, boardOpen: false });
+      else if (event.code === 'Escape') store.set({ cardOpen: false, monitors: null, monitorFrame: null, boardOpen: false, notebookOpen: false });
       else if (event.code === 'Backquote' && ui.dev) store.set({ devOpen: !ui.devOpen });
     };
     const up = (event: KeyboardEvent) => {

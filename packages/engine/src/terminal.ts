@@ -22,9 +22,10 @@
  */
 import { MAX_SCREEN } from './core/limits';
 import { noteUnattendedInput, syncUnattended } from './auth/unattended';
-import { findUser, verifyPassword } from './auth/accounts';
+import { findUser, getCred, verifyPassword } from './auth/accounts';
 import { openSession, topSession } from './auth/sessions';
-import './commands/index';
+import { commandNames } from './commands/index';
+import { canRead, normalize, resolvePath, walk } from './fs/vfs';
 import { pendingHandlers } from './commands/table';
 import { emit, withActor } from './events/log';
 import { allocPid } from './proc/processes';
@@ -401,4 +402,74 @@ function answerPending(run: Run, pending: Pending, answer: string): void {
       resumeFrame(run, pending.resume as Frame, result);
     }
   }
+}
+
+// ───────────────────────────── Tab completion ─────────────────────────────
+
+export interface Completion {
+  /** The line with the last word completed as far as it is certain. */
+  line: string;
+  /** All the words it could become (shown when there are several), at most COMPLETION_MAX. */
+  options: string[];
+}
+
+const COMPLETION_MAX = 60;
+/** Characters after which a new command starts. */
+const COMMAND_START = /[|;&]/;
+
+/**
+ * Tab: completes the last word of a half-typed line, like bash. The first word
+ * of a command becomes a command name, any other word a file name.
+ *
+ * It only shows what `ls` would show this user here (a directory they may not
+ * read completes to nothing), and it leaves no trace: no event, no history line
+ * and no access time, as real completion leaves none in these logs either.
+ */
+export function completeInput(world: World, id: string, text: string): Completion {
+  const nothing: Completion = { line: text, options: [] };
+  const terminal = world.terminals[id];
+  const session = terminal ? topSession(world, terminal) : undefined;
+  if (!terminal || terminal.pending || !session || session.locked || text.length > 2000) return nothing;
+  // The word being typed starts after the last space or shell character.
+  let start = text.length;
+  while (start > 0 && !/[\s|;&<>]/.test(text[start - 1])) start--;
+  const word = text.slice(start);
+  const before = text.slice(0, start).trimEnd();
+  const lastWord = before.split(/\s+/).at(-1) ?? '';
+  const commandPosition = (before === '' || COMMAND_START.test(before.at(-1)!) || lastWord === 'sudo' || lastWord === 'man') && !word.includes('/');
+  let options: string[];
+  let stem = word;
+  // A file name is finished (a space follows); a folder is not (its contents may follow).
+  const finished = (option: string) => !option.endsWith('/');
+  if (commandPosition) {
+    options = commandNames().filter((name) => name.startsWith(word));
+  } else {
+    const host = world.hosts[session.host];
+    const cred = getCred(host, session.user);
+    const home = findUser(host, session.user)?.home ?? '/';
+    const cut = word.lastIndexOf('/') + 1;
+    const folder = word.slice(0, cut);
+    stem = word.slice(cut);
+    const real = folder.startsWith('~') ? home + folder.slice(1) : folder;
+    let names: string[] = [];
+    try {
+      const dir = walk(host, normalize(resolvePath(session.cwd, real || '.')), cred);
+      if (dir.type === 'dir' && canRead(dir, cred)) {
+        names = Object.entries(dir.children!)
+          .filter(([name]) => name.startsWith(stem) && (stem.startsWith('.') || !name.startsWith('.')))
+          .map(([name, node]) => (node.type === 'dir' ? `${name}/` : name));
+      }
+    } catch {
+      // A folder that does not exist, or may not be entered: nothing to complete.
+    }
+    options = names;
+  }
+  options.sort();
+  if (options.length === 0) return nothing;
+  // As far as every option agrees.
+  let common = options[0];
+  for (const option of options) while (!option.startsWith(common)) common = common.slice(0, -1);
+  const done = options.length === 1 && finished(options[0]);
+  const line = text.slice(0, text.length - stem.length) + common + (done ? ' ' : '');
+  return { line, options: options.length > 1 ? options.slice(0, COMPLETION_MAX) : [] };
 }

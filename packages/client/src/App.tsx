@@ -14,6 +14,9 @@ import { Reconnecting } from './ui/Reconnecting';
 import { StartMenu } from './ui/StartMenu';
 import { FiredPanel, MeetingPanel } from './ui/MeetingPanel';
 import { MonitorsPanel } from './ui/MonitorsPanel';
+import { Minimap } from './ui/Minimap';
+import { NotebookPanel } from './ui/NotebookPanel';
+import { TrainingGuide } from './ui/TrainingGuide';
 import { TerminalOverlay } from './ui/TerminalOverlay';
 import { AlertBanner, Hud, MatchOver, MissionPanel, OnboardingCard, StartScreen, TaskList } from './ui/panels';
 
@@ -25,7 +28,7 @@ const DevPanel = import.meta.env.DEV ? lazy(() => import('./ui/DevPanel')) : nul
 export function App() {
   const ui = useSyncExternalStore(store.subscribe, store.getUi);
 
-  if (ui.phase === 'menu') return <StartMenu progress={ui.ladder} place={ui.place} look={ui.look} />;
+  if (ui.phase === 'menu') return <StartMenu progress={ui.ladder} defenders={ui.defenders} place={ui.place} look={ui.look} career={ui.career} />;
   if (ui.phase === 'connecting') return ui.reconnecting ? <Reconnecting /> : <div className="center">Connecting to the office…</div>;
   if (ui.phase === 'error') {
     return (
@@ -47,6 +50,9 @@ export function App() {
       <Hud ui={ui} />
       {ui.seatedAt && <TerminalOverlay hostname={ui.seatedAt} />}
       <TaskList ui={ui} />
+      <Minimap ui={ui} />
+      <TrainingGuide ui={ui} />
+      <NotebookPanel ui={ui} />
       {/* The briefing shares the right-hand side with the onboarding card: card first, then (after C) the briefing. */}
       {!ui.seatedAt && !ui.cardOpen && <MissionPanel ui={ui} />}
       {!ui.seatedAt && !ui.cardOpen && !ui.fired && <CasePanel ui={ui} />}

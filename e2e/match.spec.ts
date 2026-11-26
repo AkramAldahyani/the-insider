@@ -92,11 +92,18 @@ test('a defender follows the evidence to the bot hacker, has them voted out, and
   for (const id of ['E1', 'E2', 'E3']) await page.getByTestId(`accuse-evidence-${id}`).check();
   await page.getByTestId('accuse-submit').click();
   await expect(page.getByTestId('accusation-A1')).toContainText(suspect.name);
+  // The evidence goes up on the screen for everybody.
+  await expect(page.getByTestId('projector')).toContainText(`accuses ${suspect.name}`);
+  await expect(page.getByTestId('projector').locator('li')).toHaveCount(3);
   // A colleague says what they make of the evidence, and the bots vote on it too.
   await expect(page.getByTestId('chat-meeting')).toContainText(`point at ${suspect.name}`, { timeout: 15_000 });
   await expect(page.getByTestId('chat-meeting')).toContainText('That convinces me.');
   await page.screenshot({ path: `${SHOTS}/22-evidence-judged.png` });
+  // Before the vote the accused has the floor.
+  await expect(page.getByTestId('floor')).toContainText(`${suspect.name} has the floor`, { timeout: 40_000 });
   await page.getByTestId(`vote-${suspect.id}`).click({ timeout: 40_000 });
+  // The ballots are turned over, then the verdict.
+  await expect(page.getByTestId('meeting-verdict')).toContainText(`${suspect.name} was voted out.`, { timeout: 40_000 });
 
   // 4. They were the hacker: the defenders win, and the debrief tells the whole story.
   await expect(page.getByTestId('match-over')).toBeVisible({ timeout: 40_000 });
@@ -109,6 +116,12 @@ test('a defender follows the evidence to the bot hacker, has them voted out, and
   await expect(page.getByTestId('debrief-totals')).toBeVisible();
   await expect(page.getByTestId('debrief-meetings')).toContainText('Huda Rahman');
   await expect(debrief).not.toContainText('Handed in the flag');
+  // The replay: the hacker's path on the map, step by step.
+  await expect(page.getByTestId('replay')).toBeVisible();
+  await page.getByTestId('replay-time').fill(String(await page.getByTestId('replay-time').getAttribute('max')));
+  await expect(page.getByTestId('replay-caption')).not.toContainText('Press Play');
+  // Points for the match.
+  await expect(page.getByTestId('gain')).toContainText('+40 for the win');
   await page.screenshot({ path: `${SHOTS}/20-match-debrief.png` });
 
   // 5. Play again: a new match of the same kind, with nothing left over from the last one.

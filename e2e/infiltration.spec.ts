@@ -62,6 +62,7 @@ test('the scenario ladder: winning a level opens the next one, and the browser r
   test.setTimeout(5 * 60_000);
   await page.goto('/');
   await page.getByTestId('mode-ladder').click();
+  await page.getByTestId('track-hacker').check();
   await expect(page.getByTestId('ladder-play-2')).toBeDisabled();
   await expect(page.getByTestId('ladder-2')).toContainText('Win the level before it first.');
   await page.getByTestId('ladder-play-1').scrollIntoViewIfNeeded();
@@ -90,6 +91,7 @@ test('the scenario ladder: winning a level opens the next one, and the browser r
   await expect(page.getByTestId('card')).toContainText('Sara Alharbi');
   await page.reload();
   await page.getByTestId('mode-ladder').click();
+  await page.getByTestId('track-hacker').check();
   await expect(page.getByTestId('ladder-1')).toContainText(`won: ${rating}`);
   await expect(page.getByTestId('ladder-play-2')).toBeEnabled();
   await expect(page.getByTestId('ladder-play-3')).toBeDisabled();

@@ -40,9 +40,10 @@ export type { WeaknessChoice } from './mission/mission';
 export { advanceTime, advanceTo } from './core/clock';
 export { parseDuration, dateStamp } from './core/time';
 export {
-  openTerminal, leaveTerminal, sendInput, currentPrompt, awaitingSecret, cancelInput, switchUser, refreshTerminal, screenState,
+  openTerminal, leaveTerminal, sendInput, currentPrompt, awaitingSecret, cancelInput, switchUser, refreshTerminal, screenState, completeInput,
 } from './terminal';
-export type { TerminalResult, OpenResult, ScreenKind, ScreenState } from './terminal';
+export type { TerminalResult, OpenResult, ScreenKind, ScreenState, Completion } from './terminal';
+export { manualPages, type ManualPage } from './commands/help';
 export { queryEvents } from './events/log';
 export { unattendedMs } from './auth/unattended';
 export type { EventFilter } from './events/log';

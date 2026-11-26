@@ -14,7 +14,7 @@
  */
 import {
   activeHackers, addHacker, advanceTime, cancelInput, isHacker, createWorld, dateStamp, leaveTerminal, openTerminal, parseDuration, refreshTerminal, screenState,
-  awaitingSecret, currentPrompt, escalate, glimpse, plugUsb, submitFlag, sendInput, serializeWorld, setHacker, shoulderSurf, switchUser, usbCooldown, type FsNode, type GameEvent, type OpenResult, type Scenario, type TerminalResult, type WeaknessChoice, type World,
+  awaitingSecret, currentPrompt, escalate, glimpse, plugUsb, submitFlag, sendInput, serializeWorld, setHacker, shoulderSurf, switchUser, usbCooldown, completeInput, manualPages, type FsNode, type GameEvent, type OpenResult, type Scenario, type TerminalResult, type WeaknessChoice, type World,
 } from '@insider/engine';
 import {
   ALERT_BANNER_GAP_MS, BUTTON_DISTANCE, CHAT_BURST, HACKERS_GONE, HACKER_GONE, CHAT_EARSHOT, CHAT_REFILL_MS, DETAIN_DISTANCE, INTERACT_DISTANCE, MONITOR_SHOTS, PLAYER_RADIUS, REPUTATION_PER_FIRING, distanceToRect, isFree, PLAYER_SPEED, SURF_BEHIND, SURF_SIDE, USB_HOLD_MS, cleanChat, moveWithCollision, parseOfficeMap, roomAt,
@@ -25,7 +25,7 @@ import { Doors, type Walker } from './doors';
 import { Random } from './bots/random';
 import { Cctv, type Snapshot } from './cctv';
 import { TALK_MS, TALK_RADIUS, Talks, type Talk } from './talks';
-import { Debrief, nameList } from './debrief';
+import { Debrief, PATH_STEP_MS, nameList } from './debrief';
 import { EvidenceBoard, type EvidenceItem } from './evidence';
 import { comment, judgeAccusation, strongCase, type Judge, type Testimony, type Verdict } from './judge';
 import { rate, rateInfiltration } from './rating';
@@ -136,6 +136,8 @@ export class OfficeGame {
   reputation = 100;
   /** Set when the match has ended. */
   over: { winner: 'hacker' | 'defenders'; at: number } | null = null;
+  /** Game time of the next point of the hackers' paths (debrief.ts). */
+  private nextPathAt = 0;
   /** Guards who detained an innocent person and lost the power. */
   private readonly detainLost = new Set<string>();
   /** Every detention (for the debrief). */
@@ -450,6 +452,7 @@ export class OfficeGame {
     const id = playerId ?? this.seatOf.get(clientId);
     if (id === undefined) return;
     this.send(clientId, 'welcome', { ...this.welcome(id), back: true });
+    this.sendManual(clientId);
     this.send(clientId, 'board', { items: this.board.view(avatar ? id : '') });
     this.send(clientId, 'meeting', this.meetingView(id));
     if (this.hasTalks && avatar) this.send(clientId, 'talk', this.talkView(id));
@@ -518,6 +521,11 @@ export class OfficeGame {
         this.board.noteTyped(clientId, awaitingSecret(this.world, avatar.terminalId) ? '*'.repeat(data.text.length) : data.text);
         this.screen(avatar, this.typeLine(avatar, data.text));
         return;
+      }
+      case 'term.complete': {
+        if (!avatar.seatedAt || typeof data.text !== 'string') return;
+        const { line, options } = completeInput(this.world, avatar.terminalId, data.text);
+        return this.send(avatar.clientId, 'term.complete', { text: data.text, line, options });
       }
       case 'item.start':
         return this.startItem(avatar, data);
@@ -600,6 +608,7 @@ export class OfficeGame {
     // Otherwise they "came to work": the main entrance logs their arrival, as it does for everyone.
     if (!alreadyInside) this.throughEntrance(avatar, 'IN');
     this.send(clientId, 'welcome', this.welcome(player.id));
+    this.sendManual(clientId);
     this.tasks.assign(player.id);
     this.tasks.takeChanged();
     this.send(clientId, 'tasks', taskList(this.tasks.view(player.id)));
@@ -616,6 +625,14 @@ export class OfficeGame {
     const avatar: Avatar = { clientId, playerId, account: player.account, name: player.name, x, y, facing, seatedAt: '', terminalId: '', dx: 0, dy: 0 };
     this.avatars.set(clientId, avatar);
     return avatar;
+  }
+
+  /**
+   * The shell's manual, for the player's notebook: the same fixed text for everybody (what `help` and `man` print).
+   * Sent with the welcome, not on connect: the very first messages of a room can arrive before the page listens.
+   */
+  private sendManual(clientId: string): void {
+    this.send(clientId, 'manual', { pages: manualPages() });
   }
 
   private welcome(playerId: string): ServerMessages['welcome'] {
@@ -1201,9 +1218,10 @@ export class OfficeGame {
     const m = this.meetings.current;
     const usesLeft = this.meetings.usesLeft(playerId);
     const { votesNeeded } = this.meetings.times;
-    if (!m) return { active: false, usesLeft, number: 0, phase: '', calledBy: '', endsIn: 0, accusations: [], voted: [], myVote: '', canVote: false, votesNeeded, judged: false, result: null };
+    if (!m) return { active: false, usesLeft, number: 0, phase: '', calledBy: '', endsIn: 0, floor: null, accusations: [], voted: [], myVote: '', canVote: false, votesNeeded, judged: false, result: null };
     return {
       active: true, usesLeft, number: m.number, phase: m.phase, calledBy: this.nameOf(m.calledById), endsIn: Math.max(0, Math.round(m.leftMs)),
+      floor: m.phase === 'defence' ? { id: m.floor[m.floorAt], name: this.nameOf(m.floor[m.floorAt]), turn: m.floorAt + 1, of: m.floor.length, endsIn: Math.max(0, Math.round(m.leftMs - (m.floor.length - m.floorAt - 1) * this.meetings.times.defenceMs)) } : null,
       accusations: m.accusations.map((a) => ({ id: a.id, accuser: this.nameOf(a.accuserId), suspectId: a.suspectId, suspect: this.nameOf(a.suspectId), evidence: [...a.evidence] })),
       voted: Object.keys(m.votes).map((id) => this.nameOf(id)),
       myVote: m.votes[playerId] ?? '',
@@ -1484,6 +1502,11 @@ export class OfficeGame {
     }
     if (!frozen) this.bots?.tick(realMs);
     if (this.over) return;
+    // For the debrief's replay: where every hacker is now and then (known to nobody before the end).
+    if (this.world.time >= this.nextPathAt) {
+      this.nextPathAt = this.world.time + PATH_STEP_MS;
+      for (const a of this.avatars.values()) if (isHacker(this.world, a.playerId)) this.debrief.notePosition(a.playerId, this.world.time, a.x, a.y);
+    }
     // Anti-stall: the longer the match, the more of the hacker's trail the SIEM points at.
     if (!this.over && this.world.time >= this.nextEscalation) {
       escalate(this.world);

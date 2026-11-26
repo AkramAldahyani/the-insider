@@ -13,13 +13,18 @@
  * sends messages to the server.
  */
 import { Client, type Room } from 'colyseus.js';
-import { readLadder, saveWin, type LadderProgress } from './ladderProgress';
+import { DEFENDER_LADDER_KEY, readLadder, saveWin, type LadderProgress } from './ladderProgress';
+import { trainingStep } from './training';
+import { countMatch, readCareer, type Career, type Gain } from './career';
 import { Movement } from './movement';
 import { readPlace, savePlace, type SavedPlace } from './savedPlace';
 import { readLook, saveLook } from './playerName';
+import { commandsIn, readNotebook, saveNotebook } from './notebook';
+import { HINT_AFTER_MS, nextHint } from './hints';
+import { ambience, playSound, setSound, soundOn } from './sound';
 import {
-  DEFAULT_LOOK, PARTY_REMOVED, PARTY_ROOM_NAME, type Look, ROOM_NAME, SERVER_PORT, SOLO_ROOM_NAME, ladderLevel, parseOfficeMap, withCameras,
-  type ClientMessages, type EmployeeChoice, type EvidenceView, type MeetingView, type MissionBriefing, type OfficeMap, type OnboardingCard, type PartyView, type PublicDesk, type PublicDoor, type PublicPlayer,
+  DEFAULT_LOOK, PARTY_REMOVED, PARTY_ROOM_NAME, type Look, ROOM_NAME, SERVER_PORT, SOLO_ROOM_NAME, hackerLevel, parseOfficeMap, withCameras,
+  type ClientMessages, type EmployeeChoice, type ManualPage, type EvidenceView, type MeetingView, type MissionBriefing, type OfficeMap, type OnboardingCard, type PartyView, type PublicDesk, type PublicDoor, type PublicPlayer,
   type ServerMessages, type SoloChoice, type TaskView, type TermScreen, type TiledMap,
 } from '@insider/shared';
 
@@ -62,8 +67,11 @@ export interface UiState {
   reveal: boolean;
   /** The solo match being played (null = the shared office or a lobby's match). */
   solo: SoloChoice | null;
-  /** Levels of the scenario ladder won in this browser. */
+  /** Levels of the hacker ladder, and of the defender ladder (0 = the training day), won in this browser. */
   ladder: LadderProgress;
+  defenders: LadderProgress;
+  /** The training day: the step of the guide the player is at (-1 = not training; training.ts). */
+  training: number;
   /** How this player's own character looks (lobby; and in a match for this player only). */
   look: Look;
   error: string;
@@ -140,18 +148,32 @@ export interface UiState {
   tasksOpen: boolean;
   devOpen: boolean;
   devLog: string[];
+  /** The shell's manual (from the server), the commands this browser has used, and whether the notebook is shown. */
+  manual: ManualPage[];
+  notebook: string[];
+  notebookOpen: boolean;
+  /** A hint for a defender who seems stuck ("" = none showing; hints.ts). */
+  hint: string;
+  /** Sound on (sound.ts; remembered in this browser). */
+  sound: boolean;
+  /** Points, rank and earned jackets (career.ts), and what the last match was worth (null = nothing yet). */
+  career: Career;
+  gain: Gain | null;
 }
 
 export type TermEvent =
   | { kind: 'open'; hostname: string; screen: TermScreen }
-  | { kind: 'output'; screen: TermScreen };
+  | { kind: 'output'; screen: TermScreen }
+  | { kind: 'complete'; text: string; line: string; options: string[] };
 
 type Listener = () => void;
 
 /** A page that has just been opened (or has just left a match). */
 const START: UiState = {
-  phase: 'menu', look: DEFAULT_LOOK, reconnecting: false, place: null, party: null, reveal: false, solo: null, ladder: {}, error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, debrief: null, debriefOpen: false, meeting: null, meetingAt: 0, chat: [], chatOpen: false, chatSecret: false, muted: [], fired: '', watch: '', zoom: 1, nearButton: false, nearTalk: false, talk: null, talkAt: 0, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
+  phase: 'menu', look: DEFAULT_LOOK, reconnecting: false, place: null, party: null, reveal: false, solo: null, ladder: {}, defenders: {}, training: -1, error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, debrief: null, debriefOpen: false, meeting: null, meetingAt: 0, chat: [], chatOpen: false, chatSecret: false, muted: [], fired: '', watch: '', zoom: 1, nearButton: false, nearTalk: false, talk: null, talkAt: 0, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
   clock: 0, speed: 1, roomName: '', nearDesk: '', nearDoor: '', nearDoorName: '', seatedAt: '', notice: '', tasks: [], tasksCompleted: 0, tasksOpen: true, devOpen: false, devLog: [],
+  manual: [], notebook: [], notebookOpen: false, hint: '', sound: true,
+  career: { points: 0, matches: 0, wins: 0, found: 0, counted: [] }, gain: null,
 };
 
 export class Store {
@@ -163,7 +185,13 @@ export class Store {
   /** The map file as Tiled wrote it (the scene reads the tile colours from it). */
   rawMap: TiledMap | null = null;
 
-  private ui: UiState = { ...START, ladder: readLadder(), place: readPlace(), look: readLook() };
+  private ui: UiState = { ...START, ladder: readLadder(), defenders: readLadder(DEFENDER_LADDER_KEY), place: readPlace(), look: readLook(), notebook: readNotebook(), sound: soundOn(), career: readCareer() };
+  /** What this player did in this match, for the hints (hints.ts). Only this browser knows it. */
+  private facts = Store.freshFacts();
+
+  private static freshFacts() {
+    return { sat: false, monitors: false, shell: false, alert: false, used: new Set<string>(), shown: new Set<string>(), progressAt: Date.now() };
+  }
   /** When the server was last heard (see SILENCE_MS). */
   private heardAt = 0;
   private listeners = new Set<Listener>();
@@ -186,7 +214,34 @@ export class Store {
     const keys = Object.keys(patch) as (keyof UiState)[];
     if (keys.every((k) => this.ui[k] === patch[k])) return;
     this.ui = { ...this.ui, ...patch };
+    this.advanceTraining();
     for (const listener of this.listeners) listener();
+  }
+
+  /** The training day: moves the guide on when the player has done its step (training.ts). Changes `ui` without telling anybody: the caller does. */
+  private advanceTraining(): void {
+    const ui = this.ui;
+    if (ui.solo?.mode !== 'training' || ui.phase !== 'playing') return;
+    const step = trainingStep(ui.training, {
+      cardOpen: ui.cardOpen, seated: ui.seatedAt !== '' || this.facts.sat, shell: this.facts.shell, used: this.facts.used, alert: this.facts.alert,
+      pins: ui.board.length, meeting: ui.meeting?.active ?? false, over: ui.matchOver !== null || ui.debrief !== null,
+    });
+    if (step === ui.training) return;
+    if (ui.training >= 0) playSound('step');
+    this.ui = { ...ui, training: step };
+  }
+
+  /** Sound on or off (the speaker button). */
+  toggleSound(): void {
+    setSound(!this.ui.sound);
+    this.set({ sound: !this.ui.sound });
+  }
+
+  /** Something the store noticed without a change of `ui` (a line on the screen): the guide may move on. */
+  private noticed(): void {
+    const before = this.ui.training;
+    this.advanceTraining();
+    if (this.ui.training !== before) for (const listener of this.listeners) listener();
   }
 
   /** Watching: follow somebody ("" = move freely). Only for people who are out; only this browser knows. */
@@ -273,6 +328,50 @@ export class Store {
     if (this.ui.phase === 'party') this.send('party.look', look);
   }
 
+  /**
+   * A line was typed at a PC: the commands in it go into the notebook (only
+   * their names), and it counts as progress for the hints.
+   */
+  used(line: string): void {
+    this.facts.progressAt = Date.now();
+    const known = new Set(this.ui.manual.map((p) => p.name));
+    const names = commandsIn(line).filter((name) => known.has(name));
+    for (const name of names) this.facts.used.add(name);
+    const fresh = names.filter((name) => !this.ui.notebook.includes(name));
+    if (fresh.length === 0) return;
+    const notebook = [...this.ui.notebook, ...fresh].sort();
+    saveNotebook(notebook);
+    this.set({ notebook });
+    playSound('notebook');
+    this.notice(`New in your notebook: ${fresh.join(', ')}. Press H to read about ${fresh.length === 1 ? 'it' : 'them'}.`);
+  }
+
+  /** What appeared on the player's own screen, as far as the hints and the training guide care. */
+  private saw(screen: TermScreen): void {
+    if (screen.screen === 'shell') this.facts.shell = true;
+    if (/severity=high rule=/.test(screen.output)) this.facts.alert = true;
+    this.noticed();
+  }
+
+  /** The hint is read: the next one comes only after another while without progress. */
+  dismissHint(): void {
+    this.facts.progressAt = Date.now();
+    this.set({ hint: '' });
+  }
+
+  /** Every two seconds in a match: is it time for a hint? (Defenders only; hints.ts.) */
+  private checkHint(): void {
+    const ui = this.ui;
+    if (ui.phase !== 'playing' || ui.hint || ui.briefing || ui.fired || ui.matchOver || ui.meeting?.active || ui.reveal || ui.solo?.mode === 'training') return;
+    const after = HINT_AFTER_MS[ui.solo?.difficulty ?? ui.party?.settings.difficulty ?? 'normal'];
+    if (after === null || Date.now() - this.facts.progressAt < after) return;
+    const hint = nextHint({ ...this.facts, pins: ui.board.length, role: ui.card?.role ?? '' }, this.facts.shown);
+    this.facts.progressAt = Date.now();
+    if (!hint) return;
+    this.facts.shown.add(hint.id);
+    this.set({ hint: hint.text });
+  }
+
   /** Back to the start menu. Leaving a solo match ends it; in the shared office a bot takes over. */
   leave(): void {
     const room = this.room;
@@ -307,11 +406,13 @@ export class Store {
 
   /** After a lobby's match: back to the same lobby, without leaving the room. */
   backToParty(): void {
-    const { party, ladder, look } = this.ui;
+    const { party, ladder, defenders, look } = this.ui;
     this.movement = new Movement();
     this.termBacklog = [];
     window.clearTimeout(this.alertTimer);
-    this.set({ ...START, ladder, look, party, phase: 'party' });
+    this.facts = Store.freshFacts();
+    ambience(false);
+    this.set({ ...START, ladder, defenders, look, party, phase: 'party', manual: this.ui.manual, notebook: this.ui.notebook, sound: this.ui.sound, career: this.ui.career });
     this.send('party.back', {});
   }
 
@@ -322,7 +423,9 @@ export class Store {
     this.termBacklog = [];
     window.clearTimeout(this.noticeTimer);
     window.clearTimeout(this.alertTimer);
-    this.set({ ...START, ladder: this.ui.ladder, look: this.ui.look });
+    this.facts = Store.freshFacts();
+    ambience(false);
+    this.set({ ...START, ladder: this.ui.ladder, defenders: this.ui.defenders, look: this.ui.look, manual: this.ui.manual, notebook: this.ui.notebook, sound: this.ui.sound, career: this.ui.career });
   }
 
   private connect(client: Client, to: Destination): Promise<Room<RoomState>> {
@@ -410,6 +513,7 @@ export class Store {
           this.heardAt = Date.now();
         }
         if (this.ui.phase === 'playing' && !this.ui.debrief && Date.now() - this.heardAt > SILENCE_MS) this.lineLost(room);
+        this.checkHint();
       }, 2000);
       /** Messages of a match this page has already left are ignored. */
       const on = <T extends keyof ServerMessages>(type: T, handler: (payload: ServerMessages[T]) => void) =>
@@ -420,7 +524,7 @@ export class Store {
         const file = Object.entries(MAP_FILES).find(([path]) => path.endsWith(`/${lobby.mapName}.json`));
         if (!file) return this.set({ phase: 'error', error: `This page does not have the map "${lobby.mapName}".` });
         // Some levels of the ladder have more cameras (the server records with the same ones).
-        this.rawMap = withCameras(file[1], ladderLevel(this.ui.solo?.level)?.cameras);
+        this.rawMap = withCameras(file[1], hackerLevel(this.ui.solo)?.cameras);
         this.map = parseOfficeMap(this.rawMap);
         this.set({ scenarioName: lobby.scenarioName, employees: lobby.employees, dev: lobby.dev, hackerOpen: lobby.hackerOpen, asHacker: this.ui.asHacker && lobby.hackerOpen, phase: this.ui.phase === 'playing' || this.ui.solo || this.ui.party ? this.ui.phase : 'lobby' }); // solo and lobbies: the server has already chosen; "welcome" follows
       });
@@ -433,35 +537,68 @@ export class Store {
           return;
         }
         this.set({ phase: 'playing', playerId, card, cardOpen: true, briefing: mission, briefingOpen: mission !== null || this.ui.solo !== null || this.ui.party !== null, reveal: this.ui.party !== null });
+        ambience(true);
         this.send('move', { dx: 0, dy: 0 });
       });
       on('move.ack', (reply) => this.movement.acknowledge(reply));
       on('term.open', ({ hostname, ...screen }) => {
         this.termBacklog = [];
+        this.saw(screen);
         this.term({ kind: 'open', hostname, screen });
+        this.facts.sat = true;
+        this.facts.progressAt = Date.now();
         this.set({ seatedAt: hostname, cardOpen: false });
       });
-      on('term.output', (screen) => this.term({ kind: 'output', screen }));
+      on('term.output', (screen) => {
+        this.saw(screen);
+        this.term({ kind: 'output', screen });
+      });
+      on('term.complete', (answer) => this.term({ kind: 'complete', ...answer }));
+      on('manual', ({ pages }) => this.set({ manual: pages }));
       on('term.close', () => {
         this.set({ seatedAt: '' });
         this.send('move', { dx: 0, dy: 0 });
       });
       on('notice', ({ text }) => this.notice(text));
       on('alert', ({ text }) => {
+        playSound('alert');
         this.set({ alert: text });
         window.clearTimeout(this.alertTimer);
         this.alertTimer = window.setTimeout(() => this.set({ alert: '' }), 8000);
       });
-      on('match.over', (over) => this.set({ matchOver: over }));
+      on('match.over', (over) => {
+        // The winning side hears a fanfare. (Somebody who is out hears it too: they still belong to a side.)
+        const mine = this.ui.briefing ? 'hacker' : 'defenders';
+        playSound(over.winner === mine ? 'win' : 'lose');
+        ambience(false);
+        this.set({ matchOver: over });
+      });
       on('debrief', ({ debrief }) => {
         this.set({ debrief });
-        if (solo?.level && debrief.winner === 'hacker') this.set({ ladder: saveWin(solo.level, debrief.rating?.title ?? '') });
+        const rating = debrief.rating?.title ?? '';
+        // A level of a ladder (or the training day) won for the first time is worth more (career.ts).
+        const level = solo?.mode === 'training' ? 0 : solo?.level;
+        const progress = solo?.mode === 'infiltration' ? this.ui.ladder : this.ui.defenders;
+        const side = this.ui.briefing ? 'hacker' : 'defenders';
+        const firstLevelWin = level !== undefined && debrief.winner === side && progress[level] === undefined;
+        const counted = countMatch(debrief, side, firstLevelWin);
+        if (counted) this.set({ career: counted.career, gain: counted.gain });
+        if (solo?.mode === 'infiltration' && solo.level && debrief.winner === 'hacker') this.set({ ladder: saveWin(solo.level, rating) });
+        if (solo?.mode === 'investigation' && solo.level && debrief.winner === 'defenders') this.set({ defenders: saveWin(solo.level, rating, DEFENDER_LADDER_KEY) });
+        if (solo?.mode === 'training' && debrief.winner === 'defenders') this.set({ defenders: saveWin(0, rating, DEFENDER_LADDER_KEY) });
       });
-      on('monitors.index', (index) => this.set({ monitors: index }));
-      on('board', ({ items }) => this.set({ board: items }));
+      on('monitors.index', (index) => {
+        this.facts.monitors = true;
+        this.set({ monitors: index });
+      });
+      on('board', ({ items }) => {
+        if (items.length > this.ui.board.length) this.facts.progressAt = Date.now();
+        this.set({ board: items });
+      });
       on('meeting', (meeting) => {
         // A new meeting closes everything else and starts a fresh chat.
         const fresh = meeting.active && (!this.ui.meeting?.active || this.ui.meeting.number !== meeting.number);
+        if (fresh) playSound('meeting');
         this.set({ meeting, meetingAt: Date.now(), ...(fresh ? { chat: this.ui.chat.filter((l) => l.channel !== 'meeting'), chatOpen: false, boardOpen: false, monitors: null, cardOpen: false } : {}) });
       });
       on('chat', (line) => this.set({ chat: [...this.ui.chat.slice(-200), { ...line, heardAt: Date.now() }] }));

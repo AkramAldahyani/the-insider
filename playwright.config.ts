@@ -47,7 +47,7 @@ export default defineConfig({
     { name: 'match', testMatch: MATCHES, use: { baseURL: `http://localhost:${MATCH_PAGE_PORT}` } },
   ],
   webServer: [
-    server(GAME_PORT, PAGE_PORT, { BOTS: '0', MEETING_SECONDS: '20,12,3' }),
-    server(MATCH_GAME_PORT, MATCH_PAGE_PORT, { SEED: '1', TIME_SPEED: '4', STALL_MINUTES: '1', MEETING_SECONDS: '20,15,5' }),
+    server(GAME_PORT, PAGE_PORT, { BOTS: '0', MEETING_SECONDS: '20,12,3,4' }),
+    server(MATCH_GAME_PORT, MATCH_PAGE_PORT, { SEED: '1', TIME_SPEED: '4', STALL_MINUTES: '1', MEETING_SECONDS: '20,15,5,4' }),
   ],
 });

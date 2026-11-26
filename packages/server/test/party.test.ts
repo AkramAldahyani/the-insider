@@ -257,7 +257,8 @@ describe('over the network', () => {
     b.send('party.remove', { id: a.party().you });
     b.send('party.start', {});
     a.send('party.start', {});
-    a.send('party.settings', { meetings: 'short', dev: true });
+    // (The computer is the hacker: if one of these two were drawn, the other leaving below would end the match, Part F.)
+    a.send('party.settings', { meetings: 'short', hacker: 'bot', dev: true });
     await b.until((p) => p.settings.meetings === 'short');
     expect(b.party()).toMatchObject({ settings: { difficulty: 'normal', bots: true }, open: true, playing: false, notYet: 'Waiting for Ben to be ready.' });
     expect(b.party().members).toHaveLength(2);

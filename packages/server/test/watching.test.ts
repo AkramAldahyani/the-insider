@@ -18,7 +18,7 @@ const ALL_MESSAGES: Record<ClientMessageType, unknown[]> = {
   'item.start': [{ item: 'usb', hostname: 'FIN-LT-04' }], 'item.stop': [{}], 'monitors.open': [{}], 'monitors.frame': [{ camera: 'CAM-01' }],
   'evidence.pin': [{ kind: 'screen', text: 'x' }], 'evidence.unpin': [{ id: 'E1' }], detain: [{ target: 'p4' }],
   'meeting.call': [{}], 'talk.call': [{}], 'meeting.accuse': [{ suspect: 'p1', evidence: ['E1', 'E2', 'E3'] }], 'meeting.vote': [{ target: 'skip' }, { target: 'p4' }],
-  'flag.submit': [{ text: scenario.mission ? 'NEXORA{x}' : '' }], 'term.line': [{ text: 'whoami' }], 'term.cancel': [{}], 'term.switchUser': [{}],
+  'flag.submit': [{ text: scenario.mission ? 'NEXORA{x}' : '' }], 'term.line': [{ text: 'whoami' }], 'term.complete': [{ text: 'cat /etc/pa' }], 'term.cancel': [{}], 'term.switchUser': [{}],
   'dev.speed': [{ multiplier: 60 }], 'dev.jump': [{ duration: '10m' }], 'dev.events': [{ count: 5 }], 'dev.teleport': [{ hostname: 'HR-LT-03' }], 'dev.dump': [{}], 'dev.show': [{ what: 'mission' }],
   'chat.send': [{ text: 'hello' }, { text: 'hello', channel: 'hackers' }, { text: 'hello', channel: 'room' }],
 };

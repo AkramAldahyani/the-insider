@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import type { DebriefEvidenceView, DebriefStepView, DebriefView } from '@insider/shared';
 import { store, type UiState } from '../game/store';
+import { ReplayMap } from './ReplayMap';
 
 const clock = (t: number) => new Date(t).toISOString().slice(11, 19);
 const STATUS: Record<DebriefStepView['status'], string> = { pinned: 'FOUND', seen: 'SEEN, NOT PINNED', missed: 'MISSED', none: 'NO TRACE' };
@@ -26,7 +27,7 @@ function Evidence({ item }: { item: DebriefEvidenceView }) {
   );
 }
 
-function Step({ step, index, by }: { step: DebriefStepView; index: number; by: boolean }) {
+function Step({ step, index, by, show }: { step: DebriefStepView; index: number; by: boolean; show: () => void }) {
   const [open, setOpen] = useState(false);
   return (
     <li className={`debrief-step debrief-${step.status} ${step.suspicious ? '' : 'debrief-ordinary'}`} data-testid={`debrief-step-${index}`}>
@@ -44,6 +45,7 @@ function Step({ step, index, by }: { step: DebriefStepView; index: number; by: b
             </p>
           )}
           <p>{step.lesson}</p>
+          {step.suspicious && <button type="button" className="debrief-show" onClick={show}>Show on the map ({index + 1})</button>}
           {step.typed && <p>Typed: <code>{step.typed}</code></p>}
           {step.alerts.length > 0 && <p>Raised the security alert: {step.alerts.join(', ')}.</p>}
           {step.flagged && <p>The SIEM flagged this again later (threat-escalation).</p>}
@@ -99,6 +101,7 @@ function Extras({ d }: { d: DebriefView }) {
 
 export function DebriefPanel({ ui }: { ui: UiState }) {
   const [filter, setFilter] = useState<'all' | 'missed'>('all');
+  const [time, setTime] = useState(0);
   const d = ui.debrief;
   if (!d || !ui.debriefOpen) return null;
   const t = d.totals;
@@ -125,11 +128,12 @@ export function DebriefPanel({ ui }: { ui: UiState }) {
             ? 'No suspicious action left any evidence.'
             : `${t.steps} suspicious ${t.steps === 1 ? 'action' : 'actions'} left evidence: ${t.pinned} pinned on the board, ${t.seen} seen on somebody's screen but not pinned, ${t.missed} missed.`}
         </p>
+        <ReplayMap d={d} time={time || d.startedAt} setTime={setTime} />
         <div className="debrief-filter">
           <button type="button" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>Everything</button>
           <button type="button" aria-pressed={filter === 'missed'} data-testid="debrief-missed" onClick={() => setFilter('missed')}>Only what was not pinned</button>
         </div>
-        {steps.length === 0 ? <p className="debrief-muted">Nothing to show here.</p> : <ol className="debrief-steps">{steps.map(({ step, index }) => <Step key={index} step={step} index={index} by={d.hackers.length > 1} />)}</ol>}
+        {steps.length === 0 ? <p className="debrief-muted">Nothing to show here.</p> : <ol className="debrief-steps">{steps.map(({ step, index }) => <Step key={index} step={step} index={index} by={d.hackers.length > 1} show={() => { setTime(step.time); document.querySelector('[data-testid="replay"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} />)}</ol>}
         <Extras d={d} />
       </div>
     </div>

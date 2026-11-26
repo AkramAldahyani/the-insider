@@ -121,7 +121,9 @@ test('the home lobby: a character dressed at home stands in the lobby, and a cha
   // Ben changes his jacket in the lobby: Anna sees it at once.
   const benBefore = await picture(anna, '[data-testid=party-members] li:nth-child(2) .figure');
   await ben.getByTestId('lobby-wardrobe').locator('summary').click();
-  await ben.getByTestId('look-outfit-1').click();
+  // (A new player's first look is drawn by chance: choose a jacket Ben is not wearing yet.)
+  const jacket = (await ben.getByTestId('look-outfit-1').getAttribute('aria-checked')) === 'true' ? 2 : 1;
+  await ben.getByTestId(`look-outfit-${jacket}`).click();
   await expect.poll(() => picture(anna, '[data-testid=party-members] li:nth-child(2) .figure')).not.toBe(benBefore);
   expect(await picture(anna, '[data-testid=party-members] li:nth-child(2) .figure')).toBe(await picture(ben, '[data-testid=party-members] li:nth-child(2) .figure'));
   await ben.screenshot({ path: 'e2e/screenshots/36-friends-lobby.png' });

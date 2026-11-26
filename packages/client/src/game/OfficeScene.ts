@@ -86,6 +86,8 @@ export function createOfficeScene(store: Store): Phaser.Scene {
   let map: OfficeMap;
   let hudTimer = 0;
   let highlight: Phaser.GameObjects.Graphics;
+  /** "YOUR DESK" above the player's own desk (made when the card is known). */
+  let ownLabel: Phaser.GameObjects.Text | null = null;
   /** Whom the camera follows now. */
   let following = '';
 
@@ -313,6 +315,13 @@ export function createOfficeScene(store: Store): Phaser.Scene {
       if (target && !ui.seatedAt) {
         highlight.lineStyle(2, 0x8fe3cd, 0.9).strokeRoundedRect(target.x - 3, target.y - 3, target.width + 6, target.height + 6, 4);
       }
+      // The player's own desk (from their card) has an amber frame, so that it is easy to find again. (Steady: a pulse would never let the picture rest.)
+      const mine = ui.card && !ui.fired ? map.desks.find((d) => d.hostname === ui.card!.hostname) : undefined;
+      if (mine && ui.seatedAt !== mine.hostname) {
+        highlight.lineStyle(2, 0xf2b134, 0.65).strokeRoundedRect(mine.x - 6, mine.y - 6, mine.width + 12, mine.height + 12, 6);
+        if (!ownLabel) ownLabel = this.add.text(mine.x + mine.width / 2, mine.y - 37, 'YOUR DESK', { ...LABEL, fontSize: '8px', color: '#1a1205', backgroundColor: '#f2b134', padding: { x: 4, y: 1 } }).setOrigin(0.5).setDepth(6);
+        ownLabel.setVisible(true);
+      } else ownLabel?.setVisible(false);
 
       // HUD facts, a few times per second (not every frame: React does not need 60 updates a second).
       hudTimer += deltaMs;

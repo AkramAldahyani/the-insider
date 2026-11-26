@@ -8,6 +8,7 @@ import { PARTY_HAND_IN_MINUTES, PARTY_HACKERS, PARTY_HUMAN_HACKER, PARTY_MEETING
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { homeAddress, inviteLink, onHostComputer } from '../game/playerName';
 import { Figure } from './Figure';
+import { playSound } from '../game/sound';
 import { Wardrobe } from './Wardrobe';
 import { store, type UiState } from '../game/store';
 
@@ -153,6 +154,10 @@ export function PartyScreen({ party }: { party: PartyView }) {
 
 /** Right after the start: who this player is. Nobody else is told. */
 export function RoleReveal({ ui }: { ui: UiState }) {
+  const showing = ui.reveal && ui.card !== null;
+  useEffect(() => {
+    if (showing) playSound('reveal');
+  }, [showing]);
   if (!ui.reveal || !ui.card) return null;
   const hacker = ui.briefing !== null;
   const partners = ui.briefing?.partners ?? [];

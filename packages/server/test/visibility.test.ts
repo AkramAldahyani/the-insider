@@ -13,6 +13,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ROOM_NAME, TAP_DISTANCE, nearestReaderDoor, type PublicState } from '@insider/shared';
+import { manualPages } from '@insider/engine';
 import { createGameServer } from '../src/app';
 import { PW, ROOT_PW, Recorder, corners, findRoute, scenario } from './helpers';
 
@@ -30,6 +31,7 @@ const ALLOWED_FIELDS: Record<string, string[]> = {
   'term.open': ['hostname', 'output', 'prompt', 'masked', 'screen', 'canSwitchUser'],
   'term.output': ['output', 'prompt', 'masked', 'screen', 'canSwitchUser'],
   'term.close': ['reason'],
+  'term.complete': ['text', 'line', 'options'],
   notice: ['text'],
   tasks: ['tasks', 'completed'],
   alert: ['text'],
@@ -38,7 +40,7 @@ const ALLOWED_FIELDS: Record<string, string[]> = {
   'monitors.index': ['cameras', 'badges', 'motion'],
   'monitors.frame': ['camera', 'id', 'time', 'people'],
   board: ['items'],
-  meeting: ['active', 'usesLeft', 'number', 'phase', 'calledBy', 'endsIn', 'accusations', 'voted', 'myVote', 'canVote', 'votesNeeded', 'judged', 'result'],
+  meeting: ['active', 'usesLeft', 'number', 'phase', 'calledBy', 'endsIn', 'floor', 'accusations', 'voted', 'myVote', 'canVote', 'votesNeeded', 'judged', 'result'],
   chat: ['channel', 'from', 'fromId', 'text', 'time', 'room'],
   fired: ['reason'],
 };
@@ -150,6 +152,16 @@ describe('visibility: what the game sends', () => {
       }
       for (const marker of MASTER_LOG_MARKERS) expect(streamOf(client)).not.toContain(marker);
     }
+  });
+
+  it('the manual (for the notebook) is the same fixed text for everybody, with no secret in it', () => {
+    expect([...r.manuals.keys()].sort()).toEqual(['omar', 'sara']);
+    const manuals = [...r.manuals.values()].map((m) => JSON.stringify(m));
+    expect(new Set(manuals).size).toBe(1);
+    expect(JSON.parse(manuals[0])).toEqual({ pages: manualPages() });
+    for (const secret of ALL_SECRETS) expect(manuals[0].includes(secret)).toBe(false);
+    for (const marker of MASTER_LOG_MARKERS) expect(manuals[0]).not.toContain(marker);
+    for (const p of manualPages()) expect(Object.keys(p).sort()).toEqual(['about', 'name', 'summary', 'usage']);
   });
 
   it('the text on a screen goes only to the player sitting at it', () => {

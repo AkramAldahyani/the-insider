@@ -7,7 +7,7 @@ async function employee(browser: Browser, id: string): Promise<Page> {
   const page = await (await browser.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
   await openOffice(page);
   await page.getByTestId(`employee-${id}`).click();
-  await expect(page.getByTestId('card')).toBeVisible();
+  await expect(page.getByTestId('card')).toBeVisible({ timeout: 15_000 }); // (the first test of a run waits for the page to be compiled)
   await page.keyboard.press('c');
   await page.waitForFunction(() => window.__insider?.me() != null);
   return page;
