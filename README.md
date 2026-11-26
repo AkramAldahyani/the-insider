@@ -101,7 +101,7 @@ pnpm install
 pnpm dev
 ```
 
-Open http://localhost:5173. New here? Choose **Training day**.
+Open http://localhost:5173. New here? Choose **Training day**, and read [HOW_TO_PLAY.md](HOW_TO_PLAY.md).
 
 **Play with friends at home:**
 
@@ -112,6 +112,8 @@ pnpm start
 This builds the page and serves the game on one address that other computers in the same home network can open. Step by step: [docs/play-with-friends.md](docs/play-with-friends.md).
 
 ## How to play
+
+**The full guide, with pictures of every screen and mode: [HOW_TO_PLAY.md](HOW_TO_PLAY.md).** The short version:
 
 1. On the home screen, type your name under your character, dress it if you like, choose a way to play and press the big button.
 2. Your **card** (`C`) has your username, password, PC and badge. Walk to your desk and press `E` to sit down.
@@ -371,6 +373,7 @@ The Insider teaches defence by showing what attacks leave behind. All "hacking" 
 
 ## Documentation
 
+- [HOW_TO_PLAY.md](HOW_TO_PLAY.md): how to play, every mode and screen, for players
 - [DESIGN.md](DESIGN.md): the full game design
 - [PROGRESS.md](PROGRESS.md): what was built in each part, and what the next part must know
 - [TESTING.md](TESTING.md): manual checks with expected results

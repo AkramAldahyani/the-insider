@@ -53,6 +53,14 @@ test('the training day: a guide step by step, Tab completion, and the notebook',
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('terminal')).toBeHidden();
   await expect(page.getByTestId('desk-of-p11')).toHaveText('SOC-WS-01');
+  // The whole screen: the office list, the minimap and the guide.
+  await page.keyboard.press('h');
+  await expect(page.getByTestId('notebook')).toBeHidden();
+  // The minimap came back after sitting at the PC, and it is drawn (not an empty canvas).
+  const drawn = () => page.getByTestId('minimap').locator('canvas').evaluate((c: HTMLCanvasElement) =>
+    c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data.some((v, i) => i % 4 === 3 && v > 0));
+  await expect.poll(drawn).toBe(true);
+  await page.screenshot({ path: `${SHOTS}/38-own-desk.png` });
   await page.reload();
   await page.getByTestId('menu-forget').click();
   await page.getByTestId('mode-training').click();
@@ -72,6 +80,7 @@ test('the ladders: the defender ladder first, each case with its job', async ({ 
   await expect(page.getByTestId('defender-3')).toContainText('Security guard');
   await expect(page.getByTestId('defender-play-2')).toBeDisabled();
   await expect(page.getByTestId('rank')).toContainText('Intern');
+  await page.screenshot({ path: `${SHOTS}/42-defender-ladder.png` });
   await page.getByTestId('defender-play-1').click();
   await expect(page.getByTestId('mode')).toHaveText('Defender 1 · The first alert');
   await page.keyboard.press('c');

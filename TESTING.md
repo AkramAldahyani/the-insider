@@ -701,7 +701,7 @@ On two or three computers at home ([docs/play-with-friends.md](docs/play-with-fr
 
 ## BD. Finding your way, the replay, ranks
 
-1. In a match: your own desk glows amber and says **YOUR DESK**. The office list on the right shows everybody's PC. The **map** in the bottom right corner shows the plan, you (green), your desk and the meeting button, and never anybody else. `−` folds it.
+1. In a match: your own desk glows amber and says **YOUR DESK**. The office list on the right shows everybody's PC. The **map** in the bottom right corner shows the plan, you (green), your desk and the meeting button, and never anybody else. `−` folds it. Sit at a PC and stand up again: the map is gone while you sit and comes back drawn (not empty).
 2. After a match open the debrief: the **replay** shows the plan with the hacker's path. **Play** runs it (×30, ×60, ×120); the slider moves through the match; numbered marks are the steps, coloured found / seen / missed. *Show on the map* in a step jumps there.
 3. The match-over box says *+N points* and why. The menu's top bar shows your rank (*Intern*) and how far to the next. At *Junior analyst* the charcoal jacket opens in the wardrobe (until then it has a lock), at *Analyst* the gold one, at *Senior analyst* the white one.
 

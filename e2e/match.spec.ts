@@ -101,6 +101,7 @@ test('a defender follows the evidence to the bot hacker, has them voted out, and
   await page.screenshot({ path: `${SHOTS}/22-evidence-judged.png` });
   // Before the vote the accused has the floor.
   await expect(page.getByTestId('floor')).toContainText(`${suspect.name} has the floor`, { timeout: 40_000 });
+  await page.screenshot({ path: `${SHOTS}/39-floor.png` });
   await page.getByTestId(`vote-${suspect.id}`).click({ timeout: 40_000 });
   // The ballots are turned over, then the verdict.
   await expect(page.getByTestId('meeting-verdict')).toContainText(`${suspect.name} was voted out.`, { timeout: 40_000 });
@@ -109,6 +110,7 @@ test('a defender follows the evidence to the bot hacker, has them voted out, and
   await expect(page.getByTestId('match-over')).toBeVisible({ timeout: 40_000 });
   await expect(page.getByTestId('match-over-hacker')).toHaveText(suspect.name);
   await expect(page.getByTestId('rating')).toHaveText('Case proven');
+  await page.screenshot({ path: `${SHOTS}/41-match-over.png` });
   await page.getByTestId('open-debrief').click();
   const debrief = page.getByTestId('debrief');
   await expect(debrief).toContainText(`What ${suspect.name} did`);

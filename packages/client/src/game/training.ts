@@ -74,7 +74,7 @@ export const TRAINING_STEPS: TrainingStep[] = [
   },
   {
     title: 'Call a meeting',
-    text: 'Three clues point at one PC, so at the person whose desk it is: the office list on the left shows everybody\'s PC. Stand up (Esc), walk to the emergency button in the meeting room, and press E.',
+    text: 'Three clues point at one PC, so at the person whose desk it is: the office list on the right shows everybody\'s PC. Stand up (Esc), walk to the emergency button in the meeting room, and press E.',
     done: (f) => f.meeting,
   },
   {

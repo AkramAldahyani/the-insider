@@ -82,7 +82,8 @@ test('friends gather in a lobby with a code and start a match together', async (
   // A lobby that is playing takes nobody else.
   await cleo.goto(`/?lobby=${code}`);
   await cleo.getByTestId('friends-join').click();
-  await expect(cleo.getByText(`No open lobby has the code ${code}`)).toBeVisible();
+  // On a busy computer the answer can take more than the usual 5 s.
+  await expect(cleo.getByText(`No open lobby has the code ${code}`)).toBeVisible({ timeout: 15_000 });
   for (const page of [anna, ben, cleo, dora]) await page.context().close();
 });
 

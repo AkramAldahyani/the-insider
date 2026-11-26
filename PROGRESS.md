@@ -3,6 +3,23 @@
 This file says where the work stands, so a new session can continue from it alone.
 Update it at the end of every part.
 
+## The players' guide (2026-11-26)
+
+- `HOW_TO_PLAY.md`: the whole game for players in plain words (every mode, screen, job, meeting rule, the hacker's side
+  at game level, the debrief, points, keys, a glossary, questions). Linked from the README. Its pictures are the e2e
+  screenshots, so a browser run keeps them current; new ones: 38-own-desk and 42-defender-ladder (learning.spec),
+  39-floor and 41-match-over (match.spec). If a test's flow changes, check the guide's caption for that picture.
+- The training guide said the office list is on the left; it is on the right (fixed in `training.ts`).
+- Bug found by the guide's pictures: the **minimap stayed empty after the player had once sat at a PC** (it is not shown
+  while seated; standing up brought a new canvas, but the drawing effect did not run again). `Minimap.tsx` now has `seated`
+  in the effect's list. learning.spec checks that the canvas is drawn after standing up (it failed before the fix).
+- chat.spec (always the first file, so it loads the game cold) has 4 minutes; party.spec's wrong-code answer 15 s. Both
+  failed only in full runs on a busy computer (a full run took 32 minutes that day instead of 16).
+- The verdict screen is not photographed: in a solo match the match-over box covers it at once.
+- Checked: 867 Vitest tests in 68 files, typecheck and build fine, and a full browser run 26 of 26 with the fix.
+- Never edit a client source file while `pnpm e2e` runs: both test servers are Vite dev servers, and a change mid-run
+  reloads the open page and left later pages without a room (`onStateChange` of null), failing most of the run.
+
 ## Learning, meetings, sounds, minimap, replay, ranks (2026-11-26, after the lobby)
 
 The owner asked for all eight ideas proposed after the lobby, and a professional README. Done, in this order:

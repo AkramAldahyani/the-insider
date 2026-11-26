@@ -14,6 +14,8 @@ async function employee(browser: Browser, id: string): Promise<Page> {
 }
 
 test('open chat: heard in the same room, typed without walking or running commands, and people can be muted', async ({ browser }) => {
+  // The first file of a run: three pages load the game cold, which can take long on a busy computer.
+  test.setTimeout(4 * 60_000);
   const sara = await employee(browser, 'p1');
   const rami = await employee(browser, 'p2'); // also in Finance
   const lina = await employee(browser, 'p3'); // HR

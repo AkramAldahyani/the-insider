@@ -21,9 +21,12 @@ export function Minimap({ ui }: { ui: UiState }) {
   const desk = ui.card?.hostname ?? '';
   const fired = ui.fired !== '';
   const self = ui.playerId;
+  // At a PC the map is not shown. Standing up brings a NEW, empty canvas, so
+  // `seated` is in the list below: drawing starts again on the new one.
+  const seated = !!ui.seatedAt;
 
   useEffect(() => {
-    if (!open || !map || !canvas.current) return;
+    if (!open || seated || !map || !canvas.current) return;
     // The plan is drawn once; only the marks move.
     const plan = document.createElement('canvas');
     plan.width = WIDTH;
@@ -47,9 +50,9 @@ export function Minimap({ ui }: { ui: UiState }) {
     draw();
     const timer = window.setInterval(draw, 150);
     return () => window.clearInterval(timer);
-  }, [open, map, scale, height, desk, fired, self]);
+  }, [open, seated, map, scale, height, desk, fired, self]);
 
-  if (!map || ui.seatedAt) return null;
+  if (!map || seated) return null;
   return (
     <aside className={`minimap ${open ? '' : 'minimap-closed'}`} data-testid="minimap" aria-label="Map of the office">
       <button type="button" className="minimap-head" aria-expanded={open} onClick={() => setOpen(!open)}>
