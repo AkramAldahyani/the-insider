@@ -376,7 +376,7 @@ Decided in Phase 3:
   - Wrong → the innocent player is **fired**, company reputation drops, and the game continues.
 - **Red-handed:** the security guard can detain a player physically caught mid-attack.
 - **Fired players are fully out** (like Among Us ghosts): they can watch the match but cannot chat with or signal living players, use PCs, vote or affect the game. They can chat only with other fired players. They see and hear what anybody standing in the office could: the whole map with a free view, every room's open chat, meetings and the evidence board, but no secrets (not who the hackers are, no screens, no private chat) until the match is over.
-- **Large lobbies (20+):** department meetings (players within a radius) plus one all-hands meeting per match for the final vote.
+- **Large lobbies (20+):** department meetings (players within a radius) plus one all-hands meeting per match for the final vote. As built (owner's choice, Phase 6 part I): one large office of 30 desks; a blue button in each department starts a department meeting with everybody in that room within about ten tiles, one minute of talk without accusations or a vote; at most three all-hands meetings per match, each with accusations and a vote.
 
 ---
 

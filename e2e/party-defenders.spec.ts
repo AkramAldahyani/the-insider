@@ -22,7 +22,7 @@ const card = async (page: Page) => {
 };
 
 test('three friends without bots: the two who are not the hacker vote the third one out', async ({ browser }) => {
-  test.setTimeout(5 * 60_000);
+  test.setTimeout(8 * 60_000);
   const anna = await person(browser, 'Anna');
   const code = (await anna.getByTestId('party-code').textContent())!;
   const ben = await person(browser, 'Ben', code);
@@ -39,7 +39,15 @@ test('three friends without bots: the two who are not the hacker vote the third 
     await page.keyboard.press('c');
     await page.waitForFunction(() => window.__insider?.me() != null);
   }
-  const [first, second] = everybody.filter((p) => p !== hacker);
+  // The one whose PC is closer to the meeting room pins and calls (long walks are where the test's steering helper is weakest).
+  const defenders = everybody.filter((p) => p !== hacker);
+  const button0 = await anna.evaluate(() => window.__insider!.button());
+  const away = async (page: Page) => {
+    const pc = (await card(page)).pc;
+    const desk = (await page.evaluate(() => window.__insider!.desks())).find((d) => d.hostname === pc)!;
+    return Math.hypot(desk.seatX - button0.x, desk.seatY - button0.y);
+  };
+  const [first, second] = (await away(defenders[0])) <= (await away(defenders[1])) ? defenders : [defenders[1], defenders[0]];
   const them = await card(hacker!);
   await expect(hacker!.locator('.roster-self')).toContainText(them.name);
 

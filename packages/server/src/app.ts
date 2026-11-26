@@ -53,6 +53,8 @@ export interface AppOptions {
   /** The large office for lobbies of more than 11 (default: nexora-large on office-large, if they exist; "" = none). */
   largeScenario?: string;
   largeMap?: string;
+  /** Tests only: a larger allowance for joining from one network address (see allowance.ts). */
+  joinPoints?: number;
   /** Serve the built web page (packages/client/dist) from the same address. Default: only when NODE_ENV is "production". */
   page?: boolean;
 }
@@ -115,7 +117,7 @@ export const PAGE_DIR = join(REPO_ROOT, 'packages', 'client', 'dist');
 
 /** Creates a Colyseus server with the shared office, the solo matches and the lobbies defined. Call `.listen(port)` on the result. */
 export function createGameServer(options: AppOptions = {}): Server {
-  const gate = new Gate(options.page ?? process.env.NODE_ENV === 'production' ? PAGE_DIR : undefined);
+  const gate = new Gate(options.page ?? process.env.NODE_ENV === 'production' ? PAGE_DIR : undefined, options.joinPoints);
   // The largest message is a pasted command line (2000 characters, up to 4 bytes each).
   const transport = new WebSocketTransport({ maxPayload: 16 * 1024, verifyClient: gate.mayConnect });
   const server = new Server({ transport, greet: false });

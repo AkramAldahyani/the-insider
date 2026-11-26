@@ -25,7 +25,7 @@ describe('E never falls through from a desk to something else', () => {
     const movement = new Movement();
     movement.request(); // a key is held: the desk hint is blank...
     expect(movement.desk(r.map, spot)).toBe('');
-    expect(besidesDesk(r.map, spot)).toEqual({ door: null, monitors: false, button: false }); // ...and E does not become a tap
+    expect(besidesDesk(r.map, spot)).toEqual({ door: null, monitors: false, button: false, talk: false }); // ...and E does not become a tap
   });
 
   it('holds everywhere in the office, and every reader, the monitors and the button can still be reached', () => {
@@ -35,7 +35,7 @@ describe('E never falls through from a desk to something else', () => {
     let button = 0;
     for (const s of spots(r)) {
       const other = besidesDesk(r.map, s);
-      if (s.desk) expect(other, `${s.desk} at ${s.x},${s.y}`).toEqual({ door: null, monitors: false, button: false });
+      if (s.desk) expect(other, `${s.desk} at ${s.x},${s.y}`).toEqual({ door: null, monitors: false, button: false, talk: false });
       if (other.door) doors.add(`${other.door.code} from ${roomAt(r.map, s.x, s.y)}`);
       if (other.monitors) monitors++;
       if (other.button) button++;

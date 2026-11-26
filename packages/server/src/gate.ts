@@ -119,14 +119,16 @@ export function homeAddresses(interfaces = networkInterfaces(), main = ''): stri
 }
 
 export class Gate {
-  private readonly joins = new Allowances(JOIN_POINTS, JOIN_REFILL);
+  private readonly joins: Allowances;
   private readonly page: Map<string, PageFile>;
   /** Network address -> open connections. */
   private readonly open = new Map<string, number>();
   private total = 0;
   private main = '';
 
-  constructor(pageDir?: string) {
+  /** `joinPoints`: the allowance for joining per address (tests that bring 30 people from one computer need more). */
+  constructor(pageDir?: string, joinPoints = JOIN_POINTS) {
+    this.joins = new Allowances(joinPoints, JOIN_REFILL);
     this.page = pageDir ? readPage(pageDir) : new Map();
     void mainAddress().then((address) => { this.main = address; });
   }

@@ -76,7 +76,7 @@ Update it at the end of every part.
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
 | 5 Investigation & social deduction | **done**: Parts A-J |
 | 5a Solo modes | **done**: Parts A-H |
-| 6 Multiplayer | **done except Part I** (bigger offices, postponed): Parts A-H and J. Still to do by people: one match on two real computers |
+| 6 Multiplayer | **done**: Parts A-J. Still to do by people: one match on two real computers |
 
 ## Phase 6 plan (multiplayer): APPROVED by the owner on 2026-11-24, with all eight defaults
 
@@ -94,7 +94,7 @@ at the end of a part give the owner the exact git commands.
 | F | Reconnecting: the place is kept, a bot covers, the host role moves on. **Friends can play a full match here** | **done** |
 | G | Bots that fill up: difficulty and voting rules for mixed groups | **done** |
 | H | Robustness: rate limits, message checks, load test with 30 players, one address for page and server, home network guide | **done** |
-| I | Bigger offices for 15, 20-25 and 30 people (can be postponed) | postponed (the owner chose J first) |
+| I | Bigger offices for 15, 20-25 and 30 people (can be postponed) | **done** (one office of 30, owner's choice) |
 | J | Whole matches with several browsers, long test, balance, docs | **done** |
 
 Defaults (accepted):
@@ -314,12 +314,38 @@ Also accepted: bot hackers with partners use only their existing behaviour; no n
 - Full runs: Vitest all green; Playwright 21 of 22, the new `party-defenders.spec.ts` failed in the test's walking helper on a long walk (the known
   weak spot on a busy machine); it now lets that walk go on up to three times and then passed 4 of 4 alone. The full run was not repeated.
 
-## Phase 6 status: done except Part I
+### Part I: what exists now (the large office)
+
+- OWNER'S CHOICES (2026-11-26): one large office of 30 (not three sizes); in it, department meetings for talk and at most three all-hands meetings.
+- MAP: `maps/build-office.ts` builds both offices (`pnpm map`; the small one comes out byte for byte as before). `maps/office-large.json`: 104 x 34 tiles,
+  one wide floor, the rooms of the small office with the same names plus Sales, Legal, a lounge and an archive; 30 desks and the admin server; a
+  meeting table with 32 places; eight cameras; a blue "department meeting" button (furniture kind `talk`) in each department.
+- SCENARIO: `scenarios/build-large.ts` (`pnpm scenario`) writes `scenarios/nexora-large.json` from the small one: everything of it unchanged
+  (people, machines, files, the mission), plus 19 colleagues (p12-p30, all ordinary employees) with their PCs, files, history and two tasks for
+  the new departments. Edit the small scenario, then run `pnpm scenario` again.
+- LOBBIES: setting `office` (auto / small / large; auto = small while everybody fits). `PartyView.office`, `desks`; `size` is now 30. The server
+  loads the large office as well (`loadLarge`); `PartyRoom` deals and builds the match from the chosen one. Hackers by size as designed
+  (with bots 30 desks = 3 hackers). The shared office and solo matches stay small.
+- ALL-HANDS: `MeetingTimes.perMatch` = 3 in the large office (`LARGE_ALL_HANDS`), then "All 3 all-hands meetings of this match have been held."
+- DEPARTMENT MEETINGS (`server/src/talks.ts`, game.ts "Department meetings"): E at a department's button; everybody IN THAT ROOM within 10 tiles takes
+  part for 60 s; chat channel `talk` (members, and people who are out with the room); nobody stops, nobody is accused, nobody votes. Two per person,
+  the button rests 2 minutes, an all-hands meeting ends them. Bots taking part say what they saw (like at a meeting; it counts as testimony).
+  Message `talk`; client: the chat panel shows it, a hint at the button, a line in the case.
+- FOUND BY THE TESTS: the radius reached through the wall into the next department (now: the same room only); the CLI asked for a scenario before
+  checking its options (now the other way round; with two scenarios it asks which one).
+- LOAD: `pnpm load 30 60 large` (30 people in ONE lobby of the large office): 95 % of answers within 6-7 ms; three lobbies of ten: within 8-9 ms.
+- Tests: `server/test/large.test.ts` (13), `e2e/party-large.spec.ts`; tests changed for the lobby size 30 (`joinPoints` gives a test server a larger
+  join allowance).
+- Full runs: Vitest 838 of 838. Playwright 20 of 23 in one run that took twice as long as usual (a busy machine): `match.spec.ts` and
+  `party-match.spec.ts` then passed together on their own; `party-defenders.spec.ts` failed in its long walk, now lets the defender whose PC is
+  nearer to the meeting room act and passed 3 of 3 on its own (4 minutes each: the machine was still slow). The full run was not repeated.
+
+## Phase 6 status: done
 
 What friends can do now: create a lobby, share its link at home (`pnpm start`), get a secret part, play a whole match with or without the
-computer's colleagues and with up to three hackers, chat, watch after being voted out, come back after a lost connection, and go back to the same
-lobby. Still to do by people: one match on two (or more) real computers in a home network (docs/play-with-friends.md). Postponed: bigger offices
-(Part I). Next phase by DESIGN.md: 7 (art, sound, polish).
+computer's colleagues and with up to three hackers, in the small office or the large one (up to 30 people), chat, hold department meetings,
+watch after being voted out, come back after a lost connection, and go back to the same lobby. Still to do by people: one match on two (or more)
+real computers in a home network (docs/play-with-friends.md). Next phase by DESIGN.md: 7 (art, sound, polish).
 
 ## Phase 5a plan (solo modes): APPROVED by the owner on 2026-11-24, with all five defaults
 

@@ -1,7 +1,7 @@
 /**
  * The Insider - text CLI.
  *
- *   pnpm cli                          start with the only/first scenario
+ *   pnpm cli                          start (it asks which scenario, if there are several)
  *   pnpm cli --scenario nexora-small  pick a scenario by id (or give a .json path)
  *   pnpm cli --seed 42                use another random seed
  *   pnpm cli --hacker p4              play the hacker with seeded random weaknesses
@@ -132,4 +132,11 @@ rl.on('close', () => {
 });
 
 process.stdout.write('THE INSIDER - text CLI for the simulation core\n');
+// Wrong options are reported at once, before anybody is asked which scenario to play.
+try {
+  missionOptions(process.argv.slice(2));
+} catch (e) {
+  console.error((e as Error).message);
+  process.exit(1);
+}
 chooseScenario();

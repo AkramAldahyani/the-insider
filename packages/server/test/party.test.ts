@@ -42,7 +42,9 @@ describe('what a browser may send', () => {
     expect(changeSettings(d, { difficulty: 'hard' })).toEqual({ ...d, difficulty: 'hard' });
     expect(changeSettings(d, { bots: false, hacker: 'human', meetings: 'long', dev: true, seed: 4, weaknesses: [], hackerId: 'p1', hackers: 7 })).toEqual({ ...d, bots: false, hacker: 'human', meetings: 'long' });
     for (const bad of [null, 'hard', 7, [], { difficulty: 'impossible', meetings: 5, bots: 'no' }, { meetings: 'toString' }, { hacker: 'p4' }, { hackers: -1 }, { hackers: '2' }, { hackers: 4 }]) expect(changeSettings(d, bad)).toEqual(d);
-    expect(d).toEqual({ bots: true, hacker: 'auto', hackers: 0, difficulty: 'normal', meetings: 'normal' });
+    expect(d).toEqual({ bots: true, hacker: 'auto', hackers: 0, difficulty: 'normal', meetings: 'normal', office: 'auto' });
+    expect(changeSettings(d, { office: 'large' }).office).toBe('large');
+    for (const bad of ['huge', 5, null]) expect(changeSettings(d, { office: bad }).office).toBe('auto');
   });
 });
 
@@ -197,7 +199,7 @@ describe('over the network', () => {
   };
 
   beforeAll(async () => {
-    server = createGameServer({ dev: false, lobbyLimit: LIMIT });
+    server = createGameServer({ dev: false, lobbyLimit: LIMIT, joinPoints: 1000 }); // (everybody here comes from this one computer)
     await server.listen(PORT);
   });
   afterAll(async () => {
@@ -209,7 +211,7 @@ describe('over the network', () => {
     await a.until((p) => p.members.length === 1);
     const code = a.room.roomId;
     expect(parseCode(code)).toBe(code);
-    expect(a.party()).toMatchObject({ code, hostId: a.party().you, size: scenario.players.length, open: true, playing: false, settings: DEFAULT_PARTY_SETTINGS });
+    expect(a.party()).toMatchObject({ code, hostId: a.party().you, size: 30, office: 'small', desks: scenario.players.length, open: true, playing: false, settings: DEFAULT_PARTY_SETTINGS });
     const b = await browser(code, 'Ben');
     await a.until((p) => p.members.length === 2);
     await b.until((p) => p.members.length === 2);
@@ -394,15 +396,17 @@ describe('over the network', () => {
     for (const b of [...all.slice(1), again]) await leaveAll(b);
   });
 
-  it('no more people fit than there are employees', async () => {
+  it('no more people fit than there are employees in the large office', async () => {
+    const size = 30;
     const a = await browser(null, 'Anna');
     const others: Browser[] = [];
-    for (let i = 1; i < scenario.players.length; i++) others.push(await browser(a.room.roomId, 'Anna'));
-    await a.until((p) => p.members.length === scenario.players.length);
-    expect(new Set(a.party().members.map((m) => m.name)).size).toBe(scenario.players.length);
+    for (let i = 1; i < size; i++) others.push(await browser(a.room.roomId, 'Anna'));
+    await a.until((p) => p.members.length === size);
+    expect(new Set(a.party().members.map((m) => m.name)).size).toBe(size);
+    expect(a.party()).toMatchObject({ office: 'large', desks: size });
     await expect(browser(a.room.roomId)).rejects.toThrow('locked');
     await others[0].leave();
-    await a.until((p) => p.members.length === scenario.players.length - 1);
+    await a.until((p) => p.members.length === size - 1);
     others[0] = await browser(a.room.roomId);
     await leaveAll(a, ...others);
   }, 20_000);
