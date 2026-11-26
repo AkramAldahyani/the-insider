@@ -24,7 +24,7 @@
  */
 import { OfficeGame } from './game';
 import { SERVER_PORT } from '@insider/shared';
-import { createGameServer, loadGameOptions, type AppOptions } from './app';
+import { createGameServer, loadGameOptions, loadLarge, type AppOptions } from './app';
 import { homeAddresses, mainAddress } from './gate';
 
 const options: AppOptions = {
@@ -50,6 +50,8 @@ try {
   // instead of failing later when the first player joins.
   const loaded = loadGameOptions(options);
   new OfficeGame(loaded);
+  const large = loadLarge(options);
+  if (large) new OfficeGame(large);
   // With the developer panel on, anybody who can connect can see everything: then only this computer may.
   const host = process.env.GAME_HOST ?? (loaded.dev ? 'localhost' : undefined);
   await createGameServer(options).listen(port, host);

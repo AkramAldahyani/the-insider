@@ -14,12 +14,14 @@ const EMPTY: Record<ChatChannel, string> = {
   meeting: 'Nobody has said anything yet.',
   hackers: 'Only you and your partners read this.',
   fired: 'You hear every room, and the others who are out. Nobody has said anything yet.',
+  talk: 'Only the people of this department meeting read this. Nobody has said anything yet.',
 };
 const PLACEHOLDER: Record<ChatChannel, string> = {
   room: 'Say something to this room',
   meeting: 'Say something to everybody',
   hackers: 'Only your partners read this',
   fired: 'Talk to the others who are out',
+  talk: 'Say something to this department meeting',
 };
 
 /** A hacker with partners has the private channel. */
@@ -28,7 +30,7 @@ export const hasPartners = (ui: UiState): boolean => (ui.briefing?.partners.leng
 /** Lines of one channel, without the people this player has muted. Who is out also hears the open chat of every room. */
 export function Lines({ ui, channel }: { ui: UiState; channel: ChatChannel }) {
   const box = useRef<HTMLDivElement>(null);
-  const lines = ui.chat.filter((l) => (l.channel === channel || (channel === 'fired' && l.channel === 'room')) && !ui.muted.includes(l.fromId));
+  const lines = ui.chat.filter((l) => (l.channel === channel || (channel === 'fired' && (l.channel === 'room' || l.channel === 'talk'))) && !ui.muted.includes(l.fromId));
   const muted = [...new Map(ui.chat.filter((l) => ui.muted.includes(l.fromId)).map((l) => [l.fromId, l.from]))];
   // The newest line is always in view.
   useEffect(() => { if (box.current) box.current.scrollTop = box.current.scrollHeight; }, [lines.length]);
@@ -36,7 +38,7 @@ export function Lines({ ui, channel }: { ui: UiState; channel: ChatChannel }) {
     <div className="meeting-chat-lines" data-testid={`chat-${channel}`} ref={box}>
       {lines.length === 0 && <div className="meeting-muted">{EMPTY[channel]}</div>}
       {lines.map((l, i) => (
-        <div key={i} dir="auto" className={channel === 'fired' && l.channel === 'room' ? 'chat-overheard' : ''}>
+        <div key={i} dir="auto" className={channel === 'fired' && l.channel !== 'fired' ? 'chat-overheard' : ''}>
           {l.room && <span className="chat-room">{l.room}</span>}
           {l.fromId === ui.playerId
             ? <strong>{l.from}:</strong>
@@ -102,13 +104,25 @@ function Tabs({ open, other, secret, choose }: { open: ChatChannel; other: ChatC
   );
 }
 
+/** "DEPARTMENT MEETING · Finance · 42 s · 5 people", counting down. */
+function TalkHead({ ui }: { ui: UiState }) {
+  const [, setNow] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow((n) => n + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const t = ui.talk!;
+  const left = Math.max(0, Math.ceil((t.endsIn - (Date.now() - ui.talkAt)) / 1000));
+  return <span data-testid="talk-head" title={t.members.join(', ')}>DEPARTMENT MEETING · {t.room} · {left} s · {t.members.length} people</span>;
+}
+
 /** Puts the cursor back into the PC, if the player sits at one. */
 const toTerminal = () => document.querySelector<HTMLTextAreaElement>('.term-body textarea')?.focus();
 
 /** In the office: the panel (Enter or the button opens it), or the last lines for a few seconds when it is closed. */
 export function ChatPanel({ ui }: { ui: UiState }) {
   const [, setNow] = useState(0);
-  const recent = ui.chat.filter((l) => (l.channel === 'room' || l.channel === 'hackers') && !ui.muted.includes(l.fromId) && Date.now() - l.heardAt < 12_000).slice(-4);
+  const recent = ui.chat.filter((l) => (l.channel === 'room' || l.channel === 'hackers' || l.channel === 'talk') && !ui.muted.includes(l.fromId) && Date.now() - l.heardAt < 12_000).slice(-4);
   // Old lines go away by themselves.
   useEffect(() => {
     if (recent.length === 0) return;
@@ -120,7 +134,7 @@ export function ChatPanel({ ui }: { ui: UiState }) {
     if (recent.length === 0) return null;
     return (
       <div className={`chat-recent ${ui.seatedAt ? 'chat-seated' : ''}`} data-testid="chat-recent" aria-live="polite">
-        {recent.map((l, i) => <div key={i} dir="auto" className={l.channel === 'hackers' ? 'chat-secret' : ''}><strong>{l.from}{l.channel === 'hackers' ? ' (private)' : ''}:</strong> {l.text}</div>)}
+        {recent.map((l, i) => <div key={i} dir="auto" className={l.channel === 'hackers' ? 'chat-secret' : ''}><strong>{l.from}{l.channel === 'hackers' ? ' (private)' : l.channel === 'talk' ? ' (department)' : ''}:</strong> {l.text}</div>)}
       </div>
     );
   }
@@ -128,14 +142,14 @@ export function ChatPanel({ ui }: { ui: UiState }) {
     store.set({ chatOpen: false });
     toTerminal();
   };
-  const channel: ChatChannel = ui.chatSecret && hasPartners(ui) ? 'hackers' : 'room';
+  const channel: ChatChannel = ui.chatSecret && hasPartners(ui) ? 'hackers' : ui.talk?.active ? 'talk' : 'room';
   return (
     <div className={`chat-panel meeting-chat ${ui.seatedAt ? 'chat-seated' : ''}`} data-testid="chat-panel">
       <div className="meeting-head">
-        <span>{channel === 'hackers' ? 'PARTNERS · PRIVATE' : `CHAT · ${ui.roomName || 'here'}`}</span>
+        <span>{channel === 'hackers' ? 'PARTNERS · PRIVATE' : channel === 'talk' ? <TalkHead ui={ui} /> : `CHAT · ${ui.roomName || 'here'}`}</span>
         <button type="button" onClick={close} aria-label="Close chat">×</button>
       </div>
-      {hasPartners(ui) && <Tabs open="room" other="hackers" secret={ui.chatSecret} choose={(secret) => store.set({ chatSecret: secret })} />}
+      {hasPartners(ui) && <Tabs open={ui.talk?.active ? 'talk' : 'room'} other="hackers" secret={ui.chatSecret} choose={(secret) => store.set({ chatSecret: secret })} />}
       <Lines ui={ui} channel={channel} />
       <ChatInput key={channel} channel={channel} focus onEscape={close} />
     </div>

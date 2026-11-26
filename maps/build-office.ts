@@ -1,6 +1,7 @@
 /**
- * Generates maps/office-small.json (a Tiled map) and maps/office-tiles.png
- * (its placeholder tileset).
+ * Generates the offices as Tiled maps: maps/office-small.json (11 desks) and
+ * maps/office-large.json (30 desks, Phase 6 part I), and maps/office-tiles.png
+ * (their placeholder tileset).
  *
  *   pnpm map
  *
@@ -23,7 +24,6 @@ import { deflateSync } from 'node:zlib';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TILE = 32;
-const COLS = 56;
 // Rows 0-31 are the building; row 32 is the pavement outside the main entrance; row 33 closes the map.
 const ROWS = 34;
 const BUILDING_ROWS = 32;
@@ -49,6 +49,24 @@ const TILES: [string, [number, number, number]][] = [
 const tileId = (name: string) => TILES.findIndex((t) => t[0] === name) + 1;
 const WALL = tileId('wall');
 
+/** One office: its width in tiles, rooms, desks, furniture, cameras and badge readers. */
+interface Layout {
+  file: string;
+  cols: number;
+  rooms: RoomDef[];
+  /** [hostname, column, row] of the desk's left tile. Desks are 2 tiles wide; the chair is below. */
+  desks: [string, number, number][];
+  /** Things you cannot walk through, without any logic: [name, kind, col, row, width, height]. */
+  furniture: [string, string, number, number, number, number][];
+  /** The IT department is L-shaped around the server room: its rectangles [col, row, width, height]. */
+  itRooms: [number, number, number, number][];
+  /** `covers` is the room a camera watches; `range` is how far it sees, in tiles. */
+  cameras: [string, number, number, string, number][];
+  /** One reader per badge door, drawn on the wall beside the doorway: [name, col, row, door code]. */
+  readers: [string, number, number, string][];
+  defaultSpawn: [number, number];
+}
+
 // ── Rooms: outer rectangle in tiles (walls included), floor tile, door gap in the wall facing the corridor. ──
 interface RoomDef {
   name: string;
@@ -62,7 +80,10 @@ interface RoomDef {
   /** Tiles removed from the wall to make the doorway. */
   door: [number, number][];
 }
-const ROOMS: RoomDef[] = [
+const SMALL: Layout = {
+  file: 'office-small.json',
+  cols: 56,
+  rooms: [
   { name: 'Finance', code: 'FIN', reader: true, floor: 'floor-finance', x0: 0, y0: 0, x1: 15, y1: 13, door: [[7, 13], [8, 13]] },
   { name: 'HR', code: 'HR', reader: true, floor: 'floor-hr', x0: 15, y0: 0, x1: 27, y1: 13, door: [[21, 13], [22, 13]] },
   { name: 'Marketing', code: 'MKT', reader: true, floor: 'floor-marketing', x0: 27, y0: 0, x1: 41, y1: 13, door: [[33, 13], [34, 13]] },
@@ -75,20 +96,16 @@ const ROOMS: RoomDef[] = [
   { name: 'Printer room', code: 'PRINTER', floor: 'floor-printer', x0: 34, y0: 18, x1: 40, y1: 31, door: [[36, 18], [37, 18]] },
   { name: 'Storage', code: 'STORAGE', floor: 'floor-storage', x0: 40, y0: 18, x1: 46, y1: 31, door: [[42, 18], [43, 18]] },
   { name: 'Bathrooms', code: 'BATHROOMS', floor: 'floor-bathroom', x0: 46, y0: 18, x1: 55, y1: 31, door: [[50, 18], [51, 18]] },
-];
-
-// ── Desks: [hostname, column, row] of the desk's left tile. Desks are 2 tiles wide; the chair is below. ──
-const DESKS: [string, number, number][] = [
+  ],
+  desks: [
   ['FIN-LT-04', 3, 3], ['FIN-LT-07', 9, 3],
   ['HR-LT-03', 17, 3], ['HR-LT-05', 23, 3],
   ['MKT-LT-09', 30, 3], ['MKT-LT-11', 36, 3],
   ['IT-WS-01', 43, 3], ['IT-WS-02', 46, 3],
   ['ADMIN-SRV-01', 51, 3],
   ['REC-PC-01', 4, 23], ['SEC-WS-01', 15, 23], ['SOC-WS-01', 17, 26],
-];
-
-// ── Things you cannot walk through, without any logic: [name, kind, col, row, width, height]. ──
-const FURNITURE: [string, string, number, number, number, number][] = [
+  ],
+  furniture: [
   ['Server racks', 'rack', 50, 1, 5, 1],
   ['IT shelves', 'shelf', 42, 11, 5, 1],
   ['Filing cabinets', 'shelf', 1, 11, 4, 1],
@@ -107,8 +124,134 @@ const FURNITURE: [string, string, number, number, number, number][] = [
   ['Storage shelves', 'shelf', 45, 21, 1, 8],
   ['Stalls', 'stall', 47, 27, 8, 1],
   ['Sinks', 'sink', 47, 19, 2, 1],
-];
+  ],
+  itRooms: [[42, 1, 7, 12], [49, 9, 6, 4]],
+  cameras: [
+    ['CAM-01 Reception', 1.5, 19.5, 'Reception', 18],
+    ['CAM-02 Corridor west', 2, 14.5, 'Corridor', 30],
+    ['CAM-03 Corridor east', 54, 14.5, 'Corridor', 30],
+    // Watches the server room door from the IT side. It does not see into the server room, nor the far end of IT.
+    ['CAM-04 Server room door', 48.5, 2.5, 'IT department', 9],
+    ['CAM-05 Cafeteria', 33.5, 19.5, 'Cafeteria / meeting room', 20],
+    // Inside the server room, in the far corner: sees its door from the inside and the whole room (the racks, the admin server).
+    ['CAM-06 Server room', 54.5, 7.5, 'Server room', 10],
+    // No cameras in the department rooms, the security office, the printer room, storage or bathrooms: blind spots (DESIGN.md section 2).
+  ],
+  readers: [
+    ['BR-01 Main entrance', 7.5, 31.5, 'MAIN-ENT'],
+    ['BR-02 Server room', 49.5, 6.5, 'SRV-ROOM'],
+    ['BR-03 Security office', 17.5, 18.5, 'SEC-OFFICE'],
+    ['BR-04 Finance', 9.5, 13.5, 'FIN'],
+    ['BR-05 HR', 23.5, 13.5, 'HR'],
+    ['BR-06 Marketing', 35.5, 13.5, 'MKT'],
+    ['BR-07 IT', 46.5, 13.5, 'IT'],
+  ],
+  defaultSpawn: [6.5, 28],
+};
 
+/**
+ * The large office (Phase 6, part I): the same company on one wide floor, with
+ * 30 people. The rooms of the small office keep their names and their machines;
+ * Sales and Legal are new, and so are a lounge and an archive. Each department
+ * has a small button for a department meeting (furniture of kind "talk").
+ */
+const LARGE: Layout = {
+  file: 'office-large.json',
+  cols: 104,
+  rooms: [
+    { name: 'Finance', code: 'FIN', reader: true, floor: 'floor-finance', x0: 0, y0: 0, x1: 17, y1: 13, door: [[8, 13], [9, 13]] },
+    { name: 'HR', code: 'HR', reader: true, floor: 'floor-hr', x0: 17, y0: 0, x1: 31, y1: 13, door: [[24, 13], [25, 13]] },
+    { name: 'Marketing', code: 'MKT', reader: true, floor: 'floor-marketing', x0: 31, y0: 0, x1: 47, y1: 13, door: [[39, 13], [40, 13]] },
+    { name: 'Sales', code: 'SAL', reader: true, floor: 'floor-reception', x0: 47, y0: 0, x1: 67, y1: 13, door: [[57, 13], [58, 13]] },
+    { name: 'Legal', code: 'LEG', reader: true, floor: 'floor-security', x0: 67, y0: 0, x1: 79, y1: 13, door: [[72, 13], [73, 13]] },
+    { name: 'IT department', code: 'IT', reader: true, floor: 'floor-it', x0: 79, y0: 0, x1: 103, y1: 13, door: [[83, 13], [84, 13]] },
+    { name: 'Server room', code: 'SRV-ROOM', reader: true, zone: 'server-room', floor: 'floor-server', x0: 97, y0: 0, x1: 103, y1: 8, door: [[97, 4], [97, 5]] },
+    { name: 'Reception', code: 'RECEPTION', floor: 'floor-reception', x0: 0, y0: 18, x1: 12, y1: 31, door: [[5, 18], [6, 18]] },
+    { name: 'Security office', code: 'SEC-OFFICE', reader: true, zone: 'security-office', floor: 'floor-security', x0: 12, y0: 18, x1: 20, y1: 31, door: [[15, 18], [16, 18]] },
+    { name: 'Cafeteria / meeting room', code: 'CAFETERIA', floor: 'floor-cafeteria', x0: 20, y0: 18, x1: 44, y1: 31, door: [[31, 18], [32, 18]] },
+    { name: 'Printer room', code: 'PRINTER', floor: 'floor-printer', x0: 44, y0: 18, x1: 50, y1: 31, door: [[46, 18], [47, 18]] },
+    { name: 'Storage', code: 'STORAGE', floor: 'floor-storage', x0: 50, y0: 18, x1: 56, y1: 31, door: [[52, 18], [53, 18]] },
+    { name: 'Lounge', code: 'LOUNGE', floor: 'floor-cafeteria', x0: 56, y0: 18, x1: 80, y1: 31, door: [[67, 18], [68, 18]] },
+    { name: 'Bathrooms', code: 'BATHROOMS', floor: 'floor-bathroom', x0: 80, y0: 18, x1: 90, y1: 31, door: [[84, 18], [85, 18]] },
+    { name: 'Archive', code: 'ARCHIVE', floor: 'floor-storage', x0: 90, y0: 18, x1: 103, y1: 31, door: [[95, 18], [96, 18]] },
+  ],
+  desks: [
+    ['FIN-LT-04', 2, 3], ['FIN-LT-07', 6, 3], ['FIN-LT-01', 10, 3], ['FIN-LT-02', 14, 3], ['FIN-LT-03', 6, 7],
+    ['HR-LT-03', 19, 3], ['HR-LT-05', 23, 3], ['HR-LT-01', 27, 3], ['HR-LT-02', 23, 7],
+    ['MKT-LT-09', 33, 3], ['MKT-LT-11', 37, 3], ['MKT-LT-01', 41, 3], ['MKT-LT-02', 33, 7], ['MKT-LT-03', 41, 7],
+    ['SAL-LT-01', 49, 3], ['SAL-LT-02', 53, 3], ['SAL-LT-03', 57, 3], ['SAL-LT-04', 61, 3], ['SAL-LT-05', 49, 7], ['SAL-LT-06', 57, 7],
+    ['LEG-LT-01', 69, 3], ['LEG-LT-02', 73, 3], ['LEG-LT-03', 69, 7],
+    ['IT-WS-01', 81, 3], ['IT-WS-02', 85, 3], ['IT-WS-03', 89, 3],
+    ['ADMIN-SRV-01', 99, 3],
+    ['REC-PC-01', 4, 23], ['REC-PC-02', 4, 27], ['SEC-WS-01', 15, 23], ['SOC-WS-01', 17, 26],
+  ],
+  furniture: [
+    ['Server racks', 'rack', 98, 1, 5, 1],
+    ['IT shelves', 'shelf', 80, 11, 5, 1],
+    ['Filing cabinets', 'shelf', 1, 11, 4, 1],
+    ['HR cabinets', 'shelf', 18, 11, 3, 1],
+    ['Marketing whiteboard', 'board', 32, 1, 5, 1],
+    ['Sales whiteboard', 'board', 60, 9, 5, 1],
+    ['Legal cabinets', 'shelf', 73, 8, 4, 1],
+    ['Reception sofa', 'sofa', 9, 21, 2, 4],
+    ['CCTV monitors', 'monitors', 13, 30, 6, 1],
+    // Room for 30 around it.
+    ['Meeting table', 'table', 25, 22, 12, 2],
+    ['Emergency button', 'button', 41, 20, 1, 1],
+    ['Cafeteria table', 'table', 24, 27, 3, 2],
+    ['Cafeteria table', 'table', 31, 27, 3, 2],
+    ['Cafeteria table', 'table', 38, 27, 3, 2],
+    ['Printer', 'printer', 45, 20, 2, 1],
+    ['Paper stock', 'shelf', 45, 28, 4, 2],
+    ['Storage shelves', 'shelf', 51, 21, 1, 8],
+    ['Storage shelves', 'shelf', 55, 21, 1, 8],
+    ['Lounge sofa', 'sofa', 60, 22, 2, 4],
+    ['Lounge sofa', 'sofa', 72, 22, 2, 4],
+    ['Lounge table', 'table', 65, 25, 3, 2],
+    ['Stalls', 'stall', 81, 27, 8, 1],
+    ['Sinks', 'sink', 81, 19, 2, 1],
+    ['Archive shelves', 'shelf', 92, 21, 1, 8],
+    ['Archive shelves', 'shelf', 96, 21, 1, 8],
+    ['Archive shelves', 'shelf', 100, 21, 1, 8],
+    // Department meetings: one small button in each department.
+    ['Finance meeting button', 'talk', 16, 10, 1, 1],
+    ['HR meeting button', 'talk', 30, 10, 1, 1],
+    ['Marketing meeting button', 'talk', 46, 10, 1, 1],
+    ['Sales meeting button', 'talk', 66, 10, 1, 1],
+    ['Legal meeting button', 'talk', 78, 10, 1, 1],
+    ['IT meeting button', 'talk', 95, 10, 1, 1],
+  ],
+  itRooms: [[80, 1, 17, 12], [97, 9, 6, 4]],
+  cameras: [
+    ['CAM-01 Reception', 1.5, 19.5, 'Reception', 18],
+    ['CAM-02 Corridor west', 2, 14.5, 'Corridor', 36],
+    ['CAM-03 Corridor east', 102, 14.5, 'Corridor', 36],
+    ['CAM-04 Server room door', 96.5, 2.5, 'IT department', 9],
+    ['CAM-05 Cafeteria', 43.5, 19.5, 'Cafeteria / meeting room', 26],
+    ['CAM-06 Server room', 102.5, 7.5, 'Server room', 10],
+    // The corridor is long: a third camera in the middle.
+    ['CAM-07 Corridor middle', 52, 14.5, 'Corridor', 36],
+    ['CAM-08 Lounge', 79.5, 19.5, 'Lounge', 26],
+  ],
+  readers: [
+    ['BR-01 Main entrance', 7.5, 31.5, 'MAIN-ENT'],
+    ['BR-02 Server room', 97.5, 6.5, 'SRV-ROOM'],
+    ['BR-03 Security office', 17.5, 18.5, 'SEC-OFFICE'],
+    ['BR-04 Finance', 10.5, 13.5, 'FIN'],
+    ['BR-05 HR', 26.5, 13.5, 'HR'],
+    ['BR-06 Marketing', 41.5, 13.5, 'MKT'],
+    ['BR-07 IT', 85.5, 13.5, 'IT'],
+    ['BR-08 Sales', 59.5, 13.5, 'SAL'],
+    ['BR-09 Legal', 74.5, 13.5, 'LEG'],
+  ],
+  defaultSpawn: [6.5, 29.5],
+};
+
+for (const layout of [SMALL, LARGE]) build(layout);
+
+/** Writes one office. */
+function build(layout: Layout): void {
+const { cols: COLS, rooms: ROOMS, desks: DESKS, furniture: FURNITURE } = layout;
 // ── Build the two tile layers. ──
 const floor = new Array<number>(COLS * ROWS).fill(tileId('floor-corridor'));
 const walls = new Array<number>(COLS * ROWS).fill(0);
@@ -154,8 +297,7 @@ const roomObjects = [
   rect('Outside', 1, BUILDING_ROWS, COLS - 2, 1),
   ...ROOMS.filter((r) => r.name !== 'IT department').map((r) => rect(r.name, r.x0 + 1, r.y0 + 1, r.x1 - r.x0 - 1, r.y1 - r.y0 - 1)),
   // IT is L-shaped around the server room: two rectangles with the same name.
-  rect('IT department', 42, 1, 7, 12),
-  rect('IT department', 49, 9, 6, 4),
+  ...layout.itRooms.map(([c, r, w, h]) => rect('IT department', c, r, w, h)),
 ];
 
 const doorObjects = [
@@ -181,35 +323,13 @@ const furnitureObjects = FURNITURE.map(([name, kind, c, r, w, h]) => rect(name, 
 const spawnObjects = [
   // Each employee appears two tiles below their own chair.
   ...DESKS.map(([hostname, c, r]) => point(`${hostname} spawn`, c + 1, r + 3.5, [prop('desk', hostname)])),
-  point('default', 6.5, 28),
+  point('default', ...layout.defaultSpawn),
   // Arriving employees appear on the pavement in front of the main entrance.
   point('outside', 6, BUILDING_ROWS + 0.5),
 ];
 
-// `covers` is the room a camera watches; `range` is how far it sees, in tiles.
-// The two corridor cameras overlap in the middle, so the whole corridor is covered.
-const cameraObjects = [
-  point('CAM-01 Reception', 1.5, 19.5, [prop('covers', 'Reception'), prop('range', 18)]),
-  point('CAM-02 Corridor west', 2, 14.5, [prop('covers', 'Corridor'), prop('range', 30)]),
-  point('CAM-03 Corridor east', 54, 14.5, [prop('covers', 'Corridor'), prop('range', 30)]),
-  // Watches the server room door from the IT side. It does not see into the server room, nor the far end of IT.
-  point('CAM-04 Server room door', 48.5, 2.5, [prop('covers', 'IT department'), prop('range', 9)]),
-  point('CAM-05 Cafeteria', 33.5, 19.5, [prop('covers', 'Cafeteria / meeting room'), prop('range', 20)]),
-  // Inside the server room, in the far corner: sees its door from the inside and the whole room (the racks, the admin server).
-  point('CAM-06 Server room', 54.5, 7.5, [prop('covers', 'Server room'), prop('range', 10)]),
-  // No cameras in the department rooms, the security office, the printer room, storage or bathrooms: blind spots (DESIGN.md section 2).
-];
-
-// One reader per badge door, drawn on the wall beside the doorway. `door` is the door's code.
-const badgeObjects = [
-  point('BR-01 Main entrance', 7.5, 31.5, [prop('door', 'MAIN-ENT')]),
-  point('BR-02 Server room', 49.5, 6.5, [prop('door', 'SRV-ROOM')]),
-  point('BR-03 Security office', 17.5, 18.5, [prop('door', 'SEC-OFFICE')]),
-  point('BR-04 Finance', 9.5, 13.5, [prop('door', 'FIN')]),
-  point('BR-05 HR', 23.5, 13.5, [prop('door', 'HR')]),
-  point('BR-06 Marketing', 35.5, 13.5, [prop('door', 'MKT')]),
-  point('BR-07 IT', 46.5, 13.5, [prop('door', 'IT')]),
-];
+const cameraObjects = layout.cameras.map(([name, c, r, covers, range]) => point(name, c, r, [prop('covers', covers), prop('range', range)]));
+const badgeObjects = layout.readers.map(([name, c, r, door]) => point(name, c, r, [prop('door', door)]));
 
 const objectLayer = (id: number, name: string, objects: unknown[], color: string) => ({
   id, name, type: 'objectgroup', draworder: 'topdown', color, opacity: 1, visible: true, x: 0, y: 0, objects,
@@ -268,7 +388,9 @@ const json = JSON.stringify(map, null, 1).replace(/\[\n\s+(\d[\d,\s]*)\]/g, (_m,
   for (let i = 0; i < numbers.length; i += COLS) lines.push(numbers.slice(i, i + COLS).join(','));
   return `[\n${lines.join(',\n')}]`;
 });
-writeFileSync(join(HERE, 'office-small.json'), `${json}\n`);
+writeFileSync(join(HERE, layout.file), `${json}\n`);
+console.log(`Wrote maps/${layout.file} (${COLS}x${ROWS} tiles, ${DESKS.length} desks)`);
+}
 
 // ── The tileset image: a tiny PNG encoder (flat colours with a darker edge). ──
 function crc32(bytes: Uint8Array): number {
@@ -307,4 +429,4 @@ writeFileSync(join(HERE, 'office-tiles.png'), Buffer.concat([
   chunk('IHDR', header), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0)),
 ]));
 
-console.log(`Wrote maps/office-small.json (${COLS}x${ROWS} tiles, ${DESKS.length} desks) and maps/office-tiles.png`);
+console.log('Wrote maps/office-tiles.png');

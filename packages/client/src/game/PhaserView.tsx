@@ -143,6 +143,8 @@ export function PhaserView() {
         } else store.set({ detainArmed: { id: ui.nearPerson.id, until: Date.now() + 3000 } });
       } else if (event.code === 'KeyE' && ui.nearButton) {
         store.send('meeting.call', {});
+      } else if (event.code === 'KeyE' && ui.nearTalk) {
+        store.send('talk.call', {});
       } else if (event.code === 'KeyE' && ui.nearMonitors) {
         if (ui.monitors) store.set({ monitors: null, monitorFrame: null });
         else store.send('monitors.open', {});

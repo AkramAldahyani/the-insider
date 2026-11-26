@@ -4,20 +4,25 @@
  * tells each player their part when a match starts. The server keeps the lobby;
  * this file only shows it and sends what the player wants.
  */
-import { CODE_LENGTH, NAME_LENGTH, PARTY_HACKERS, PARTY_HUMAN_HACKER, PARTY_MEETINGS, SOLO_DIFFICULTIES, cleanName, parseCode, type PartyHacker, type PartyMeetings, type PartyView, type SoloDifficulty } from '@insider/shared';
+import { CODE_LENGTH, NAME_LENGTH, PARTY_HAND_IN_MINUTES, PARTY_HACKERS, PARTY_HUMAN_HACKER, PARTY_MEETINGS, PARTY_OFFICES, SOLO_DIFFICULTIES, cleanName, parseCode, type PartyHacker, type PartyMeetings, type PartyOffice, type PartyView, type SoloDifficulty } from '@insider/shared';
 import { useEffect, useState } from 'react';
 import { homeAddress, invitedTo, inviteLink, onHostComputer, readName, saveName } from '../game/playerName';
 import { store, type UiState } from '../game/store';
 
 const DIFFICULTY_TEXT: Record<SoloDifficulty, string> = {
-  easy: 'Easy to defend: few ways in; a computer hacker takes its time',
-  normal: 'Normal',
-  hard: 'Hard to defend: many ways in, screens left open; a computer hacker is fast',
+  easy: `Easy to defend: few ways in; a computer hacker takes its time, a person as the hacker waits ${PARTY_HAND_IN_MINUTES.easy} minutes before handing in`,
+  normal: `Normal: a person as the hacker waits ${PARTY_HAND_IN_MINUTES.normal} minutes before handing in`,
+  hard: `Hard to defend: many ways in, screens left open; a computer hacker is fast, a person waits only ${PARTY_HAND_IN_MINUTES.hard} minutes`,
 };
 const HACKER_TEXT: Record<PartyHacker, string> = {
   auto: `Drawn: one of you with ${PARTY_HUMAN_HACKER} or more people, otherwise anybody`,
   human: 'Always one of you',
   bot: 'Always the computer',
+};
+const OFFICE_TEXT: Record<PartyOffice, string> = {
+  auto: 'The small one while everybody fits (11 desks), otherwise the large one',
+  small: 'Small: 11 desks',
+  large: 'Large: 30 desks, two more departments; department meetings, and at most 3 all-hands meetings',
 };
 const MEETING_TEXT: Record<PartyMeetings, string> = {
   short: 'Short: 45 seconds to talk, 30 to vote',
@@ -120,6 +125,15 @@ export function PartyScreen({ party }: { party: PartyView }) {
               {SOLO_DIFFICULTIES.map((d) => <option key={d} value={d}>{DIFFICULTY_TEXT[d]}</option>)}
             </select>
           </label>
+          {party.size > 11 && (
+            <label>
+              <span>Office</span>
+              <select data-testid="party-office" disabled={!host} value={s.office} onChange={(e) => store.send('party.settings', { office: e.target.value as PartyOffice })}>
+                {PARTY_OFFICES.map((o) => <option key={o} value={o}>{OFFICE_TEXT[o]}</option>)}
+              </select>
+              <small data-testid="party-office-now">This match: the {party.office} office ({party.desks} desks).</small>
+            </label>
+          )}
           <label>
             <span>Meetings</span>
             <select data-testid="party-meetings" disabled={!host} value={s.meetings} onChange={(e) => store.send('party.settings', { meetings: e.target.value as PartyMeetings })}>

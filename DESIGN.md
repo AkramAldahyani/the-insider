@@ -269,7 +269,7 @@ Decided in Phase 6 (the owner accepted these with the plan):
 
 - A match with friends starts in a **lobby** with a five-letter code. The host chooses the settings and starts; one room runs the lobby and then its match.
 - The hacker is drawn from the human players if there are at least four, otherwise bots can be drawn too; the host can change this.
-- A human hacker in multiplayer must also wait 3 game minutes between first reading the flag and handing it in.
+- A human hacker in multiplayer must also wait between first reading the flag and handing it in: 5, 3 or 2 game minutes by the lobby's difficulty (owner's choice after the measurements of part J).
 - Jobs are drawn when the host starts; the hacker always poses as an ordinary employee. A person as the hacker needs at least three people. Lobby names appear only after the match (during it they would tell people from bots), and in a lobby's match everybody is at work from the first moment.
 - With several hackers, voting out or detaining one removes that person and announces the role; the defenders win when all are gone.
 - Open chat is heard only in the same room (in doorways within about four tiles). Hackers have a private channel only when there are several. Five lines at once, then one every 1.5 s; muting is a private choice in one's own browser. A lost connection holds the place for 60 seconds, then a bot goes on from the same spot until the player returns (without bots the employee goes home); leaving looks the same to the others. Without bots, a match whose last hacker is gone is won by the defenders, and who is gone no longer counts as a defender. With bots, the hackers win when no person who is not a hacker is left, because bots do not investigate there (owner's rules, 2026-11-25).

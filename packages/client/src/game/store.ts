@@ -103,8 +103,12 @@ export interface UiState {
   /** Watching: the person the view follows ("" = it moves freely), and how close it is (1 = normal). */
   watch: string;
   zoom: number;
-  /** Standing at the emergency button. */
+  /** Standing at the emergency button, or at a department's meeting button (large office). */
   nearButton: boolean;
+  nearTalk: boolean;
+  /** The department meeting this player takes part in (`active`), and how many they may still call; when that message arrived. */
+  talk: ServerMessages['talk'] | null;
+  talkAt: number;
   /** The nearest other person within detaining distance (for the guard's hint). */
   nearPerson: { id: string; name: string } | null;
   /** The guard pressed X once: press again within 3 s to detain this person. */
@@ -143,7 +147,7 @@ type Listener = () => void;
 
 /** A page that has just been opened (or has just left a match). */
 const START: UiState = {
-  phase: 'menu', reconnecting: false, place: null, party: null, reveal: false, solo: null, ladder: {}, error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, debrief: null, debriefOpen: false, meeting: null, meetingAt: 0, chat: [], chatOpen: false, chatSecret: false, muted: [], fired: '', watch: '', zoom: 1, nearButton: false, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
+  phase: 'menu', reconnecting: false, place: null, party: null, reveal: false, solo: null, ladder: {}, error: '', scenarioName: '', employees: [], dev: false, playerId: '', card: null, cardOpen: false, hackerOpen: false, asHacker: false, briefing: null, briefingOpen: false, alert: '', matchOver: null, debrief: null, debriefOpen: false, meeting: null, meetingAt: 0, chat: [], chatOpen: false, chatSecret: false, muted: [], fired: '', watch: '', zoom: 1, nearButton: false, nearTalk: false, talk: null, talkAt: 0, pan: { dx: 0, dy: 0 }, nearPerson: null, detainArmed: null, nearMonitors: false, monitors: null, monitorFrame: null, board: [], boardOpen: false,
   clock: 0, speed: 1, roomName: '', nearDesk: '', nearDoor: '', nearDoorName: '', seatedAt: '', notice: '', tasks: [], tasksCompleted: 0, tasksOpen: true, devOpen: false, devLog: [],
 };
 
@@ -454,8 +458,14 @@ export class Store {
       on('fired', ({ reason }) => this.set({
         // Everything that belongs to having a body goes away (the briefing stays known: it says which side this player was on).
         fired: reason, seatedAt: '', watch: '', zoom: 1, cardOpen: false, tasksOpen: false, briefingOpen: false, chatOpen: false, devOpen: false,
-        monitors: null, monitorFrame: null, nearDesk: '', nearDoor: '', nearDoorName: '', nearMonitors: false, nearButton: false, nearPerson: null, detainArmed: null,
+        monitors: null, monitorFrame: null, nearDesk: '', nearDoor: '', nearDoorName: '', nearMonitors: false, nearButton: false, nearTalk: false, nearPerson: null, detainArmed: null, talk: null,
       }));
+      on('talk', (talk) => {
+        const was = this.ui.talk?.active ?? false;
+        this.set({ talk, talkAt: Date.now() });
+        if (talk.active && !was) this.notice(`A department meeting in ${talk.room}: ${talk.members.length} of you, for a minute. Press Enter to talk.`);
+        if (!talk.active && was) this.notice('The department meeting is over.');
+      });
       on('card', ({ card }) => this.set({ card }));
       on('monitors.frame', (frame) => this.set({ monitorFrame: frame })); 
       on('tasks', ({ tasks, completed }) => {

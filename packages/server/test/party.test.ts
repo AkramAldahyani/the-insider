@@ -151,11 +151,11 @@ describe('the match of a lobby', () => {
   const draw = { hackers: ['p4'], human: false };
 
   it('has what the host chose; the rest is the operator’s', () => {
-    const o = partyGameOptions(base, { bots: false, hacker: 'auto', hackers: 0, difficulty: 'hard', meetings: 'long' }, 9, draw);
+    const o = partyGameOptions(base, { bots: false, hacker: 'auto', hackers: 0, difficulty: 'hard', meetings: 'long', office: 'auto' }, 9, draw);
     expect(o).toMatchObject({ seed: 9, bots: false, dev: false, weaknesses: ['tailgate'], botOptions: { hackerDifficulty: 'hard' }, meetingTimes: { discussionMs: 150_000, votingMs: 60_000, resultMs: 1000 } });
     expect(o.soloPlayer).toBeUndefined();
     expect(partyGameOptions(base, DEFAULT_PARTY_SETTINGS, 9, draw).meetingTimes).toEqual({ resultMs: 1000, votesNeeded: 2 });
-    const short = new Recorder({ ...partyGameOptions(base, { bots: true, hacker: 'auto', hackers: 0, difficulty: 'easy', meetings: 'short' }, 9, draw) });
+    const short = new Recorder({ ...partyGameOptions(base, { bots: true, hacker: 'auto', hackers: 0, difficulty: 'easy', meetings: 'short', office: 'auto' }, 9, draw) });
     expect(short.game.bots).not.toBeNull();
     expect(base.meetingTimes).toEqual({ resultMs: 1000 });
   });

@@ -32,6 +32,7 @@ export function CasePanel({ ui }: { ui: UiState }) {
           ? <>two about the person, one of them out of the ordinary. Your colleagues vote on what you show them.</>
           : <>Convince the others: everybody votes, and it takes at least {PARTY_VOTES_NEEDED} votes. Colleagues played by the computer vote on what they saw themselves; while you are few (less than half of those at the meeting) they also judge the evidence: two pieces about the person, one of them out of the ordinary.</>}
       </p>
+      {ui.talk && <p data-testid="case-talks">In this large office each department has a small button: <kbd>E</kbd> there starts a department meeting with everybody near, for a minute, without a vote. The whole company meets at most three times.</p>}
       <p className="mission-sub">Meetings left: {ui.meeting?.usesLeft ?? 0}. Press <kbd>M</kbd> to show or hide this.</p>
     </div>
   );

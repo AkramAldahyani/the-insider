@@ -133,6 +133,11 @@ export function Hud({ ui }: { ui: UiState }) {
           Press <kbd>E</kbd> to call an emergency meeting ({ui.meeting?.usesLeft ?? 0} left)
         </div>
       )}
+      {ui.nearTalk && !ui.seatedAt && !ui.meeting?.active && (
+        <div className="hud-hint" data-testid="hint">
+          Press <kbd>E</kbd> to call a department meeting: everybody near talks for a minute ({ui.talk?.usesLeft ?? 0} left)
+        </div>
+      )}
       {ui.nearMonitors && !ui.nearDesk && !ui.nearDoor && !ui.seatedAt && !ui.monitors && (
         <div className="hud-hint" data-testid="hint">
           Press <kbd>E</kbd> to use the security monitors (cameras, badge log)

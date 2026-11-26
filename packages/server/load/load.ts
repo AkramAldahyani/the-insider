@@ -4,6 +4,7 @@
  *
  *   pnpm load                      30 people in lobbies of 10, for one minute
  *   pnpm load 55 120               55 people, for two minutes
+ *   pnpm load 30 60 large          30 people in ONE lobby, in the large office
  *
  * It starts its own game server (port 2594) as a separate program, like a real
  * one, and plays with pretend players: they walk about, sit down, type
@@ -19,7 +20,8 @@ import { Client, type Room } from 'colyseus.js';
 /** At most 55: one network address may have 60 connections. */
 const people = Math.min(55, Math.max(2, Number(process.argv[2] ?? 30)));
 const seconds = Math.max(5, Number(process.argv[3] ?? 60));
-const PER_LOBBY = 10;
+const large = process.argv[4] === 'large';
+const PER_LOBBY = large ? 30 : 10;
 const PORT = 2594;
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const tsx = join(dirname(createRequire(join(root, 'package.json')).resolve('tsx/package.json')), 'dist', 'cli.mjs');
@@ -59,10 +61,12 @@ class Player {
   private seated = false;
   private password = '';
   private login = false;
+  /** Their own PC (a person tries to sit at the desk in front of them, not at thirty at once). */
+  private desk = '';
 
   constructor(readonly room: Room) {
     room.onMessage('*', () => undefined);
-    room.onMessage('welcome', (m: { card: { password: string } }) => { this.password = m.card.password; this.ready = true; });
+    room.onMessage('welcome', (m: { card: { password: string; hostname: string } }) => { this.password = m.card.password; this.desk = m.card.hostname; this.ready = true; });
     room.onMessage('move.ack', (m: { sequence: number }) => {
       const sent = this.asked.get(m.sequence);
       if (sent !== undefined) this.walk.push(performance.now() - sent);
@@ -100,8 +104,9 @@ class Player {
     const dice = Math.random();
     if (dice < 0.08) this.room.send('chat.send', { text: 'Has anybody seen anything?' });
     else if (dice < 0.3) {
-      // Stop, and sit down if a desk is near (most start next to their own).
-      for (const hostname of ['FIN-LT-07', 'FIN-LT-04', 'HR-LT-03', 'HR-LT-05', 'MKT-LT-11', 'MKT-LT-09', 'IT-WS-01', 'IT-WS-02', 'REC-PC-01', 'SEC-WS-01', 'SOC-WS-01']) this.room.send('sit', { hostname });
+      // Stop, and sit down at the own desk if it is near (everybody starts next to theirs).
+      this.room.send('move', { dx: 0, dy: 0 });
+      this.room.send('sit', { hostname: this.desk });
     } else {
       this.asked.set(++this.sequence, performance.now());
       this.room.send('move', { dx: pick([-1, 0, 1]), dy: pick([-1, 0, 1]), sequence: this.sequence });
@@ -124,6 +129,7 @@ async function main(): Promise<void> {
       const mine = lobbies.at(-1);
       if (!mine || mine.length >= PER_LOBBY) {
         const player = new Player(await comeIn(() => client.create('party', { name: `Host ${n}` })));
+        if (large) player.room.send('party.settings', { office: 'large' });
         lobbies.push([player]);
         players.push(player);
       } else {
@@ -140,7 +146,7 @@ async function main(): Promise<void> {
     }
     await wait(1500);
     const playing = players.filter((p) => p.ready).length;
-    console.log(`${people} people in ${lobbies.length} lobbies (each with the computer's colleagues up to 11), ${playing} are playing, ${seconds} s...`);
+    console.log(`${people} people in ${lobbies.length} ${lobbies.length === 1 ? 'lobby' : 'lobbies'} (with the computer's colleagues up to ${large ? 30 : 11} each), ${playing} are playing, ${seconds} s...`);
     if (playing < people) failed = lobbies.some((l) => l.length >= 2 && l.some((p) => !p.ready));
     for (const p of players) p.begin();
     const timers = players.map((p) => setInterval(() => p.act(), 150 + Math.random() * 200));

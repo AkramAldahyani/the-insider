@@ -94,7 +94,7 @@ describe('the match', () => {
         const { playerId, mission, card } = welcome[0].payload as { playerId: string; mission: { handInMinutes?: number } | null; card: { username: string } };
         expect(playerId).toBe(id);
         expect(card.username).toBe(scenario.players.find((p) => p.id === id)!.account);
-        if (id === d.hackers[0]) expect(mission).toMatchObject({ handInMinutes: PARTY_HAND_IN_MINUTES });
+        if (id === d.hackers[0]) expect(mission).toMatchObject({ handInMinutes: PARTY_HAND_IN_MINUTES.normal });
         else expect(mission).toBeNull();
       }
       expect(r.game.world.mission.hackers[0]).toBe(d.hackers[0]);
@@ -166,6 +166,7 @@ describe('the match', () => {
   it('a human hacker has to wait before handing in; a hacker played by the computer has its own waits', () => {
     const o = (human: boolean) => partyGameOptions(base, settings(), 1, { hackers: ['p4'], human });
     expect(o(true).handInMinutes).toBe(3);
+    expect(['easy', 'hard'].map((difficulty) => partyGameOptions(base, settings({ difficulty: difficulty as 'easy' }), 1, { hackers: ['p4'], human: true }).handInMinutes)).toEqual([5, 2]);
     expect(o(false).handInMinutes).toBeUndefined();
     const { r, d } = start(4, {}, 13);
     const [client, id] = [...d.seats].find(([, x]) => x === d.hackers[0])!;

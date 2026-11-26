@@ -19,7 +19,8 @@ import { Party, newCode, partyGameOptions } from './party';
 const field = (payload: unknown, name: string): unknown => (typeof payload === 'object' && payload !== null ? (payload as Record<string, unknown>)[name] : undefined);
 
 /** Makes the room class for lobbies. At most `limit` exist at the same time. */
-export function partyRoom(base: OfficeGameOptions, { seed, limit = 20 }: { seed?: number; limit?: number } = {}): new () => OfficeRoom {
+/** `large`: the large office (Phase 6, part I), if the server has one. */
+export function partyRoom(base: OfficeGameOptions, { seed, limit = 20, large }: { seed?: number; limit?: number; large?: OfficeGameOptions } = {}): new () => OfficeRoom {
   let running = 0;
   return class ConfiguredPartyRoom extends OfficeRoom {
     private party!: Party;
@@ -32,9 +33,9 @@ export function partyRoom(base: OfficeGameOptions, { seed, limit = 20 }: { seed?
       if (running >= limit) throw new Error('The server is full. Try again in a few minutes.');
       // Two lobbies with one code would mix up two groups.
       do this.roomId = newCode(); while (matchMaker.getLocalRoomById(this.roomId));
-      const size = base.scenario.players.length;
+      const size = (large ?? base).scenario.players.length;
       this.maxClients = size;
-      this.party = new Party(this.roomId, size);
+      this.party = new Party(this.roomId, size, base.scenario.players.length);
       this.open();
       void this.setPrivate();
       running++;
@@ -129,12 +130,13 @@ export function partyRoom(base: OfficeGameOptions, { seed, limit = 20 }: { seed?
       if (this.party.notYet()) return;
       // Built first, so that a problem with the match leaves the lobby as it was.
       const { party } = this;
+      const office = party.office() === 'large' && large ? large : base;
       const matchSeed = seed ?? randomInt(1, 2 ** 31);
-      const dealt = deal(base.scenario.players, party.clients(), party.settings, new Random(matchSeed ^ 0xdea1));
+      const dealt = deal(office.scenario.players, party.clients(), party.settings, new Random(matchSeed ^ 0xdea1));
       // The developer panel shows everything: it is never there in a match with friends.
-      this.begin(partyGameOptions({ ...base, dev: false, writeDump: undefined }, party.settings, matchSeed, dealt));
+      this.begin(partyGameOptions({ ...office, dev: false, writeDump: undefined }, party.settings, matchSeed, dealt));
       const game = this.game!;
-      const nameOf = (id: string) => base.scenario.players.find((p) => p.id === id)!.name;
+      const nameOf = (id: string) => office.scenario.players.find((p) => p.id === id)!.name;
       this.cast = [...dealt.seats].map(([clientId, id]) => ({ name: party.nameOf(clientId), employee: nameOf(id), hacker: dealt.hackers.includes(id) }));
       void this.lock();
       party.begin(dealt.hackers.length);

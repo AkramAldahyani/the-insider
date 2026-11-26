@@ -20,6 +20,8 @@ declare global {
       monitors(): { x: number; y: number };
       /** The middle of the map view, and whom a watcher follows. */
       view(): { x: number; y: number; zoom: number; follows: string };
+      /** Where to stand to press a department's meeting button (large office), by the button's name. */
+      talk(name: string): { x: number; y: number } | null;
       /** Where to stand to press the emergency button. */
       button(): { x: number; y: number };
       desks(): { hostname: string; seatX: number; seatY: number; screen: string }[];
@@ -43,6 +45,10 @@ window.__insider = {
     return (store.map?.desks ?? []).map((d) => ({
       hostname: d.hostname, seatX: d.seatX, seatY: d.seatY, screen: store.room?.state.desks?.get(d.hostname)?.screen ?? '',
     }));
+  },
+  talk(name: string) {
+    const f = store.map?.furniture.find((x) => x.kind === 'talk' && x.name === name);
+    return f ? { x: f.x - 20, y: f.y + f.height / 2 } : null;
   },
   button() {
     const f = store.map?.furniture.find((x) => x.kind === 'button');

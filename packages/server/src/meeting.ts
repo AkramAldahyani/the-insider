@@ -28,9 +28,11 @@ export interface MeetingTimes {
   usesPerPlayer: number;
   /** Nobody is voted out with fewer votes than this (lobbies: 2, owner's rule; otherwise 1). */
   votesNeeded: number;
+  /** Meetings in a whole match, whoever calls them (the large office: 3, owner's rule; otherwise no limit). */
+  perMatch: number;
 }
 
-export const DEFAULT_MEETING_TIMES: MeetingTimes = { discussionMs: 90_000, votingMs: 45_000, resultMs: 8_000, cooldownMs: 60_000, usesPerPlayer: 1, votesNeeded: 1 };
+export const DEFAULT_MEETING_TIMES: MeetingTimes = { discussionMs: 90_000, votingMs: 45_000, resultMs: 8_000, cooldownMs: 60_000, usesPerPlayer: 1, votesNeeded: 1, perMatch: Infinity };
 
 export interface Accusation {
   /** "A1" */
@@ -99,12 +101,13 @@ export class Meetings {
   constructor(readonly times: MeetingTimes = DEFAULT_MEETING_TIMES) {}
 
   usesLeft(playerId: string): number {
-    return Math.max(0, this.times.usesPerPlayer - (this.used.get(playerId) ?? 0));
+    return Math.max(0, Math.min(this.times.perMatch - this.history.length, this.times.usesPerPlayer - (this.used.get(playerId) ?? 0)));
   }
 
   /** Why this player cannot call a meeting now ("" = they can). */
   whyNot(playerId: string): string {
     if (this.current) return 'A meeting is already going on.';
+    if (this.history.length >= this.times.perMatch) return `All ${this.times.perMatch} all-hands meetings of this match have been held.`;
     if (this.usesLeft(playerId) === 0) return 'You have already used your emergency meeting.';
     if (this.cooldownLeft > 0) return `The button works again in ${Math.ceil(this.cooldownLeft / 1000)} s.`;
     return '';

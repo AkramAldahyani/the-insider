@@ -649,6 +649,14 @@ Too easy or too hard? The numbers are in `packages/server/src/bots/hacker-pace.t
 6. `corepack pnpm load`: ends with *Good.*
 7. `pnpm dev`: in a lobby's match the backtick key does nothing, in the shared office the developer panel still opens.
 
+## AX. Phase 6, part J: a whole match with friends
+
+On two or three computers at home ([docs/play-with-friends.md](docs/play-with-friends.md)), or in three windows:
+
+1. A lobby with three people, bots off: one of you is the hacker. The hacker goes for the file; the others look for traces (`last` on ADMIN-SRV-01, the alert banner), pin three things, call a meeting, accuse, and both vote: *The hacker was caught.* Everybody sees who was who and the debrief. Back to the lobby.
+2. The lobby's difficulty: *Easy to defend* says the hacker waits 5 minutes before handing in, *Normal* 3, *Hard* 2. On Easy a hacker who has read the file is told *Your contact takes it in 5 minutes*.
+3. The same with bots on and two or three people: the computer's colleagues vote on the evidence (part G).
+
 ## T. What you must NOT be able to see
 
 1. Nothing on screen marks a bot. The start screen never shows an employee as taken because a bot plays them.
@@ -680,7 +688,7 @@ the outstanding manual check of password masking at a real interactive keyboard.
 pnpm test
 ```
 
-Expected: `Test Files 63 passed (63)` and `Tests 812 passed (812)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
+Expected: `Test Files 64 passed (64)` and `Tests 825 passed (825)`. This includes CLI missions, 36 bot hacker integration tests, 5 knowledge/configuration tests, 4 desk-hint and E-key regression tests, 5 browser-walking regression tests, a soak test that runs a full office of bots for three game hours, and 31 tests of whole matches.
 
 On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent workers. This passed the complete suite during Phase 5F validation after three existing long-running tests timed out with unrestricted workers.
 
@@ -688,9 +696,9 @@ On a busy machine, use `pnpm exec vitest run --maxWorkers=4` to limit concurrent
 pnpm e2e
 ```
 
-Expected: `21 passed` (10 to 14 minutes). Playwright starts its own games (ports 2577 and 5183: no bots, only the plaintext-password weakness; ports 2578 and 5184: solo matches at four times the speed), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
+Expected: `22 passed` (10 to 14 minutes). Playwright starts its own games (ports 2577 and 5183: no bots, only the plaintext-password weakness; ports 2578 and 5184: solo matches at four times the speed), so it does not matter whether `pnpm dev` is running. It drives a real Chromium browser (first run: `pnpm exec playwright install chromium`) and writes its screenshots to `e2e/screenshots/`.
 
-For stability verification, run `pnpm e2e --retries=0` ten times consecutively; each must report 21 passes.
+For stability verification, run `pnpm e2e --retries=0` ten times consecutively; each must report 22 passes.
 Retries also default to zero. All PC-sitting steps share a helper that waits for the hostname's hint,
 the server-confirmed stop, and the initial terminal screen. Movement uses state changes rather than
 fixed sleeps, and holds the key through server-opened automatic doors; Playwright result attachments

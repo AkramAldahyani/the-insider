@@ -12,6 +12,7 @@
     "client": "node scripts/dev.mjs --client-only",
     "cli": "tsx packages/cli/src/main.ts",
     "map": "tsx maps/build-office.ts",
+    "scenario": "tsx scenarios/build-large.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",

@@ -76,7 +76,7 @@ Update it at the end of every part.
 | 4 Hacker gameplay | **done**: Parts A-H, including CLI hacker support |
 | 5 Investigation & social deduction | **done**: Parts A-J |
 | 5a Solo modes | **done**: Parts A-H |
-| 6 Multiplayer | **in progress**: Parts A-H (lobbies, secret roles, several hackers, chat, watching, reconnecting, bots that fill up, robustness) done; I (bigger offices, can be postponed) next |
+| 6 Multiplayer | **done except Part I** (bigger offices, postponed): Parts A-H and J. Still to do by people: one match on two real computers |
 
 ## Phase 6 plan (multiplayer): APPROVED by the owner on 2026-11-24, with all eight defaults
 
@@ -94,12 +94,12 @@ at the end of a part give the owner the exact git commands.
 | F | Reconnecting: the place is kept, a bot covers, the host role moves on. **Friends can play a full match here** | **done** |
 | G | Bots that fill up: difficulty and voting rules for mixed groups | **done** |
 | H | Robustness: rate limits, message checks, load test with 30 players, one address for page and server, home network guide | **done** |
-| I | Bigger offices for 15, 20-25 and 30 people (can be postponed) | next |
-| J | Whole matches with several browsers, long test, balance, docs | |
+| I | Bigger offices for 15, 20-25 and 30 people (can be postponed) | postponed (the owner chose J first) |
+| J | Whole matches with several browsers, long test, balance, docs | **done** |
 
 Defaults (accepted):
 1. The hacker is drawn from the human players if there are at least four, otherwise bots can be drawn too. The host can change this.
-2. Hand-in wait of 3 game minutes after first reading the flag, for human hackers in multiplayer too (measured in 5a: without it a burst always wins).
+2. Hand-in wait of 3 game minutes after first reading the flag, for human hackers in multiplayer too (measured in 5a: without it a burst always wins). Changed in Part J (owner): 5, 3 or 2 minutes by the lobby's difficulty.
 3. Several hackers: voting out or detaining one removes that person; the defenders win when all are gone. The role of a detained or fired hacker is announced.
 4. Open chat is heard only in the same room; meetings are heard by everyone.
 5. Bots in multiplayer vote only on what they saw (as decided in Phase 5 G) and never investigate on their own. (Voting changed by the owner in Part G: while people are few, bots also judge the evidence.)
@@ -294,6 +294,32 @@ Also accepted: bot hackers with partners use only their existing behaviour; no n
   build: host on localhost, friend over the home address, a whole start, chat, reload and return.
 - 812 Vitest tests in 63 files, 21 Playwright (17 office, 4 match): all green in one full run.
 - Not there: encryption, accounts, reporting (Phase 8). Nobody has tried it from a second real computer.
+
+### Part J: what exists now (whole matches, long test, balance)
+
+- BALANCE, measured (`server/test/party-soak.test.ts`, "balance"): a person as the hacker who uses the old backup script at once reads the
+  flag after 33 s. A defender at their own PC who knows where to look pressed the emergency button 52 s (SOC analyst, 10 s per command) to 143 s
+  (administrator or employee, 30 s per command) after the read. OWNER'S CHOICE (2026-11-26): the wait before handing in follows the lobby's
+  difficulty: 5 (easy), 3 (normal), 2 (hard) game minutes (`PARTY_HAND_IN_MINUTES`). The lobby's difficulty texts say so. The tests keep four
+  such cases (also an employee at 50 s per command on Easy) and check that the defender is in time and wins.
+- LONG TEST (`party-soak.test.ts`, "soak"): eight lobby matches (2 to 11 people, with and without bots, 1 to 3 hackers, people or computer as
+  hackers, every difficulty) of up to 45 game minutes, with pretend people who walk, sit, log in, type, pin, chat (also privately), call
+  meetings, accuse, vote, try to detain, lose the connection, come back and leave. Checked all along: nobody inside a wall, twice, or at two PCs,
+  nobody out with a body, reputation 0-100, no bot stuck; before the end nobody gets another person's password, a role, the private chat,
+  the flag or the debrief; the end and the debrief once; nothing changes afterwards; the same seed gives the same match. In the last run: 52
+  meetings, 12 people voted out, both sides won.
+- BROWSERS: `e2e/party-defenders.spec.ts`: three friends without bots, the two who are not the hacker pin, accuse, talk and vote the third one out;
+  the end, who was who, the debrief, back to the lobby. With `party-match.spec.ts` (the hacker wins) both endings are tested with real browsers.
+- 825 Vitest tests in 64 files, 22 Playwright (18 office, 4 match).
+- Full runs: Vitest all green; Playwright 21 of 22, the new `party-defenders.spec.ts` failed in the test's walking helper on a long walk (the known
+  weak spot on a busy machine); it now lets that walk go on up to three times and then passed 4 of 4 alone. The full run was not repeated.
+
+## Phase 6 status: done except Part I
+
+What friends can do now: create a lobby, share its link at home (`pnpm start`), get a secret part, play a whole match with or without the
+computer's colleagues and with up to three hackers, chat, watch after being voted out, come back after a lost connection, and go back to the same
+lobby. Still to do by people: one match on two (or more) real computers in a home network (docs/play-with-friends.md). Postponed: bigger offices
+(Part I). Next phase by DESIGN.md: 7 (art, sound, polish).
 
 ## Phase 5a plan (solo modes): APPROVED by the owner on 2026-11-24, with all five defaults
 

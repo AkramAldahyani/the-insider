@@ -6,7 +6,7 @@
  * This file (with index.ts) is the only part of the server that reads or
  * writes files. The engine never does.
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import type { Server as HttpServer } from 'node:http';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -50,6 +50,9 @@ export interface AppOptions {
   soloLimit?: number;
   /** How many lobbies (with or without a running match) may exist at the same time (default 20). */
   lobbyLimit?: number;
+  /** The large office for lobbies of more than 11 (default: nexora-large on office-large, if they exist; "" = none). */
+  largeScenario?: string;
+  largeMap?: string;
   /** Serve the built web page (packages/client/dist) from the same address. Default: only when NODE_ENV is "production". */
   page?: boolean;
 }
@@ -99,6 +102,14 @@ export function loadGameOptions(options: AppOptions = {}): OfficeGameOptions {
   };
 }
 
+/** The large office, if there is one (Phase 6, part I). */
+export function loadLarge(options: AppOptions = {}): OfficeGameOptions | undefined {
+  const scenario = options.largeScenario ?? 'nexora-large';
+  const map = options.largeMap ?? 'office-large';
+  if (!scenario || !map || !existsSync(join(REPO_ROOT, 'scenarios', `${scenario}.json`))) return undefined;
+  return loadGameOptions({ ...options, scenario, map });
+}
+
 /** Where `pnpm build` puts the web page. */
 export const PAGE_DIR = join(REPO_ROOT, 'packages', 'client', 'dist');
 
@@ -112,6 +123,6 @@ export function createGameServer(options: AppOptions = {}): Server {
   const game = loadGameOptions(options);
   server.define(ROOM_NAME, officeRoom(game));
   server.define(SOLO_ROOM_NAME, soloRoom(game, { seed: options.seed, limit: options.soloLimit }));
-  server.define(PARTY_ROOM_NAME, partyRoom(game, { seed: options.seed, limit: options.lobbyLimit }));
+  server.define(PARTY_ROOM_NAME, partyRoom(game, { seed: options.seed, limit: options.lobbyLimit, large: loadLarge(options) }));
   return server;
 }

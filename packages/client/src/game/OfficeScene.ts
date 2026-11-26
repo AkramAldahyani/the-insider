@@ -346,6 +346,7 @@ export function createOfficeScene(store: Store): Phaser.Scene {
       store.set({
         nearMonitors: !me.seatedAt && other.monitors,
         nearButton: !me.seatedAt && other.button,
+        nearTalk: !me.seatedAt && other.talk,
         nearPerson: nearest,
         nearDoor: atDoor?.code ?? '',
         nearDoorName: atDoor?.name ?? '',

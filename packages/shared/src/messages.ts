@@ -312,6 +312,11 @@ export interface ServerMessages {
    * `room`: where an open line was said. Only people who are out get it: they hear every room.
    */
   chat: { channel: ChatChannel; from: string; fromId: string; text: string; time: number; room?: string };
+  /**
+   * A department meeting this player takes part in (large office), or that it is over (`active` false). `usesLeft`:
+   * how many this player may still call.
+   */
+  talk: { active: boolean; room: string; calledBy: string; endsIn: number; members: string[]; usesLeft: number };
   /** You are out (voted out or detained): from now on you watch, and talk only with others who are out. */
   fired: { reason: string };
   /**
@@ -374,6 +379,8 @@ export interface ClientMessages {
   detain: { target: string };
   /** Press the emergency button (the server checks you stand at it). */
   'meeting.call': Record<string, never>;
+  /** Press a department's meeting button (large office; the server checks that you stand at one). */
+  'talk.call': Record<string, never>;
   /** Accuse someone in a meeting, pointing at 3 or more evidence-board items. */
   'meeting.accuse': { suspect: string; evidence: string[] };
   /** Vote for an accused player's id, or "skip". */

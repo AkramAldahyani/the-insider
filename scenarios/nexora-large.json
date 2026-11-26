@@ -1,0 +1,3189 @@
+{
+  "id": "nexora-large",
+  "name": "Nexora Corp - Large Office",
+  "description": "The same company with 30 people on one wide floor: two more departments (Sales and Legal), a lounge and an archive. The flag is /root/flag.txt on ADMIN-SRV-01.",
+  "domain": "nexora.local",
+  "startTime": "2026-03-02T09:00:00Z",
+  "badgeSystem": {
+    "server": "SEC-SRV-01",
+    "entranceDoor": "MAIN-ENT"
+  },
+  "mission": {
+    "flagHost": "ADMIN-SRV-01",
+    "flagPath": "/root/flag.txt",
+    "weakAdminPassword": {
+      "account": "k.nasser",
+      "password": "nexora2026",
+      "strength": 8
+    },
+    "extraSudo": {
+      "candidates": [
+        "o.farouk",
+        "y.khalil",
+        "r.mansour"
+      ],
+      "hosts": [
+        "ADMIN-SRV-01"
+      ]
+    },
+    "plaintextPassword": {
+      "host": "ADMIN-SRV-01",
+      "path": "/srv/shared/old/backup-2025.sh",
+      "ageMinutes": 260000,
+      "content": [
+        "#!/bin/bash",
+        "# OLD backup script (2025). Replaced by /opt/backup/backup.sh - delete me!",
+        "# It logged in as root over ssh to copy the archive to the second disk.",
+        "ROOT_PW='{password}'",
+        "tar -czf /tmp/shared.tar.gz /srv/shared",
+        "sshpass -p \"$ROOT_PW\" scp /tmp/shared.tar.gz root@localhost:/mnt/disk2/"
+      ]
+    },
+    "carelessAdmin": {
+      "player": "p5",
+      "forgetLock": 0.8
+    },
+    "tailgateDoor": "SRV-ROOM"
+  },
+  "mail": {
+    "server": "ADMIN-SRV-01",
+    "history": [
+      {
+        "from": "n.saleh",
+        "to": [
+          "s.alharbi",
+          "r.mansour",
+          "l.haddad",
+          "o.farouk",
+          "k.nasser",
+          "y.khalil",
+          "d.aziz",
+          "m.yousef",
+          "t.omar",
+          "f.alqahtani",
+          "a.zaki",
+          "r.saeed",
+          "j.khoury",
+          "b.ahmed",
+          "l.nasr",
+          "h.ali",
+          "m.fares",
+          "f.otaibi",
+          "n.karim",
+          "z.hamdan",
+          "s.idris",
+          "k.nabil",
+          "h.mahmoud",
+          "r.shami",
+          "a.mustafa",
+          "s.yasin",
+          "m.saleem",
+          "a.bakr"
+        ],
+        "subject": "Reminder: lock your screen",
+        "body": "Hello all,\n\nplease lock your screen whenever you leave your desk (loginctl lock-session).\nLast week two PCs were found open at lunch time.\n\nNoor",
+        "minutesAgo": 4250
+      },
+      {
+        "from": "k.nasser",
+        "to": [
+          "d.aziz"
+        ],
+        "subject": "Backup job",
+        "body": "Dana, the nightly backup ran fine again. If someone asks: the log is /var/log/backup.log on the admin server.\n\nKhalid",
+        "minutesAgo": 4100
+      },
+      {
+        "from": "r.mansour",
+        "to": [
+          "s.alharbi"
+        ],
+        "subject": "February invoices",
+        "body": "Sara, can you send me the list of February invoices before the meeting?\n\nThanks, Rami",
+        "minutesAgo": 80
+      },
+      {
+        "from": "m.yousef",
+        "to": [
+          "t.omar"
+        ],
+        "subject": "Courier at 11",
+        "body": "Tariq, a courier is expected around 11:00 with a parcel for IT.\n\nMaha",
+        "minutesAgo": 35
+      }
+    ]
+  },
+  "web": {
+    "proxy": "ADMIN-SRV-01",
+    "updateSite": "archive.ubuntu.example",
+    "sites": [
+      {
+        "host": "intranet.nexora.local",
+        "ip": "10.0.1.10",
+        "title": "Nexora Intranet",
+        "category": "intranet"
+      },
+      {
+        "host": "archive.ubuntu.example",
+        "ip": "203.0.113.20",
+        "title": "Ubuntu package archive",
+        "category": "software updates"
+      },
+      {
+        "host": "news.example",
+        "ip": "203.0.113.31",
+        "title": "World News Today",
+        "category": "news"
+      },
+      {
+        "host": "weather.example",
+        "ip": "203.0.113.32",
+        "title": "City Weather",
+        "category": "weather"
+      },
+      {
+        "host": "supplier-portal.example",
+        "ip": "198.51.100.14",
+        "title": "Najd Catering supplier portal",
+        "category": "business"
+      },
+      {
+        "host": "bank.example",
+        "ip": "198.51.100.40",
+        "title": "First Example Bank - business banking",
+        "category": "finance"
+      },
+      {
+        "host": "jobs.example",
+        "ip": "198.51.100.77",
+        "title": "Careers board",
+        "category": "recruiting"
+      },
+      {
+        "host": "stock-photos.example",
+        "ip": "198.51.100.90",
+        "title": "Stock photo library",
+        "category": "media"
+      }
+    ]
+  },
+  "dhcp": {
+    "server": "ADMIN-SRV-01",
+    "subnet": "10.0.2",
+    "rangeStart": 30,
+    "rangeEnd": 200,
+    "leaseHours": 8,
+    "history": [
+      {
+        "hostname": "MKT-LT-11",
+        "ip": "10.0.2.58",
+        "fromMinutesAgo": 14400,
+        "toMinutesAgo": 10080
+      },
+      {
+        "hostname": "MKT-LT-11",
+        "ip": "10.0.2.71",
+        "fromMinutesAgo": 10080,
+        "toMinutesAgo": 4500
+      },
+      {
+        "hostname": "FIN-LT-07",
+        "ip": "10.0.2.58",
+        "fromMinutesAgo": 10070,
+        "toMinutesAgo": 4500
+      }
+    ]
+  },
+  "accounts": [
+    {
+      "username": "s.alharbi",
+      "fullName": "Sara Alharbi",
+      "title": "Accountant",
+      "department": "Finance",
+      "password": "Riyadh2024!",
+      "strength": 45,
+      "badge": {
+        "id": "0412"
+      }
+    },
+    {
+      "username": "r.mansour",
+      "fullName": "Rami Mansour",
+      "title": "Financial Analyst",
+      "department": "Finance",
+      "password": "football7",
+      "strength": 15,
+      "badge": {
+        "id": "0388"
+      }
+    },
+    {
+      "username": "l.haddad",
+      "fullName": "Lina Haddad",
+      "title": "HR Specialist",
+      "department": "HR",
+      "password": "Lina@HR#2025",
+      "strength": 60,
+      "badge": {
+        "id": "0291"
+      }
+    },
+    {
+      "username": "o.farouk",
+      "fullName": "Omar Farouk",
+      "title": "Marketing Coordinator",
+      "department": "Marketing",
+      "password": "summer2025",
+      "strength": 20,
+      "badge": {
+        "id": "0455"
+      }
+    },
+    {
+      "username": "k.nasser",
+      "fullName": "Khalid Nasser",
+      "title": "System Administrator",
+      "department": "IT",
+      "password": "Tr0ub4dor&3xK9",
+      "strength": 85,
+      "badge": {
+        "id": "0107",
+        "access": [
+          "server-room",
+          "security-office"
+        ]
+      }
+    },
+    {
+      "username": "n.saleh",
+      "fullName": "Noor Saleh",
+      "title": "HR Manager",
+      "department": "HR",
+      "password": "Noor!Saleh#88",
+      "strength": 65,
+      "badge": {
+        "id": "0164"
+      }
+    },
+    {
+      "username": "y.khalil",
+      "fullName": "Yousef Khalil",
+      "title": "Graphic Designer",
+      "department": "Marketing",
+      "password": "pixel1234",
+      "strength": 12,
+      "badge": {
+        "id": "0502"
+      }
+    },
+    {
+      "username": "d.aziz",
+      "fullName": "Dana Aziz",
+      "title": "IT Helpdesk",
+      "department": "IT",
+      "password": "H3lpdesk-Dana-42",
+      "strength": 75,
+      "badge": {
+        "id": "0417",
+        "access": [
+          "server-room"
+        ]
+      }
+    },
+    {
+      "username": "m.yousef",
+      "fullName": "Maha Yousef",
+      "title": "Receptionist",
+      "department": "Reception",
+      "password": "welcome2026",
+      "strength": 18,
+      "badge": {
+        "id": "0233"
+      }
+    },
+    {
+      "username": "t.omar",
+      "fullName": "Tariq Omar",
+      "title": "Security Guard",
+      "department": "Security",
+      "password": "Falcon-Gate-7",
+      "strength": 55,
+      "badge": {
+        "id": "0119",
+        "access": [
+          "security-office"
+        ]
+      }
+    },
+    {
+      "username": "h.rahman",
+      "fullName": "Huda Rahman",
+      "title": "SOC Analyst",
+      "department": "Security",
+      "password": "Sh1eld&Coffee-19",
+      "strength": 70,
+      "badge": {
+        "id": "0141",
+        "access": [
+          "security-office"
+        ]
+      }
+    },
+    {
+      "username": "f.alqahtani",
+      "fullName": "Fatima Al-Qahtani",
+      "title": "Senior Accountant",
+      "department": "Finance",
+      "password": "Qahtani#Ledger9",
+      "strength": 60,
+      "badge": {
+        "id": "0420"
+      }
+    },
+    {
+      "username": "a.zaki",
+      "fullName": "Ahmed Zaki",
+      "title": "Payroll Officer",
+      "department": "Finance",
+      "password": "payroll2026",
+      "strength": 20,
+      "badge": {
+        "id": "0431"
+      }
+    },
+    {
+      "username": "r.saeed",
+      "fullName": "Reem Saeed",
+      "title": "Finance Assistant",
+      "department": "Finance",
+      "password": "Reem2003",
+      "strength": 22,
+      "badge": {
+        "id": "0436"
+      }
+    },
+    {
+      "username": "j.khoury",
+      "fullName": "Jana Khoury",
+      "title": "Recruiter",
+      "department": "HR",
+      "password": "Jana!Hires22",
+      "strength": 50,
+      "badge": {
+        "id": "0296"
+      }
+    },
+    {
+      "username": "b.ahmed",
+      "fullName": "Bilal Ahmed",
+      "title": "HR Assistant",
+      "department": "HR",
+      "password": "bilal123",
+      "strength": 10,
+      "badge": {
+        "id": "0298"
+      }
+    },
+    {
+      "username": "l.nasr",
+      "fullName": "Layla Nasr",
+      "title": "Content Writer",
+      "department": "Marketing",
+      "password": "Words&Coffee5",
+      "strength": 55,
+      "badge": {
+        "id": "0461"
+      }
+    },
+    {
+      "username": "h.ali",
+      "fullName": "Hassan Ali",
+      "title": "Social Media Manager",
+      "department": "Marketing",
+      "password": "hassan2025",
+      "strength": 18,
+      "badge": {
+        "id": "0467"
+      }
+    },
+    {
+      "username": "m.fares",
+      "fullName": "Mona Fares",
+      "title": "Marketing Analyst",
+      "department": "Marketing",
+      "password": "Fares!Stats7",
+      "strength": 52,
+      "badge": {
+        "id": "0472"
+      }
+    },
+    {
+      "username": "f.otaibi",
+      "fullName": "Faisal Otaibi",
+      "title": "Sales Manager",
+      "department": "Sales",
+      "password": "Otaibi@Sales!24",
+      "strength": 68,
+      "badge": {
+        "id": "0501"
+      }
+    },
+    {
+      "username": "n.karim",
+      "fullName": "Nadia Karim",
+      "title": "Account Executive",
+      "department": "Sales",
+      "password": "nadia2024",
+      "strength": 16,
+      "badge": {
+        "id": "0508"
+      }
+    },
+    {
+      "username": "z.hamdan",
+      "fullName": "Ziad Hamdan",
+      "title": "Account Executive",
+      "department": "Sales",
+      "password": "Hamdan-Deals-3",
+      "strength": 48,
+      "badge": {
+        "id": "0511"
+      }
+    },
+    {
+      "username": "s.idris",
+      "fullName": "Salma Idris",
+      "title": "Sales Assistant",
+      "department": "Sales",
+      "password": "salma1",
+      "strength": 8,
+      "badge": {
+        "id": "0515"
+      }
+    },
+    {
+      "username": "k.nabil",
+      "fullName": "Kareem Nabil",
+      "title": "Account Executive",
+      "department": "Sales",
+      "password": "Kareem#Nabil90",
+      "strength": 58,
+      "badge": {
+        "id": "0519"
+      }
+    },
+    {
+      "username": "h.mahmoud",
+      "fullName": "Hind Mahmoud",
+      "title": "Sales Analyst",
+      "department": "Sales",
+      "password": "Hind!Numbers4",
+      "strength": 54,
+      "badge": {
+        "id": "0523"
+      }
+    },
+    {
+      "username": "r.shami",
+      "fullName": "Rana Shami",
+      "title": "Legal Counsel",
+      "department": "Legal",
+      "password": "Shami$Counsel77",
+      "strength": 72,
+      "badge": {
+        "id": "0601"
+      }
+    },
+    {
+      "username": "a.mustafa",
+      "fullName": "Adel Mustafa",
+      "title": "Contracts Manager",
+      "department": "Legal",
+      "password": "contracts2026",
+      "strength": 20,
+      "badge": {
+        "id": "0605"
+      }
+    },
+    {
+      "username": "s.yasin",
+      "fullName": "Sami Yasin",
+      "title": "Paralegal",
+      "department": "Legal",
+      "password": "sami2026",
+      "strength": 14,
+      "badge": {
+        "id": "0609"
+      }
+    },
+    {
+      "username": "m.saleem",
+      "fullName": "Majed Saleem",
+      "title": "Software Developer",
+      "department": "IT",
+      "password": "Majed-Dev-Build-8",
+      "strength": 66,
+      "badge": {
+        "id": "0221"
+      }
+    },
+    {
+      "username": "a.bakr",
+      "fullName": "Aisha Bakr",
+      "title": "Office Assistant",
+      "department": "Reception",
+      "password": "aisha2025",
+      "strength": 15,
+      "badge": {
+        "id": "0238"
+      }
+    }
+  ],
+  "players": [
+    {
+      "id": "p1",
+      "name": "Sara Alharbi",
+      "account": "s.alharbi",
+      "desk": "FIN-LT-07",
+      "role": "employee"
+    },
+    {
+      "id": "p2",
+      "name": "Rami Mansour",
+      "account": "r.mansour",
+      "desk": "FIN-LT-04",
+      "role": "employee"
+    },
+    {
+      "id": "p3",
+      "name": "Lina Haddad",
+      "account": "l.haddad",
+      "desk": "HR-LT-03",
+      "role": "employee"
+    },
+    {
+      "id": "p4",
+      "name": "Omar Farouk",
+      "account": "o.farouk",
+      "desk": "MKT-LT-11",
+      "role": "employee"
+    },
+    {
+      "id": "p5",
+      "name": "Khalid Nasser",
+      "account": "k.nasser",
+      "desk": "IT-WS-02",
+      "role": "sysadmin"
+    },
+    {
+      "id": "p6",
+      "name": "Noor Saleh",
+      "account": "n.saleh",
+      "desk": "HR-LT-05",
+      "role": "employee"
+    },
+    {
+      "id": "p7",
+      "name": "Yousef Khalil",
+      "account": "y.khalil",
+      "desk": "MKT-LT-09",
+      "role": "employee"
+    },
+    {
+      "id": "p8",
+      "name": "Dana Aziz",
+      "account": "d.aziz",
+      "desk": "IT-WS-01",
+      "role": "helpdesk"
+    },
+    {
+      "id": "p9",
+      "name": "Maha Yousef",
+      "account": "m.yousef",
+      "desk": "REC-PC-01",
+      "role": "employee"
+    },
+    {
+      "id": "p10",
+      "name": "Tariq Omar",
+      "account": "t.omar",
+      "desk": "SEC-WS-01",
+      "role": "guard"
+    },
+    {
+      "id": "p11",
+      "name": "Huda Rahman",
+      "account": "h.rahman",
+      "desk": "SOC-WS-01",
+      "role": "soc"
+    },
+    {
+      "id": "p12",
+      "name": "Fatima Al-Qahtani",
+      "account": "f.alqahtani",
+      "desk": "FIN-LT-01",
+      "role": "employee"
+    },
+    {
+      "id": "p13",
+      "name": "Ahmed Zaki",
+      "account": "a.zaki",
+      "desk": "FIN-LT-02",
+      "role": "employee"
+    },
+    {
+      "id": "p14",
+      "name": "Reem Saeed",
+      "account": "r.saeed",
+      "desk": "FIN-LT-03",
+      "role": "employee"
+    },
+    {
+      "id": "p15",
+      "name": "Jana Khoury",
+      "account": "j.khoury",
+      "desk": "HR-LT-01",
+      "role": "employee"
+    },
+    {
+      "id": "p16",
+      "name": "Bilal Ahmed",
+      "account": "b.ahmed",
+      "desk": "HR-LT-02",
+      "role": "employee"
+    },
+    {
+      "id": "p17",
+      "name": "Layla Nasr",
+      "account": "l.nasr",
+      "desk": "MKT-LT-01",
+      "role": "employee"
+    },
+    {
+      "id": "p18",
+      "name": "Hassan Ali",
+      "account": "h.ali",
+      "desk": "MKT-LT-02",
+      "role": "employee"
+    },
+    {
+      "id": "p19",
+      "name": "Mona Fares",
+      "account": "m.fares",
+      "desk": "MKT-LT-03",
+      "role": "employee"
+    },
+    {
+      "id": "p20",
+      "name": "Faisal Otaibi",
+      "account": "f.otaibi",
+      "desk": "SAL-LT-01",
+      "role": "employee"
+    },
+    {
+      "id": "p21",
+      "name": "Nadia Karim",
+      "account": "n.karim",
+      "desk": "SAL-LT-02",
+      "role": "employee"
+    },
+    {
+      "id": "p22",
+      "name": "Ziad Hamdan",
+      "account": "z.hamdan",
+      "desk": "SAL-LT-03",
+      "role": "employee"
+    },
+    {
+      "id": "p23",
+      "name": "Salma Idris",
+      "account": "s.idris",
+      "desk": "SAL-LT-04",
+      "role": "employee"
+    },
+    {
+      "id": "p24",
+      "name": "Kareem Nabil",
+      "account": "k.nabil",
+      "desk": "SAL-LT-05",
+      "role": "employee"
+    },
+    {
+      "id": "p25",
+      "name": "Hind Mahmoud",
+      "account": "h.mahmoud",
+      "desk": "SAL-LT-06",
+      "role": "employee"
+    },
+    {
+      "id": "p26",
+      "name": "Rana Shami",
+      "account": "r.shami",
+      "desk": "LEG-LT-01",
+      "role": "employee"
+    },
+    {
+      "id": "p27",
+      "name": "Adel Mustafa",
+      "account": "a.mustafa",
+      "desk": "LEG-LT-02",
+      "role": "employee"
+    },
+    {
+      "id": "p28",
+      "name": "Sami Yasin",
+      "account": "s.yasin",
+      "desk": "LEG-LT-03",
+      "role": "employee"
+    },
+    {
+      "id": "p29",
+      "name": "Majed Saleem",
+      "account": "m.saleem",
+      "desk": "IT-WS-03",
+      "role": "employee"
+    },
+    {
+      "id": "p30",
+      "name": "Aisha Bakr",
+      "account": "a.bakr",
+      "desk": "REC-PC-02",
+      "role": "employee"
+    }
+  ],
+  "hosts": [
+    {
+      "hostname": "ADMIN-SRV-01",
+      "kind": "server",
+      "department": "IT",
+      "location": "Server room, rack 1",
+      "mac": "52:54:00:a1:00:01",
+      "staticIp": "10.0.1.10",
+      "users": "*",
+      "sudoers": [
+        "k.nasser"
+      ],
+      "logReaders": [
+        "k.nasser",
+        "h.rahman"
+      ],
+      "rootPassword": {
+        "password": "N3x0ra-R00t-Vault!92",
+        "strength": 95
+      },
+      "uptimeMinutes": 17400,
+      "crontabs": {
+        "root": [
+          "# m h  dom mon dow   command",
+          "30 2 * * * /opt/backup/backup.sh >> /var/log/backup.log 2>&1"
+        ]
+      },
+      "files": [
+        {
+          "path": "/root/flag.txt",
+          "mode": "400",
+          "ageMinutes": 43200,
+          "content": [
+            "NEXORA{r00t_0n_adm1n_srv_01}"
+          ]
+        },
+        {
+          "path": "/root/notes.txt",
+          "mode": "600",
+          "ageMinutes": 8000,
+          "content": [
+            "- rotate the root password after the audit",
+            "- dhcpd lease time is 8h, staff laptops renew every 4h",
+            "- reminder: only k.nasser should be in the sudo group on this box"
+          ]
+        },
+        {
+          "path": "/opt/backup/backup.sh",
+          "mode": "750",
+          "ageMinutes": 30000,
+          "content": [
+            "#!/bin/bash",
+            "# Nightly backup of the shared folder. Runs from root's crontab at 02:30.",
+            "set -e",
+            "DEST=/var/backups/shared-$(date +%F).tar.gz",
+            "tar -czf \"$DEST\" /srv/shared",
+            "echo \"$(date) backup written to $DEST\""
+          ]
+        },
+        {
+          "path": "/var/log/backup.log",
+          "mode": "640",
+          "group": "adm",
+          "ageMinutes": 390,
+          "content": [
+            "Fri Feb 27 02:30:04 UTC 2026 backup written to /var/backups/shared-2026-02-27.tar.gz",
+            "Sat Feb 28 02:30:03 UTC 2026 backup written to /var/backups/shared-2026-02-28.tar.gz",
+            "Sun Mar  1 02:30:05 UTC 2026 backup written to /var/backups/shared-2026-03-01.tar.gz",
+            "Mon Mar  2 02:30:04 UTC 2026 backup written to /var/backups/shared-2026-03-02.tar.gz"
+          ]
+        },
+        {
+          "path": "/etc/dhcp/dhcpd.conf",
+          "ageMinutes": 60000,
+          "content": [
+            "# Nexora office network",
+            "default-lease-time 28800;",
+            "max-lease-time 28800;",
+            "authoritative;",
+            "subnet 10.0.2.0 netmask 255.255.255.0 {",
+            "  range 10.0.2.30 10.0.2.200;",
+            "  option routers 10.0.2.1;",
+            "  option domain-name-servers 10.0.1.10;",
+            "  option domain-name \"nexora.local\";",
+            "}"
+          ]
+        },
+        {
+          "path": "/srv/shared/README.txt",
+          "ageMinutes": 50000,
+          "content": [
+            "Nexora Corp shared folder",
+            "=========================",
+            "policies/   company policies (read-only)",
+            "templates/  document templates",
+            "",
+            "Problems? Contact IT: k.nasser@nexora.local"
+          ]
+        },
+        {
+          "path": "/srv/shared/policies/password-policy.txt",
+          "ageMinutes": 50000,
+          "content": [
+            "PASSWORD POLICY (v3)",
+            "1. Minimum 10 characters, mixing letters, digits and symbols.",
+            "2. Never write passwords in files, scripts or sticky notes.",
+            "3. Lock your screen every time you leave your desk.",
+            "4. IT will never ask for your password by email."
+          ]
+        },
+        {
+          "path": "/srv/shared/policies/acceptable-use.txt",
+          "ageMinutes": 50000,
+          "content": [
+            "ACCEPTABLE USE",
+            "Company machines are for company work. All logins are recorded.",
+            "Do not use another employee's account or unlocked computer."
+          ]
+        },
+        {
+          "path": "/srv/shared/templates/expense-claim.csv",
+          "ageMinutes": 41000,
+          "content": [
+            "date,employee,category,amount_sar,approved_by",
+            ",,,,"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "IT-WS-02",
+      "kind": "workstation",
+      "department": "IT",
+      "location": "IT department, desk 2",
+      "mac": "52:54:00:17:02:02",
+      "owner": "k.nasser",
+      "users": [
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 4400,
+      "console": {
+        "user": "k.nasser",
+        "state": "locked",
+        "loginMinutesAgo": 35
+      },
+      "bashHistory": {
+        "k.nasser": [
+          "ssh k.nasser@ADMIN-SRV-01",
+          "ping -c 2 HR-LT-03",
+          "cat ~/tickets/open.txt",
+          "sudo journalctl -u ssh -n 30"
+        ]
+      },
+      "crontabs": {
+        "k.nasser": [
+          "# m h  dom mon dow   command",
+          "0 8 * * 1-5 /home/k.nasser/scripts/check-disk.sh"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/k.nasser/tickets/open.txt",
+          "ageMinutes": 70,
+          "content": [
+            "#1042  HR-LT-03   printer driver keeps resetting            (l.haddad)",
+            "#1045  FIN-LT-04  asks for access to the shared templates    (r.mansour)",
+            "#1047  MKT-LT-11  laptop got a new IP again, VPN profile     (o.farouk)"
+          ]
+        },
+        {
+          "path": "/home/k.nasser/tickets/closed.txt",
+          "ageMinutes": 4000,
+          "content": [
+            "#1039  FIN-LT-07  password reset                             (s.alharbi)",
+            "#1040  ADMIN-SRV-01 dhcpd restarted after config change"
+          ]
+        },
+        {
+          "path": "/home/k.nasser/scripts/check-disk.sh",
+          "mode": "755",
+          "ageMinutes": 20000,
+          "content": [
+            "#!/bin/bash",
+            "# Warn when the root filesystem is more than 90% full.",
+            "USED=$(df / | tail -1 | awk '{print $5}' | tr -d '%')",
+            "[ \"$USED\" -gt 90 ] && echo \"disk almost full on $(hostname)\""
+          ]
+        },
+        {
+          "path": "/home/k.nasser/notes/servers.md",
+          "mode": "600",
+          "ageMinutes": 9000,
+          "content": [
+            "# Servers",
+            "- ADMIN-SRV-01  10.0.1.10  DHCP + DNS + shared folder. I have sudo there.",
+            "- root password is in the sealed envelope in the safe, NOT on any disk.",
+            "",
+            "# Handy",
+            "- lease history:  cat /var/lib/dhcp/dhcpd.leases   (on ADMIN-SRV-01)",
+            "- who logged in:  last ; grep sshd /var/log/auth.log"
+          ]
+        },
+        {
+          "path": "/home/k.nasser/todo.txt",
+          "ageMinutes": 1500,
+          "content": [
+            "[ ] close ticket #1045",
+            "[ ] review who is in the sudo group on every laptop",
+            "[x] order replacement badge reader for the server room"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "FIN-LT-07",
+      "kind": "workstation",
+      "department": "Finance",
+      "location": "Finance, desk 7",
+      "mac": "52:54:00:f1:07:07",
+      "owner": "s.alharbi",
+      "users": [
+        "s.alharbi",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 4400,
+      "console": {
+        "user": "s.alharbi",
+        "state": "locked",
+        "loginMinutesAgo": 18
+      },
+      "bashHistory": {
+        "s.alharbi": [
+          "ls Documents",
+          "cat todo.txt",
+          "grep -i overdue Documents/invoices_feb.csv"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/s.alharbi/todo.txt",
+          "ageMinutes": 1400,
+          "content": [
+            "[ ] approve February invoices",
+            "[ ] send payroll summary to Lina (HR)",
+            "[ ] ask IT why my laptop IP changed last week",
+            "[x] expense claims for January"
+          ]
+        },
+        {
+          "path": "/home/s.alharbi/notes.txt",
+          "ageMinutes": 5000,
+          "content": [
+            "Shared folder is on ADMIN-SRV-01 under /srv/shared",
+            "  ssh s.alharbi@ADMIN-SRV-01",
+            "Khalid (IT) sits at IT-WS-02.",
+            "Remember to lock the screen: loginctl lock-session"
+          ]
+        },
+        {
+          "path": "/home/s.alharbi/Documents/invoices_feb.csv",
+          "ageMinutes": 2900,
+          "content": [
+            "invoice_id,vendor,amount_sar,due_date,status",
+            "INV-2041,Gulf Office Supplies,4120.00,2026-02-10,paid",
+            "INV-2042,Desert Cloud Hosting,18750.00,2026-02-15,paid",
+            "INV-2043,Najd Catering,2300.50,2026-02-20,OVERDUE",
+            "INV-2044,Red Sea Logistics,9900.00,2026-02-28,pending",
+            "INV-2045,Falcon Security Systems,31200.00,2026-03-05,pending"
+          ]
+        },
+        {
+          "path": "/home/s.alharbi/Documents/payroll_summary_2026-02.csv",
+          "mode": "600",
+          "ageMinutes": 2600,
+          "content": [
+            "department,headcount,total_sar",
+            "Finance,2,41500",
+            "HR,1,17800",
+            "Marketing,1,16200",
+            "IT,1,24900"
+          ]
+        },
+        {
+          "path": "/home/s.alharbi/Documents/budget_q1_draft.txt",
+          "ageMinutes": 7200,
+          "content": [
+            "Q1 budget draft - DO NOT SHARE YET",
+            "Marketing asked for +12%. Finance recommends +5%."
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "FIN-LT-04",
+      "kind": "workstation",
+      "department": "Finance",
+      "location": "Finance, desk 4",
+      "mac": "52:54:00:f1:04:04",
+      "owner": "r.mansour",
+      "users": [
+        "r.mansour",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 4400,
+      "bashHistory": {
+        "r.mansour": [
+          "ssh r.mansour@ADMIN-SRV-01",
+          "ls ~/reports",
+          "cat todo.txt"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/r.mansour/todo.txt",
+          "ageMinutes": 1500,
+          "content": [
+            "[ ] finish cash-flow forecast",
+            "[ ] ask Khalid for the expense template (ticket #1045)",
+            "[ ] change my password... the policy says 10+ characters"
+          ]
+        },
+        {
+          "path": "/home/r.mansour/reports/cashflow_forecast.csv",
+          "ageMinutes": 3100,
+          "content": [
+            "month,inflow_sar,outflow_sar,net_sar",
+            "2026-01,412000,371500,40500",
+            "2026-02,398000,402300,-4300",
+            "2026-03,430000,389000,41000"
+          ]
+        },
+        {
+          "path": "/home/r.mansour/reports/vendor_review.txt",
+          "ageMinutes": 6000,
+          "content": [
+            "Vendor review notes",
+            "- Desert Cloud Hosting: contract renewal in April, compare 2 other quotes",
+            "- Najd Catering: invoice INV-2043 still overdue, Sara is chasing it"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "HR-LT-03",
+      "kind": "workstation",
+      "department": "HR",
+      "location": "HR, desk 3",
+      "mac": "52:54:00:b2:03:03",
+      "owner": "l.haddad",
+      "users": [
+        "l.haddad",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 4400,
+      "console": {
+        "user": "l.haddad",
+        "state": "unlocked",
+        "loginMinutesAgo": 22
+      },
+      "bashHistory": {
+        "l.haddad": [
+          "ls",
+          "cat Documents/onboarding_checklist.txt",
+          "ls -la Documents"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/l.haddad/todo.txt",
+          "ageMinutes": 900,
+          "content": [
+            "[ ] prepare onboarding pack for the new analyst",
+            "[ ] remind everyone: LOCK YOUR SCREENS (yes, me too)",
+            "[ ] printer ticket #1042 with IT"
+          ]
+        },
+        {
+          "path": "/home/l.haddad/Documents/onboarding_checklist.txt",
+          "ageMinutes": 12000,
+          "content": [
+            "ONBOARDING CHECKLIST",
+            "1. Contract signed",
+            "2. Badge issued (reception)",
+            "3. Laptop + onboarding card from IT (username, first password, hostname)",
+            "4. Security briefing: password policy, screen lock, phishing"
+          ]
+        },
+        {
+          "path": "/home/l.haddad/Documents/employees.csv",
+          "mode": "600",
+          "ageMinutes": 4300,
+          "content": [
+            "username,full_name,department,title,desk",
+            "s.alharbi,Sara Alharbi,Finance,Accountant,FIN-LT-07",
+            "r.mansour,Rami Mansour,Finance,Financial Analyst,FIN-LT-04",
+            "l.haddad,Lina Haddad,HR,HR Specialist,HR-LT-03",
+            "o.farouk,Omar Farouk,Marketing,Marketing Coordinator,MKT-LT-11",
+            "k.nasser,Khalid Nasser,IT,System Administrator,IT-WS-02"
+          ]
+        },
+        {
+          "path": "/home/l.haddad/Documents/leave_requests.txt",
+          "ageMinutes": 2000,
+          "content": [
+            "o.farouk   2026-03-12 .. 2026-03-13   approved",
+            "r.mansour  2026-03-20                 pending"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "MKT-LT-11",
+      "kind": "workstation",
+      "department": "Marketing",
+      "location": "Marketing, desk 11",
+      "mac": "52:54:00:c3:11:0b",
+      "owner": "o.farouk",
+      "users": [
+        "o.farouk",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 4400,
+      "console": {
+        "user": "o.farouk",
+        "state": "locked",
+        "loginMinutesAgo": 10
+      },
+      "bashHistory": {
+        "o.farouk": [
+          "cat campaign/spring_launch_plan.md",
+          "ls campaign",
+          "ping -c 2 ADMIN-SRV-01"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/o.farouk/todo.txt",
+          "ageMinutes": 800,
+          "content": [
+            "[ ] final copy for the spring launch email",
+            "[ ] budget request to Finance (+12%)",
+            "[ ] ticket #1047: VPN profile after the IP change"
+          ]
+        },
+        {
+          "path": "/home/o.farouk/campaign/spring_launch_plan.md",
+          "ageMinutes": 3300,
+          "content": [
+            "# Spring launch",
+            "- Teaser posts: week 11",
+            "- Launch email: 2026-03-16",
+            "- Landing page review with IT: 2026-03-10"
+          ]
+        },
+        {
+          "path": "/home/o.farouk/campaign/mailing_list_sample.csv",
+          "ageMinutes": 3300,
+          "content": [
+            "email,segment",
+            "customer001@example.com,retail",
+            "customer002@example.com,enterprise"
+          ]
+        },
+        {
+          "path": "/home/o.farouk/notes.txt",
+          "ageMinutes": 6100,
+          "content": [
+            "IT said my laptop used to have 10.0.2.58 and now has a different address.",
+            "Apparently DHCP hands them out again - an IP is not a person!"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "HR-LT-05",
+      "kind": "workstation",
+      "department": "HR",
+      "location": "HR, desk 5",
+      "mac": "52:54:00:b2:05:05",
+      "owner": "n.saleh",
+      "users": [
+        "n.saleh",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 4400,
+      "console": {
+        "user": "n.saleh",
+        "state": "locked",
+        "loginMinutesAgo": 40
+      },
+      "bashHistory": {
+        "n.saleh": [
+          "ls Documents",
+          "cat Documents/hiring_plan_2026.txt"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/n.saleh/todo.txt",
+          "ageMinutes": 700,
+          "content": [
+            "[ ] interview shortlist for the analyst role",
+            "[ ] ask Lina (again) to switch her screen lock back on",
+            "[ ] sign off March leave requests"
+          ]
+        },
+        {
+          "path": "/home/n.saleh/Documents/hiring_plan_2026.txt",
+          "mode": "600",
+          "ageMinutes": 5200,
+          "content": [
+            "HIRING PLAN 2026 - CONFIDENTIAL",
+            "Q1: Financial Analyst (Finance) - offer stage",
+            "Q2: Junior Designer (Marketing)",
+            "Q3: SOC Analyst (IT) - budget pending"
+          ]
+        },
+        {
+          "path": "/home/n.saleh/Documents/salary_bands.csv",
+          "mode": "600",
+          "ageMinutes": 9000,
+          "content": [
+            "band,min_sar,max_sar",
+            "A,9000,13000",
+            "B,13000,19000",
+            "C,19000,28000"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "MKT-LT-09",
+      "kind": "workstation",
+      "department": "Marketing",
+      "location": "Marketing, desk 9",
+      "mac": "52:54:00:c3:09:09",
+      "owner": "y.khalil",
+      "users": [
+        "y.khalil",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 4400,
+      "console": {
+        "user": "y.khalil",
+        "state": "unlocked",
+        "loginMinutesAgo": 12
+      },
+      "bashHistory": {
+        "y.khalil": [
+          "ls designs",
+          "cat notes.txt"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/y.khalil/notes.txt",
+          "ageMinutes": 2100,
+          "content": [
+            "Asked IT for a 10 minute screen lock - renders take forever and I hate typing my password.",
+            "Brand colours: #0B3954 #BFD7EA #FF6663"
+          ]
+        },
+        {
+          "path": "/home/y.khalil/designs/spring_banner_v3.txt",
+          "ageMinutes": 1300,
+          "content": [
+            "[placeholder for spring_banner_v3.psd - 48 MB]",
+            "Sizes: 1200x628, 1080x1080, 1080x1920"
+          ]
+        },
+        {
+          "path": "/home/y.khalil/todo.txt",
+          "ageMinutes": 600,
+          "content": [
+            "[ ] banner v4 after Omar's copy review",
+            "[ ] export logo pack for the printer"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "IT-WS-01",
+      "kind": "workstation",
+      "department": "IT",
+      "location": "IT department, desk 1",
+      "mac": "52:54:00:17:01:01",
+      "owner": "d.aziz",
+      "users": [
+        "d.aziz",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 4400,
+      "bashHistory": {
+        "d.aziz": [
+          "cat ~/helpdesk/queue.txt",
+          "ping -c 2 REC-PC-01",
+          "ssh d.aziz@ADMIN-SRV-01"
+        ]
+      },
+      "files": [
+        {
+          "path": "/etc/helpdesk.conf",
+          "ageMinutes": 9000,
+          "content": [
+            "# Nexora IT helpdesk console (command: helpdesk)",
+            "allow = d.aziz"
+          ]
+        },
+        {
+          "path": "/home/d.aziz/helpdesk/queue.txt",
+          "ageMinutes": 90,
+          "content": [
+            "#1042  HR-LT-03   printer driver keeps resetting   -> with Khalid",
+            "#1048  REC-PC-01  visitor badge printer offline",
+            "#1049  MKT-LT-09  wants a longer screen-lock timer (granted: 10 min)"
+          ]
+        },
+        {
+          "path": "/home/d.aziz/helpdesk/how-to.md",
+          "ageMinutes": 15000,
+          "content": [
+            "# Helpdesk how-to",
+            "- Password reset: verify the person FACE TO FACE first. Never by email.",
+            "- Force-lock a forgotten screen:  sudo loginctl lock-session   (on that PC, over ssh)",
+            "- Who had an IP: ask Khalid for the dhcpd.leases history on ADMIN-SRV-01"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "REC-PC-01",
+      "kind": "workstation",
+      "department": "Reception",
+      "location": "Reception desk",
+      "mac": "52:54:00:d4:01:01",
+      "owner": "m.yousef",
+      "users": [
+        "m.yousef",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 4400,
+      "console": {
+        "user": "m.yousef",
+        "state": "locked",
+        "loginMinutesAgo": 55
+      },
+      "bashHistory": {
+        "m.yousef": [
+          "cat visitors/2026-03-02.txt",
+          "ls visitors"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/m.yousef/visitors/2026-03-02.txt",
+          "ageMinutes": 30,
+          "content": [
+            "08:41  courier (Red Sea Logistics)   parcel for Finance",
+            "08:55  candidate interview           host: Noor Saleh (HR)"
+          ]
+        },
+        {
+          "path": "/home/m.yousef/visitors/2026-02-27.txt",
+          "ageMinutes": 4300,
+          "content": [
+            "10:12  Falcon Security Systems technician   badge reader maintenance, escorted by Khalid",
+            "14:30  catering delivery"
+          ]
+        },
+        {
+          "path": "/home/m.yousef/todo.txt",
+          "ageMinutes": 500,
+          "content": [
+            "[ ] ticket #1048: badge printer",
+            "[ ] order visitor lanyards"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "SEC-WS-01",
+      "kind": "workstation",
+      "department": "Security",
+      "location": "Security office",
+      "mac": "52:54:00:e5:01:01",
+      "owner": "t.omar",
+      "users": [
+        "t.omar",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 4400,
+      "console": {
+        "user": "t.omar",
+        "state": "locked",
+        "loginMinutesAgo": 65
+      },
+      "bashHistory": {
+        "t.omar": [
+          "cat rounds/checklist.txt",
+          "who"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/t.omar/rounds/checklist.txt",
+          "ageMinutes": 8000,
+          "content": [
+            "ROUNDS CHECKLIST",
+            "1. Server room door closed and badge reader green",
+            "2. No unlocked screens on empty desks (report to helpdesk)",
+            "3. Camera feeds: reception, corridor, server room door",
+            "Blind spots: printer room, storage, bathrooms"
+          ]
+        },
+        {
+          "path": "/home/t.omar/rounds/log_2026-02-27.txt",
+          "ageMinutes": 4200,
+          "content": [
+            "09:10 all clear",
+            "13:05 HR-LT-03 screen left unlocked - told Lina",
+            "16:40 all clear"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "SEC-SRV-01",
+      "kind": "server",
+      "headless": true,
+      "department": "Security",
+      "location": "Server room, rack 2 (physical access control)",
+      "mac": "52:54:00:a1:00:02",
+      "staticIp": "10.0.1.20",
+      "users": [
+        "t.omar",
+        "k.nasser",
+        "h.rahman"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "logReaders": [
+        "t.omar",
+        "k.nasser",
+        "h.rahman"
+      ],
+      "uptimeMinutes": 30200,
+      "files": [
+        {
+          "path": "/etc/badge/doors.conf",
+          "ageMinutes": 120000,
+          "content": [
+            "# Nexora physical access control - door table",
+            "# DOOR        READER  ZONE             RESTRICTED",
+            "MAIN-ENT      BR-01   building         no",
+            "SRV-ROOM      BR-02   server-room      yes",
+            "SEC-OFFICE    BR-03   security-office  yes",
+            "FIN           BR-04   finance          no",
+            "HR            BR-05   hr               no",
+            "MKT           BR-06   marketing        no",
+            "IT            BR-07   it               no",
+            "",
+            "# Restricted doors open only for badges that list the zone.",
+            "# Leaving a room is always allowed (fire code); the exit tap is still logged.",
+            "# A granted tap holds the door open for 3 seconds."
+          ]
+        },
+        {
+          "path": "/etc/badge/README",
+          "ageMinutes": 120000,
+          "content": [
+            "Logs are in /var/log/badge/ (group adm):",
+            "  access.log  one line per badge tap, granted or denied",
+            "  doors.log   door open/close times; PASSAGES is the frame sensor count",
+            "A CLOSE line with PASSAGES greater than the number of granted taps",
+            "while the door was open means somebody walked in behind a colleague."
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "SOC-WS-01",
+      "kind": "workstation",
+      "department": "Security",
+      "location": "Security office, analyst desk",
+      "mac": "52:54:00:e5:02:02",
+      "owner": "h.rahman",
+      "users": [
+        "h.rahman",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 25,
+      "console": {
+        "user": "h.rahman",
+        "state": "locked",
+        "loginMinutesAgo": 20
+      },
+      "bashHistory": {
+        "h.rahman": [
+          "ssh SEC-SRV-01",
+          "tail -n 20 /var/log/security/alerts.log"
+        ]
+      },
+      "files": [
+        {
+          "path": "/etc/siem.conf",
+          "ageMinutes": 9000,
+          "content": [
+            "# Nexora SIEM collector - this machine runs the search console (command: siem).",
+            "collect = all hosts: auth.log kern.log syslog(dhcpd) mail.log squid named badge cctv security audit"
+          ]
+        },
+        {
+          "path": "/home/h.rahman/notes/where-the-logs-are.txt",
+          "ageMinutes": 9000,
+          "content": [
+            "SOC cheat sheet",
+            "ADMIN-SRV-01 (10.0.1.10): /var/log/auth.log  /var/log/squid/access.log  /var/log/named/queries.log  /var/log/mail.log",
+            "SEC-SRV-01   (10.0.1.20): /var/log/security/alerts.log  /var/log/badge/  /var/log/cctv/motion.log",
+            "IP -> machine: dhcpd lines in ADMIN-SRV-01 /var/log/syslog (grep DHCPACK)",
+            "Machine -> person: who sits there? badge log, cameras, ask around."
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "FIN-LT-01",
+      "kind": "workstation",
+      "department": "Finance",
+      "location": "Finance, desk 1",
+      "mac": "52:54:00:f1:21:21",
+      "owner": "f.alqahtani",
+      "users": [
+        "f.alqahtani",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 3000,
+      "console": {
+        "user": "f.alqahtani",
+        "state": "locked",
+        "loginMinutesAgo": 10
+      },
+      "bashHistory": {
+        "f.alqahtani": [
+          "ls Documents",
+          "cat todo.txt"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/f.alqahtani/todo.txt",
+          "ageMinutes": 900,
+          "content": [
+            "[ ] close the February ledger",
+            "[ ] check the VAT report with Sara",
+            "[x] bank reconciliation"
+          ]
+        },
+        {
+          "path": "/home/f.alqahtani/Documents/ledger_notes.txt",
+          "ageMinutes": 2000,
+          "content": [
+            "February ledger: 3 entries still open",
+            "Ask Rami about the vendor review before Thursday"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "FIN-LT-02",
+      "kind": "workstation",
+      "department": "Finance",
+      "location": "Finance, desk 2",
+      "mac": "52:54:00:f1:22:22",
+      "owner": "a.zaki",
+      "users": [
+        "a.zaki",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 3097,
+      "bashHistory": {
+        "a.zaki": [
+          "ls payroll",
+          "cat payroll/checklist.txt"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/a.zaki/todo.txt",
+          "ageMinutes": 937,
+          "content": [
+            "[ ] payroll run on the 25th",
+            "[ ] new hires from HR (ask Jana)"
+          ]
+        },
+        {
+          "path": "/home/a.zaki/payroll/checklist.txt",
+          "ageMinutes": 2053,
+          "content": [
+            "1. collect hours",
+            "2. check new hires",
+            "3. send to the bank"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "FIN-LT-03",
+      "kind": "workstation",
+      "department": "Finance",
+      "location": "Finance, desk 3",
+      "mac": "52:54:00:f1:23:23",
+      "owner": "r.saeed",
+      "users": [
+        "r.saeed",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 3194,
+      "console": {
+        "user": "r.saeed",
+        "state": "locked",
+        "loginMinutesAgo": 16
+      },
+      "bashHistory": {
+        "r.saeed": [
+          "ls",
+          "cat todo.txt"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/r.saeed/todo.txt",
+          "ageMinutes": 974,
+          "content": [
+            "[ ] scan the receipts",
+            "[ ] order printer paper"
+          ]
+        },
+        {
+          "path": "/home/r.saeed/Documents/receipts_march.txt",
+          "ageMinutes": 2106,
+          "content": [
+            "taxi 45.00",
+            "courier 120.00",
+            "coffee beans 88.50"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "HR-LT-01",
+      "kind": "workstation",
+      "department": "HR",
+      "location": "HR, desk 1",
+      "mac": "52:54:00:b2:21:21",
+      "owner": "j.khoury",
+      "users": [
+        "j.khoury",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 3291,
+      "console": {
+        "user": "j.khoury",
+        "state": "locked",
+        "loginMinutesAgo": 19
+      },
+      "bashHistory": {
+        "j.khoury": [
+          "cat Documents/candidates.txt"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/j.khoury/todo.txt",
+          "ageMinutes": 1011,
+          "content": [
+            "[ ] interviews on Wednesday",
+            "[ ] send the offer letter for the Sales job"
+          ]
+        },
+        {
+          "path": "/home/j.khoury/Documents/candidates.txt",
+          "ageMinutes": 2159,
+          "content": [
+            "Sales: 4 candidates, 2 interviews",
+            "Legal: paralegal post filled (Sami)"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "HR-LT-02",
+      "kind": "workstation",
+      "department": "HR",
+      "location": "HR, desk 2",
+      "mac": "52:54:00:b2:22:22",
+      "owner": "b.ahmed",
+      "users": [
+        "b.ahmed",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 3388,
+      "console": {
+        "user": "b.ahmed",
+        "state": "unlocked",
+        "loginMinutesAgo": 22
+      },
+      "bashHistory": {
+        "b.ahmed": [
+          "ls Documents",
+          "cat Documents/phone_list.txt"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/b.ahmed/todo.txt",
+          "ageMinutes": 1048,
+          "content": [
+            "[ ] update the phone list",
+            "[ ] book the training room"
+          ]
+        },
+        {
+          "path": "/home/b.ahmed/Documents/phone_list.txt",
+          "ageMinutes": 2212,
+          "content": [
+            "Reception  100",
+            "IT         200",
+            "Security   300",
+            "Sales      400",
+            "Legal      500"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "MKT-LT-01",
+      "kind": "workstation",
+      "department": "Marketing",
+      "location": "Marketing, desk 1",
+      "mac": "52:54:00:c3:21:21",
+      "owner": "l.nasr",
+      "users": [
+        "l.nasr",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 3485,
+      "console": {
+        "user": "l.nasr",
+        "state": "locked",
+        "loginMinutesAgo": 25
+      },
+      "bashHistory": {
+        "l.nasr": [
+          "ls drafts",
+          "cat todo.txt"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/l.nasr/todo.txt",
+          "ageMinutes": 1085,
+          "content": [
+            "[ ] blog post for the spring launch",
+            "[ ] newsletter draft"
+          ]
+        },
+        {
+          "path": "/home/l.nasr/drafts/newsletter.txt",
+          "ageMinutes": 2265,
+          "content": [
+            "Spring is here at Nexora!",
+            "(ask Omar for the dates)"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "MKT-LT-02",
+      "kind": "workstation",
+      "department": "Marketing",
+      "location": "Marketing, desk 2",
+      "mac": "52:54:00:c3:22:22",
+      "owner": "h.ali",
+      "users": [
+        "h.ali",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 3582,
+      "bashHistory": {
+        "h.ali": [
+          "cat social/schedule.txt"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/h.ali/todo.txt",
+          "ageMinutes": 1122,
+          "content": [
+            "[ ] schedule posts for March",
+            "[ ] reply to comments"
+          ]
+        },
+        {
+          "path": "/home/h.ali/social/schedule.txt",
+          "ageMinutes": 2318,
+          "content": [
+            "Mon: teaser",
+            "Wed: team photo",
+            "Fri: launch"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "MKT-LT-03",
+      "kind": "workstation",
+      "department": "Marketing",
+      "location": "Marketing, desk 3",
+      "mac": "52:54:00:c3:23:23",
+      "owner": "m.fares",
+      "users": [
+        "m.fares",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 3679,
+      "console": {
+        "user": "m.fares",
+        "state": "locked",
+        "loginMinutesAgo": 31
+      },
+      "bashHistory": {
+        "m.fares": [
+          "ls reports",
+          "cat reports/feb_campaign.csv"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/m.fares/todo.txt",
+          "ageMinutes": 1159,
+          "content": [
+            "[ ] campaign numbers for February",
+            "[ ] dashboard for Faisal (Sales)"
+          ]
+        },
+        {
+          "path": "/home/m.fares/reports/feb_campaign.csv",
+          "ageMinutes": 2371,
+          "content": [
+            "channel,clicks,leads",
+            "mail,1204,31",
+            "social,3311,18",
+            "web,980,22"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "SAL-LT-01",
+      "kind": "workstation",
+      "department": "Sales",
+      "location": "Sales, desk 1",
+      "mac": "52:54:00:5a:21:21",
+      "owner": "f.otaibi",
+      "users": [
+        "f.otaibi",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 3776,
+      "console": {
+        "user": "f.otaibi",
+        "state": "locked",
+        "loginMinutesAgo": 34
+      },
+      "bashHistory": {
+        "f.otaibi": [
+          "cat sales/pipeline.csv",
+          "mail"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/f.otaibi/todo.txt",
+          "ageMinutes": 1196,
+          "content": [
+            "[ ] quarterly targets",
+            "[ ] meet Najd Catering about the renewal"
+          ]
+        },
+        {
+          "path": "/home/f.otaibi/sales/pipeline.csv",
+          "ageMinutes": 2424,
+          "content": [
+            "client,stage,value_sar",
+            "Najd Catering,renewal,48000",
+            "Red Sea Logistics,proposal,120000",
+            "Gulf Office Supplies,won,22000"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "SAL-LT-02",
+      "kind": "workstation",
+      "department": "Sales",
+      "location": "Sales, desk 2",
+      "mac": "52:54:00:5a:22:22",
+      "owner": "n.karim",
+      "users": [
+        "n.karim",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 3873,
+      "console": {
+        "user": "n.karim",
+        "state": "unlocked",
+        "loginMinutesAgo": 37
+      },
+      "bashHistory": {
+        "n.karim": [
+          "cat sales/calls.txt"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/n.karim/todo.txt",
+          "ageMinutes": 1233,
+          "content": [
+            "[ ] call Red Sea Logistics",
+            "[ ] send the price list"
+          ]
+        },
+        {
+          "path": "/home/n.karim/sales/calls.txt",
+          "ageMinutes": 2477,
+          "content": [
+            "Red Sea Logistics: call back Tuesday",
+            "Desert Cloud Hosting: not interested"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "SAL-LT-03",
+      "kind": "workstation",
+      "department": "Sales",
+      "location": "Sales, desk 3",
+      "mac": "52:54:00:5a:23:23",
+      "owner": "z.hamdan",
+      "users": [
+        "z.hamdan",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 3970,
+      "console": {
+        "user": "z.hamdan",
+        "state": "locked",
+        "loginMinutesAgo": 40
+      },
+      "bashHistory": {
+        "z.hamdan": [
+          "cat sales/demos.txt"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/z.hamdan/todo.txt",
+          "ageMinutes": 1270,
+          "content": [
+            "[ ] two demos this week",
+            "[ ] update the CRM"
+          ]
+        },
+        {
+          "path": "/home/z.hamdan/sales/demos.txt",
+          "ageMinutes": 2530,
+          "content": [
+            "Tue 10:00 Falcon Security Systems",
+            "Thu 14:00 Najd Catering"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "SAL-LT-04",
+      "kind": "workstation",
+      "department": "Sales",
+      "location": "Sales, desk 4",
+      "mac": "52:54:00:5a:24:24",
+      "owner": "s.idris",
+      "users": [
+        "s.idris",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 4067,
+      "bashHistory": {
+        "s.idris": [
+          "ls sales"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/s.idris/todo.txt",
+          "ageMinutes": 1307,
+          "content": [
+            "[ ] print the contracts for Faisal",
+            "[ ] book the meeting room"
+          ]
+        },
+        {
+          "path": "/home/s.idris/sales/contracts_to_print.txt",
+          "ageMinutes": 2583,
+          "content": [
+            "Najd Catering renewal (2 copies)",
+            "Gulf Office Supplies (1 copy)"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "SAL-LT-05",
+      "kind": "workstation",
+      "department": "Sales",
+      "location": "Sales, desk 5",
+      "mac": "52:54:00:5a:25:25",
+      "owner": "k.nabil",
+      "users": [
+        "k.nabil",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 4164,
+      "console": {
+        "user": "k.nabil",
+        "state": "locked",
+        "loginMinutesAgo": 46
+      },
+      "bashHistory": {
+        "k.nabil": [
+          "cat sales/trip.txt"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/k.nabil/todo.txt",
+          "ageMinutes": 1344,
+          "content": [
+            "[ ] visit the new client in the north",
+            "[ ] expense claim for the trip"
+          ]
+        },
+        {
+          "path": "/home/k.nabil/sales/trip.txt",
+          "ageMinutes": 2636,
+          "content": [
+            "Hotel: 2 nights",
+            "Car: company car (ask Maha for the keys)"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "SAL-LT-06",
+      "kind": "workstation",
+      "department": "Sales",
+      "location": "Sales, desk 6",
+      "mac": "52:54:00:5a:26:26",
+      "owner": "h.mahmoud",
+      "users": [
+        "h.mahmoud",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 4261,
+      "console": {
+        "user": "h.mahmoud",
+        "state": "locked",
+        "loginMinutesAgo": 49
+      },
+      "bashHistory": {
+        "h.mahmoud": [
+          "cat sales/forecast_q2.txt"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/h.mahmoud/todo.txt",
+          "ageMinutes": 1381,
+          "content": [
+            "[ ] forecast for Q2",
+            "[ ] compare with Marketing leads (Mona)"
+          ]
+        },
+        {
+          "path": "/home/h.mahmoud/sales/forecast_q2.txt",
+          "ageMinutes": 2689,
+          "content": [
+            "Q2 forecast: +8% if Red Sea Logistics signs",
+            "otherwise +2%"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "LEG-LT-01",
+      "kind": "workstation",
+      "department": "Legal",
+      "location": "Legal, desk 1",
+      "mac": "52:54:00:1e:21:21",
+      "owner": "r.shami",
+      "users": [
+        "r.shami",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 4358,
+      "console": {
+        "user": "r.shami",
+        "state": "locked",
+        "loginMinutesAgo": 52
+      },
+      "bashHistory": {
+        "r.shami": [
+          "ls contracts",
+          "cat contracts/najd_catering_renewal.txt"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/r.shami/todo.txt",
+          "ageMinutes": 1418,
+          "content": [
+            "[ ] review the Najd Catering renewal",
+            "[ ] privacy policy update"
+          ]
+        },
+        {
+          "path": "/home/r.shami/contracts/najd_catering_renewal.txt",
+          "ageMinutes": 2742,
+          "content": [
+            "Renewal for 12 months, 48,000 SAR",
+            "Clause 7 (termination) needs a change"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "LEG-LT-02",
+      "kind": "workstation",
+      "department": "Legal",
+      "location": "Legal, desk 2",
+      "mac": "52:54:00:1e:22:22",
+      "owner": "a.mustafa",
+      "users": [
+        "a.mustafa",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 4455,
+      "bashHistory": {
+        "a.mustafa": [
+          "cat contracts/to_sign.txt"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/a.mustafa/todo.txt",
+          "ageMinutes": 1455,
+          "content": [
+            "[ ] sign-off list for Faisal",
+            "[ ] archive the 2025 contracts"
+          ]
+        },
+        {
+          "path": "/home/a.mustafa/contracts/to_sign.txt",
+          "ageMinutes": 2795,
+          "content": [
+            "Gulf Office Supplies - ready",
+            "Red Sea Logistics - waiting for the price"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "LEG-LT-03",
+      "kind": "workstation",
+      "department": "Legal",
+      "location": "Legal, desk 3",
+      "mac": "52:54:00:1e:23:23",
+      "owner": "s.yasin",
+      "users": [
+        "s.yasin",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 4552,
+      "console": {
+        "user": "s.yasin",
+        "state": "unlocked",
+        "loginMinutesAgo": 58
+      },
+      "bashHistory": {
+        "s.yasin": [
+          "cat handbook_notes.txt"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/s.yasin/todo.txt",
+          "ageMinutes": 1492,
+          "content": [
+            "[ ] first week: read the handbook",
+            "[ ] ask IT for a second screen"
+          ]
+        },
+        {
+          "path": "/home/s.yasin/handbook_notes.txt",
+          "ageMinutes": 2848,
+          "content": [
+            "Contracts go to the archive room after signing",
+            "Lock the screen! (Noor said so twice)"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "IT-WS-03",
+      "kind": "workstation",
+      "department": "IT",
+      "location": "IT department, desk 3",
+      "mac": "52:54:00:17:23:23",
+      "owner": "m.saleem",
+      "users": [
+        "m.saleem",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 4649,
+      "console": {
+        "user": "m.saleem",
+        "state": "locked",
+        "loginMinutesAgo": 61
+      },
+      "bashHistory": {
+        "m.saleem": [
+          "ls code/intranet",
+          "cat code/intranet/TODO.md",
+          "ping -c 1 intranet.nexora.local"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/m.saleem/todo.txt",
+          "ageMinutes": 1529,
+          "content": [
+            "[ ] fix the intranet login page",
+            "[ ] code review for Dana"
+          ]
+        },
+        {
+          "path": "/home/m.saleem/code/intranet/TODO.md",
+          "ageMinutes": 2901,
+          "content": [
+            "- login page: show the error message",
+            "- news page: sort by date"
+          ]
+        }
+      ]
+    },
+    {
+      "hostname": "REC-PC-02",
+      "kind": "workstation",
+      "department": "Reception",
+      "location": "Reception, desk 2",
+      "mac": "52:54:00:d4:22:22",
+      "owner": "a.bakr",
+      "users": [
+        "a.bakr",
+        "k.nasser"
+      ],
+      "sudoers": [
+        "k.nasser"
+      ],
+      "uptimeMinutes": 4746,
+      "bashHistory": {
+        "a.bakr": [
+          "cat orders.txt"
+        ]
+      },
+      "files": [
+        {
+          "path": "/home/a.bakr/todo.txt",
+          "ageMinutes": 1566,
+          "content": [
+            "[ ] order water for the cafeteria",
+            "[ ] post for Legal"
+          ]
+        },
+        {
+          "path": "/home/a.bakr/orders.txt",
+          "ageMinutes": 2954,
+          "content": [
+            "water: 20 bottles",
+            "coffee: 4 kg",
+            "paper: 10 boxes"
+          ]
+        }
+      ]
+    }
+  ],
+  "history": [
+    {
+      "type": "console-session",
+      "host": "IT-WS-02",
+      "user": "k.nasser",
+      "minutesAgo": 4310,
+      "durationMinutes": 500
+    },
+    {
+      "type": "console-session",
+      "host": "FIN-LT-07",
+      "user": "s.alharbi",
+      "minutesAgo": 4290,
+      "durationMinutes": 450
+    },
+    {
+      "type": "console-session",
+      "host": "FIN-LT-04",
+      "user": "r.mansour",
+      "minutesAgo": 4280,
+      "durationMinutes": 465
+    },
+    {
+      "type": "console-session",
+      "host": "HR-LT-03",
+      "user": "l.haddad",
+      "minutesAgo": 4275,
+      "durationMinutes": 440
+    },
+    {
+      "type": "console-session",
+      "host": "MKT-LT-11",
+      "user": "o.farouk",
+      "minutesAgo": 4260,
+      "durationMinutes": 400
+    },
+    {
+      "type": "console-session",
+      "host": "HR-LT-05",
+      "user": "n.saleh",
+      "minutesAgo": 4270,
+      "durationMinutes": 430
+    },
+    {
+      "type": "console-session",
+      "host": "MKT-LT-09",
+      "user": "y.khalil",
+      "minutesAgo": 4250,
+      "durationMinutes": 410
+    },
+    {
+      "type": "console-session",
+      "host": "IT-WS-01",
+      "user": "d.aziz",
+      "minutesAgo": 4305,
+      "durationMinutes": 480
+    },
+    {
+      "type": "console-session",
+      "host": "REC-PC-01",
+      "user": "m.yousef",
+      "minutesAgo": 4320,
+      "durationMinutes": 510
+    },
+    {
+      "type": "console-session",
+      "host": "SEC-WS-01",
+      "user": "t.omar",
+      "minutesAgo": 4325,
+      "durationMinutes": 520
+    },
+    {
+      "type": "ssh-session",
+      "from": "IT-WS-02",
+      "host": "ADMIN-SRV-01",
+      "user": "k.nasser",
+      "minutesAgo": 4200,
+      "durationMinutes": 35,
+      "commands": [
+        "sudo systemctl status isc-dhcp-server",
+        "tail -n 20 /var/log/syslog",
+        "cat /var/lib/dhcp/dhcpd.leases"
+      ]
+    },
+    {
+      "type": "sudo",
+      "host": "ADMIN-SRV-01",
+      "user": "k.nasser",
+      "minutesAgo": 4198,
+      "command": "systemctl status isc-dhcp-server"
+    },
+    {
+      "type": "ssh-fail",
+      "from": "FIN-LT-04",
+      "host": "ADMIN-SRV-01",
+      "user": "r.mansour",
+      "minutesAgo": 4101,
+      "attempts": 2
+    },
+    {
+      "type": "ssh-session",
+      "from": "FIN-LT-04",
+      "host": "ADMIN-SRV-01",
+      "user": "r.mansour",
+      "minutesAgo": 4100,
+      "durationMinutes": 12,
+      "commands": [
+        "ls /srv/shared",
+        "cat /srv/shared/README.txt",
+        "ls /srv/shared/templates"
+      ]
+    },
+    {
+      "type": "ssh-session",
+      "from": "IT-WS-02",
+      "host": "HR-LT-03",
+      "user": "k.nasser",
+      "minutesAgo": 4000,
+      "durationMinutes": 15,
+      "commands": [
+        "sudo journalctl -n 50",
+        "ps aux | grep cups"
+      ]
+    },
+    {
+      "type": "sudo",
+      "host": "HR-LT-03",
+      "user": "k.nasser",
+      "minutesAgo": 3999,
+      "command": "journalctl -n 50"
+    },
+    {
+      "type": "ssh-fail",
+      "from": "MKT-LT-11",
+      "host": "ADMIN-SRV-01",
+      "user": "admin",
+      "minutesAgo": 3950,
+      "attempts": 3
+    },
+    {
+      "type": "ssh-session",
+      "from": "FIN-LT-07",
+      "host": "ADMIN-SRV-01",
+      "user": "s.alharbi",
+      "minutesAgo": 3900,
+      "durationMinutes": 8,
+      "commands": [
+        "ls /srv/shared/policies",
+        "cat /srv/shared/policies/password-policy.txt"
+      ]
+    },
+    {
+      "type": "ssh-session",
+      "from": "IT-WS-02",
+      "host": "ADMIN-SRV-01",
+      "user": "k.nasser",
+      "minutesAgo": 28,
+      "durationMinutes": 10,
+      "commands": [
+        "sudo tail -n 5 /var/log/backup.log",
+        "who"
+      ]
+    },
+    {
+      "type": "sudo",
+      "host": "ADMIN-SRV-01",
+      "user": "k.nasser",
+      "minutesAgo": 27,
+      "command": "tail -n 5 /var/log/backup.log"
+    },
+    {
+      "type": "console-session",
+      "host": "FIN-LT-01",
+      "user": "f.alqahtani",
+      "minutesAgo": 4240,
+      "durationMinutes": 420
+    },
+    {
+      "type": "console-session",
+      "host": "FIN-LT-02",
+      "user": "a.zaki",
+      "minutesAgo": 4235,
+      "durationMinutes": 435
+    },
+    {
+      "type": "console-session",
+      "host": "FIN-LT-03",
+      "user": "r.saeed",
+      "minutesAgo": 4230,
+      "durationMinutes": 450
+    },
+    {
+      "type": "console-session",
+      "host": "HR-LT-01",
+      "user": "j.khoury",
+      "minutesAgo": 4225,
+      "durationMinutes": 465
+    },
+    {
+      "type": "console-session",
+      "host": "HR-LT-02",
+      "user": "b.ahmed",
+      "minutesAgo": 4220,
+      "durationMinutes": 480
+    },
+    {
+      "type": "console-session",
+      "host": "MKT-LT-01",
+      "user": "l.nasr",
+      "minutesAgo": 4215,
+      "durationMinutes": 420
+    },
+    {
+      "type": "console-session",
+      "host": "MKT-LT-02",
+      "user": "h.ali",
+      "minutesAgo": 4210,
+      "durationMinutes": 435
+    },
+    {
+      "type": "console-session",
+      "host": "MKT-LT-03",
+      "user": "m.fares",
+      "minutesAgo": 4205,
+      "durationMinutes": 450
+    },
+    {
+      "type": "console-session",
+      "host": "SAL-LT-01",
+      "user": "f.otaibi",
+      "minutesAgo": 4200,
+      "durationMinutes": 465
+    },
+    {
+      "type": "console-session",
+      "host": "SAL-LT-02",
+      "user": "n.karim",
+      "minutesAgo": 4195,
+      "durationMinutes": 480
+    },
+    {
+      "type": "console-session",
+      "host": "SAL-LT-03",
+      "user": "z.hamdan",
+      "minutesAgo": 4190,
+      "durationMinutes": 420
+    },
+    {
+      "type": "console-session",
+      "host": "SAL-LT-04",
+      "user": "s.idris",
+      "minutesAgo": 4185,
+      "durationMinutes": 435
+    },
+    {
+      "type": "console-session",
+      "host": "SAL-LT-05",
+      "user": "k.nabil",
+      "minutesAgo": 4180,
+      "durationMinutes": 450
+    },
+    {
+      "type": "console-session",
+      "host": "SAL-LT-06",
+      "user": "h.mahmoud",
+      "minutesAgo": 4175,
+      "durationMinutes": 465
+    },
+    {
+      "type": "console-session",
+      "host": "LEG-LT-01",
+      "user": "r.shami",
+      "minutesAgo": 4170,
+      "durationMinutes": 480
+    },
+    {
+      "type": "console-session",
+      "host": "LEG-LT-02",
+      "user": "a.mustafa",
+      "minutesAgo": 4165,
+      "durationMinutes": 420
+    },
+    {
+      "type": "console-session",
+      "host": "LEG-LT-03",
+      "user": "s.yasin",
+      "minutesAgo": 4160,
+      "durationMinutes": 435
+    },
+    {
+      "type": "console-session",
+      "host": "IT-WS-03",
+      "user": "m.saleem",
+      "minutesAgo": 4155,
+      "durationMinutes": 450
+    },
+    {
+      "type": "console-session",
+      "host": "REC-PC-02",
+      "user": "a.bakr",
+      "minutesAgo": 4150,
+      "durationMinutes": 465
+    }
+  ],
+  "tasks": [
+    {
+      "id": "daily-report",
+      "title": "File the daily report",
+      "steps": [
+        {
+          "text": "Create the reports folder",
+          "run": "mkdir -p Documents/reports",
+          "match": "^mkdir .*Documents/reports"
+        },
+        {
+          "text": "Write today's report",
+          "run": "echo \"Daily report {date}: nothing unusual\" > Documents/reports/{date}.txt",
+          "match": "^echo .*>+ *Documents/reports/"
+        },
+        {
+          "text": "Check that it is there",
+          "run": "ls Documents/reports",
+          "match": "^ls .*Documents/reports"
+        }
+      ]
+    },
+    {
+      "id": "read-policy",
+      "title": "Re-read the password policy on the server",
+      "steps": [
+        {
+          "text": "Connect to the admin server",
+          "run": "ssh ADMIN-SRV-01",
+          "match": "^ssh .*ADMIN-SRV-01"
+        },
+        {
+          "text": "Read the policy",
+          "run": "cat /srv/shared/policies/password-policy.txt",
+          "match": "password-policy",
+          "host": "ADMIN-SRV-01"
+        },
+        {
+          "text": "Disconnect",
+          "run": "exit",
+          "match": "^(exit|logout)$",
+          "host": "ADMIN-SRV-01"
+        }
+      ]
+    },
+    {
+      "id": "archive-draft",
+      "title": "Archive an old draft",
+      "steps": [
+        {
+          "text": "Save the draft",
+          "run": "echo \"draft {n}\" > draft_{n}.txt",
+          "match": "^echo .*> *draft_{n}\\.txt"
+        },
+        {
+          "text": "Make an archive folder",
+          "run": "mkdir -p archive",
+          "match": "^mkdir .*archive"
+        },
+        {
+          "text": "Move the draft into it",
+          "run": "mv draft_{n}.txt archive/",
+          "match": "^mv draft_{n}\\.txt +archive"
+        }
+      ]
+    },
+    {
+      "id": "print-form",
+      "title": "Print an expense form",
+      "steps": [
+        {
+          "text": "Fill in the form",
+          "run": "echo \"expense claim {n}\" > expense_{n}.txt",
+          "match": "^echo .*> *expense_{n}\\.txt"
+        },
+        {
+          "text": "Collect the printout from the printer room",
+          "visit": "Printer room",
+          "staySeconds": 6
+        }
+      ]
+    },
+    {
+      "id": "coffee",
+      "title": "Team coffee",
+      "steps": [
+        {
+          "text": "Join your colleagues in the cafeteria for a few minutes",
+          "visit": "Cafeteria / meeting room",
+          "staySeconds": 20
+        }
+      ]
+    },
+    {
+      "id": "answer-mail",
+      "title": "Answer a colleague by email",
+      "steps": [
+        {
+          "text": "Look at your inbox",
+          "run": "mail",
+          "match": "^mail( \\d+)?$"
+        },
+        {
+          "text": "Send {colleague} a short reply",
+          "run": "mail -s \"Re: question {n}\" {colleague} \"Sure, I will send it over today.\"",
+          "match": "^mail -s .*{colleague}"
+        }
+      ]
+    },
+    {
+      "id": "intranet-news",
+      "title": "Read the intranet news",
+      "steps": [
+        {
+          "text": "Open the intranet news page",
+          "run": "curl http://intranet.nexora.local/news",
+          "match": "^curl .*intranet\\.nexora\\.local"
+        }
+      ]
+    },
+    {
+      "id": "supplier-check",
+      "title": "Check the supplier portal",
+      "departments": [
+        "Finance"
+      ],
+      "steps": [
+        {
+          "text": "Open the supplier's invoice page",
+          "run": "curl https://supplier-portal.example/invoices/2{n}",
+          "match": "^curl .*supplier-portal\\.example"
+        }
+      ]
+    },
+    {
+      "id": "approve-invoice",
+      "title": "Approve an invoice",
+      "departments": [
+        "Finance"
+      ],
+      "steps": [
+        {
+          "text": "Make sure the Documents folder exists",
+          "run": "mkdir -p Documents",
+          "match": "^mkdir .*Documents"
+        },
+        {
+          "text": "Record the approval",
+          "run": "echo \"{date} approved INV-2{n}\" >> Documents/approvals.log",
+          "match": "^echo .*approved.*>> *Documents/approvals\\.log"
+        },
+        {
+          "text": "Check the last approvals",
+          "run": "tail -n 3 Documents/approvals.log",
+          "match": "^(tail|cat) .*approvals\\.log"
+        }
+      ]
+    },
+    {
+      "id": "staff-list",
+      "title": "Update the staff log",
+      "departments": [
+        "HR"
+      ],
+      "steps": [
+        {
+          "text": "Make sure the Documents folder exists",
+          "run": "mkdir -p Documents",
+          "match": "^mkdir .*Documents"
+        },
+        {
+          "text": "Add today's line",
+          "run": "echo \"{date} headcount checked\" >> Documents/staff_log.txt",
+          "match": "^echo .*>> *Documents/staff_log\\.txt"
+        }
+      ]
+    },
+    {
+      "id": "campaign-notes",
+      "title": "Write up the campaign notes",
+      "departments": [
+        "Marketing"
+      ],
+      "steps": [
+        {
+          "text": "Make sure the Documents folder exists",
+          "run": "mkdir -p Documents",
+          "match": "^mkdir .*Documents"
+        },
+        {
+          "text": "Add a note",
+          "run": "echo \"{date} newsletter draft {n} reviewed\" >> Documents/campaign_notes.txt",
+          "match": "^echo .*>> *Documents/campaign_notes\\.txt"
+        },
+        {
+          "text": "Count the notes so far",
+          "run": "wc -l Documents/campaign_notes.txt",
+          "match": "^wc .*campaign_notes"
+        }
+      ]
+    },
+    {
+      "id": "visitor-log",
+      "title": "Update the visitor log",
+      "departments": [
+        "Reception"
+      ],
+      "steps": [
+        {
+          "text": "Make sure the visitors folder exists",
+          "run": "mkdir -p visitors",
+          "match": "^mkdir .*visitors"
+        },
+        {
+          "text": "Add a visitor",
+          "run": "echo \"{date} courier, parcel {n}, signed by {user}\" >> visitors/{date}.txt",
+          "match": "^echo .*>> *visitors/"
+        }
+      ]
+    },
+    {
+      "id": "net-check",
+      "title": "Check that the server answers",
+      "roles": [
+        "helpdesk",
+        "sysadmin"
+      ],
+      "steps": [
+        {
+          "text": "Ping the admin server",
+          "run": "ping -c 2 ADMIN-SRV-01",
+          "match": "^ping .*ADMIN-SRV-01"
+        },
+        {
+          "text": "Check its DNS name",
+          "run": "nslookup ADMIN-SRV-01",
+          "match": "^nslookup .*ADMIN-SRV-01"
+        }
+      ]
+    },
+    {
+      "id": "check-backup",
+      "title": "Check last night's backup",
+      "roles": [
+        "sysadmin"
+      ],
+      "steps": [
+        {
+          "text": "Connect to the admin server",
+          "run": "ssh ADMIN-SRV-01",
+          "match": "^ssh .*ADMIN-SRV-01"
+        },
+        {
+          "text": "Read the end of the backup log",
+          "run": "sudo tail -n 5 /var/log/backup.log",
+          "match": "backup\\.log",
+          "host": "ADMIN-SRV-01"
+        },
+        {
+          "text": "Disconnect",
+          "run": "exit",
+          "match": "^(exit|logout)$",
+          "host": "ADMIN-SRV-01"
+        }
+      ]
+    },
+    {
+      "id": "rotate-log",
+      "title": "Rotate the backup log",
+      "roles": [
+        "sysadmin"
+      ],
+      "steps": [
+        {
+          "text": "Connect to the admin server",
+          "run": "ssh ADMIN-SRV-01",
+          "match": "^ssh .*ADMIN-SRV-01"
+        },
+        {
+          "text": "Keep a copy of the current log",
+          "run": "sudo cp /var/log/backup.log /var/log/backup.log.1",
+          "match": "^sudo cp /var/log/backup\\.log",
+          "host": "ADMIN-SRV-01"
+        },
+        {
+          "text": "Disconnect",
+          "run": "exit",
+          "match": "^(exit|logout)$",
+          "host": "ADMIN-SRV-01"
+        }
+      ]
+    },
+    {
+      "id": "alert-review",
+      "title": "Review the security alerts",
+      "roles": [
+        "soc"
+      ],
+      "steps": [
+        {
+          "text": "Connect to the security server",
+          "run": "ssh SEC-SRV-01",
+          "match": "^ssh .*SEC-SRV-01"
+        },
+        {
+          "text": "Read the latest alerts",
+          "run": "tail -n 20 /var/log/security/alerts.log",
+          "match": "security/alerts\\.log",
+          "host": "SEC-SRV-01"
+        },
+        {
+          "text": "Disconnect",
+          "run": "exit",
+          "match": "^(exit|logout)$",
+          "host": "SEC-SRV-01"
+        }
+      ]
+    },
+    {
+      "id": "proxy-review",
+      "title": "Check the web proxy log",
+      "roles": [
+        "soc"
+      ],
+      "steps": [
+        {
+          "text": "Connect to the admin server",
+          "run": "ssh ADMIN-SRV-01",
+          "match": "^ssh .*ADMIN-SRV-01"
+        },
+        {
+          "text": "Look at the latest web requests",
+          "run": "tail -n 15 /var/log/squid/access.log",
+          "match": "squid/access\\.log",
+          "host": "ADMIN-SRV-01"
+        },
+        {
+          "text": "Disconnect",
+          "run": "exit",
+          "match": "^(exit|logout)$",
+          "host": "ADMIN-SRV-01"
+        }
+      ]
+    },
+    {
+      "id": "badge-review",
+      "title": "Review the badge log",
+      "roles": [
+        "guard"
+      ],
+      "steps": [
+        {
+          "text": "Connect to the badge server",
+          "run": "ssh SEC-SRV-01",
+          "match": "^ssh .*SEC-SRV-01"
+        },
+        {
+          "text": "Read the latest taps",
+          "run": "tail -n 20 /var/log/badge/access.log",
+          "match": "badge/access\\.log",
+          "host": "SEC-SRV-01"
+        },
+        {
+          "text": "Count refused badges",
+          "run": "grep -c DENIED /var/log/badge/access.log",
+          "match": "^grep .*DENIED",
+          "host": "SEC-SRV-01"
+        },
+        {
+          "text": "Disconnect",
+          "run": "exit",
+          "match": "^(exit|logout)$",
+          "host": "SEC-SRV-01"
+        }
+      ]
+    },
+    {
+      "id": "rounds",
+      "title": "Walk the rounds",
+      "roles": [
+        "guard"
+      ],
+      "steps": [
+        {
+          "text": "Check the storage room",
+          "visit": "Storage",
+          "staySeconds": 5
+        },
+        {
+          "text": "Check the printer room",
+          "visit": "Printer room",
+          "staySeconds": 5
+        },
+        {
+          "text": "Check reception",
+          "visit": "Reception",
+          "staySeconds": 5
+        }
+      ]
+    },
+    {
+      "id": "pipeline",
+      "title": "Update the sales pipeline",
+      "departments": [
+        "Sales"
+      ],
+      "steps": [
+        {
+          "text": "Write today’s calls into a note",
+          "run": "echo \"{date}: called 3 clients\" >> calls_{n}.txt",
+          "match": "^echo .*>+ *calls_\\d+\\.txt"
+        },
+        {
+          "text": "Check the note",
+          "run": "cat calls_{n}.txt",
+          "match": "^cat .*calls_\\d+\\.txt"
+        }
+      ]
+    },
+    {
+      "id": "contract-review",
+      "title": "Review a contract",
+      "departments": [
+        "Legal"
+      ],
+      "steps": [
+        {
+          "text": "Open your contracts",
+          "run": "ls contracts",
+          "match": "^ls .*contracts"
+        },
+        {
+          "text": "Note what to change",
+          "run": "echo \"clause {n}: check\" >> review_{n}.txt",
+          "match": "^echo .*>+ *review_\\d+\\.txt"
+        }
+      ]
+    }
+  ]
+}

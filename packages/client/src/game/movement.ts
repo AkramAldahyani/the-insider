@@ -12,10 +12,10 @@ import {
  * the server room's badge reader, and a badge log line nobody meant to leave is
  * false evidence against an innocent player.
  */
-export function besidesDesk(map: OfficeMap, position: { x: number; y: number }): { door: MapDoor | null; monitors: boolean; button: boolean } {
+export function besidesDesk(map: OfficeMap, position: { x: number; y: number }): { door: MapDoor | null; monitors: boolean; button: boolean; talk: boolean } {
   const { x, y } = position;
   const desk = nearestDesk(map, x, y);
-  if (desk && desk.distance <= INTERACT_DISTANCE) return { door: null, monitors: false, button: false };
+  if (desk && desk.distance <= INTERACT_DISTANCE) return { door: null, monitors: false, button: false, talk: false };
   const door = nearestReaderDoor(map, x, y);
   const near = (kind: string, distance: number) => map.furniture.some((f) => f.kind === kind && distanceToRect(f, x, y) <= distance);
   // A little less than the server allows, so a hint is never shown a step too early.
@@ -23,6 +23,8 @@ export function besidesDesk(map: OfficeMap, position: { x: number; y: number }):
     door: door && door.distance <= TAP_DISTANCE - 4 ? door.door : null,
     monitors: near('monitors', INTERACT_DISTANCE - 4),
     button: near('button', BUTTON_DISTANCE - 4),
+    // A department's own meeting button (the large office).
+    talk: near('talk', BUTTON_DISTANCE - 4),
   };
 }
 

@@ -23,8 +23,12 @@ export const PARTY_MIN_HUMAN = 3;
 export const PARTY_HUMAN_HACKER = 4;
 /** After a lost connection the place is kept for this long; in a match a bot plays from then on until the player returns. */
 export const HOLD_MS = 60_000;
-/** A person who is the hacker waits this many game minutes between first reading the flag and handing it in. */
-export const PARTY_HAND_IN_MINUTES = 3;
+/**
+ * A person who is the hacker waits this many game minutes between first reading the flag and handing it in, by
+ * the lobby's difficulty (the defenders'). Measured in Phase 6 part J: a defender at their PC who knows where to look
+ * presses the emergency button 1 to 2.5 minutes after the flag was read; beginners need longer (owner's choice).
+ */
+export const PARTY_HAND_IN_MINUTES: Record<SoloDifficulty, number> = { easy: 5, normal: 3, hard: 2 };
 
 /**
  * Letters of a lobby code. Only consonants, so a random code never spells a
@@ -67,6 +71,17 @@ export const HACKERS_GONE = 'The last hacker left the company.';
 export const PARTY_MEETINGS = ['short', 'normal', 'long'] as const;
 export type PartyMeetings = (typeof PARTY_MEETINGS)[number];
 
+/** Which office: the small one (11 desks) or the large one (30), or "auto": the small one as long as everybody fits. */
+export const PARTY_OFFICES = ['auto', 'small', 'large'] as const;
+export type PartyOffice = (typeof PARTY_OFFICES)[number];
+/** In the large office there are at most this many all-hands meetings in a match (owner's rule, Phase 6 part I). */
+export const LARGE_ALL_HANDS = 3;
+
+/** The office a match of so many people takes place in. */
+export function officeFor(settings: PartySettings, people: number, smallDesks: number): 'small' | 'large' {
+  return settings.office === 'large' || (settings.office === 'auto' && people > smallDesks) ? 'large' : 'small';
+}
+
 /** Who may be the hacker: drawn (see PARTY_HUMAN_HACKER), always a person, or the computer. */
 export const PARTY_HACKERS = ['auto', 'human', 'bot'] as const;
 export type PartyHacker = (typeof PARTY_HACKERS)[number];
@@ -81,20 +96,22 @@ export interface PartySettings {
   /** How much the computer's hacker knows, and how fast it is. */
   difficulty: SoloDifficulty;
   meetings: PartyMeetings;
+  office: PartyOffice;
 }
 
-export const DEFAULT_PARTY_SETTINGS: PartySettings = { bots: true, hacker: 'auto', hackers: 0, difficulty: 'normal', meetings: 'normal' };
+export const DEFAULT_PARTY_SETTINGS: PartySettings = { bots: true, hacker: 'auto', hackers: 0, difficulty: 'normal', meetings: 'normal', office: 'auto' };
 
 /** Takes the valid fields of a change from the host; everything else stays as it was. */
 export function changeSettings(old: PartySettings, change: unknown): PartySettings {
   if (typeof change !== 'object' || change === null) return old;
-  const { bots, hacker, hackers, difficulty, meetings } = change as Record<string, unknown>;
+  const { bots, hacker, hackers, difficulty, meetings, office } = change as Record<string, unknown>;
   return {
     bots: typeof bots === 'boolean' ? bots : old.bots,
     hacker: PARTY_HACKERS.find((h) => h === hacker) ?? old.hacker,
     hackers: [0, 1, 2, 3].find((n) => n === hackers) ?? old.hackers,
     difficulty: SOLO_DIFFICULTIES.find((d) => d === difficulty) ?? old.difficulty,
     meetings: PARTY_MEETINGS.find((m) => m === meetings) ?? old.meetings,
+    office: PARTY_OFFICES.find((o) => o === office) ?? old.office,
   };
 }
 
@@ -136,8 +153,11 @@ export interface PartyView {
   you: string;
   hostId: string;
   members: PartyMember[];
-  /** How many people fit. */
+  /** How many people fit (in the largest office). */
   size: number;
+  /** The office the (next) match takes place in, and its desks. */
+  office: 'small' | 'large';
+  desks: number;
   settings: PartySettings;
   /** How many hackers the match has (or would have now). */
   hackers: number;

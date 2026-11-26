@@ -122,6 +122,12 @@ function furniture(g: Phaser.GameObjects.Graphics, f: MapFurniture): void {
       g.fillStyle(0xe5484d).fillCircle(x + w / 2, y + h / 2 - 2, w / 2 - 5);
       g.fillStyle(0xffffff, 0.35).fillCircle(x + w / 2 - 3, y + h / 2 - 5, 3);
       break;
+    case 'talk':
+      // A department's meeting button (large office): smaller and blue, so that nobody takes it for the red one.
+      g.fillStyle(0x3a4350).fillRoundedRect(x + 5, y + 8, w - 10, h - 12, 4);
+      g.fillStyle(0x1d4a7a).fillCircle(x + w / 2, y + h / 2, w / 2 - 7);
+      g.fillStyle(0x58a6ff).fillCircle(x + w / 2, y + h / 2 - 1, w / 2 - 9);
+      break;
     default: frame(0x647180);
   }
 }

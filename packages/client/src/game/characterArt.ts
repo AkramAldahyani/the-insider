@@ -13,6 +13,8 @@ export const departmentColor = (department: string): string => {
   if (d.includes('finance')) return '#78bdec';
   if (d === 'hr' || d.includes('human')) return '#d99bc5';
   if (d.includes('marketing')) return '#e4bc70';
+  if (d.includes('sales')) return '#f09a6b';
+  if (d.includes('legal')) return '#9fb4e8';
   if (d.includes('security')) return '#dd8993';
   if (d.includes('admin')) return '#b6a2e4';
   if (d.includes('it')) return '#74cbbb';

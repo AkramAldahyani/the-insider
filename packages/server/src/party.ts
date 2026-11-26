@@ -5,7 +5,7 @@
  */
 import { randomInt } from 'node:crypto';
 import {
-  CODE_LENGTH, CODE_LETTERS, DEFAULT_PARTY_SETTINGS, PARTY_HAND_IN_MINUTES, PARTY_MIN, PARTY_MIN_HUMAN, PARTY_VOTES_NEEDED, changeSettings, cleanName, hackerCount,
+  CODE_LENGTH, CODE_LETTERS, DEFAULT_PARTY_SETTINGS, PARTY_HAND_IN_MINUTES, LARGE_ALL_HANDS, PARTY_MIN, PARTY_MIN_HUMAN, PARTY_VOTES_NEEDED, officeFor, changeSettings, cleanName, hackerCount,
   type PartyCast, type PartyMeetings, type PartyMember, type PartySettings, type PartyView,
 } from '@insider/shared';
 import { whoMayHack, type Deal } from './deal';
@@ -33,7 +33,18 @@ export class Party {
   private host = '';
   private count = 0;
 
-  constructor(readonly code: string, readonly size: number) {}
+  /** `size`: people in the largest office; `smallDesks`: desks of the small one. */
+  constructor(readonly code: string, readonly size: number, readonly smallDesks = size) {}
+
+  /** The office the next match takes place in. */
+  office(): 'small' | 'large' {
+    return this.size > this.smallDesks ? officeFor(this.settings, this.members.size, this.smallDesks) : 'small';
+  }
+
+  /** Desks of that office. */
+  desks(): number {
+    return this.office() === 'large' ? this.size : this.smallDesks;
+  }
 
   /** The network ids of everybody here. */
   clients(): string[] {
@@ -139,8 +150,9 @@ export class Party {
   /** Why the host cannot start yet, or "". The host starts the match, so only the others have to be ready. */
   notYet(): string {
     if (this.playing) return 'The match has already started.';
+    if (this.members.size > this.desks()) return `The small office has ${this.smallDesks} desks: choose the large office.`;
     if (this.members.size < PARTY_MIN) return `At least ${PARTY_MIN} people are needed. Share the code with a friend.`;
-    if (whoMayHack(this.settings, this.members.size, this.size) === 'human' && this.members.size < PARTY_MIN_HUMAN) return `When one of you is the hacker, at least ${PARTY_MIN_HUMAN} people are needed.`;
+    if (whoMayHack(this.settings, this.members.size, this.desks()) === 'human' && this.members.size < PARTY_MIN_HUMAN) return `When one of you is the hacker, at least ${PARTY_MIN_HUMAN} people are needed.`;
     const lost = [...this.members.values()].filter((m) => m.lost).map((m) => m.name);
     if (lost.length > 0) return `${lost.join(', ')} lost the connection. Their place is kept for a minute.`;
     const away = [...this.members.values()].filter((m) => m.away).map((m) => m.name);
@@ -156,8 +168,10 @@ export class Party {
       hostId: this.members.get(this.host)?.id ?? '',
       members: [...this.members.values()].map((m) => ({ ...m, lost: m.lost && !this.playing })),
       size: this.size,
+      office: this.office(),
+      desks: this.desks(),
       settings: { ...this.settings },
-      hackers: this.playing ? this.matchHackers : hackerCount(this.settings, this.members.size, this.size),
+      hackers: this.playing ? this.matchHackers : hackerCount(this.settings, this.members.size, this.desks()),
       open: this.open,
       playing: this.playing,
       cast: this.cast.map((c) => ({ ...c })),
@@ -197,7 +211,11 @@ export function partyGameOptions(base: OfficeGameOptions, settings: PartySetting
     weaknesses: Array.isArray(base.weaknesses) ? base.weaknesses : pickWeaknesses(base.scenario, botAdmin, seed, level.weaknesses),
     assigned: true,
     hackers,
-    handInMinutes: human ? PARTY_HAND_IN_MINUTES : undefined,
-    meetingTimes: { ...base.meetingTimes, ...MEETINGS[settings.meetings], votesNeeded: PARTY_VOTES_NEEDED },
+    handInMinutes: human ? PARTY_HAND_IN_MINUTES[settings.difficulty] : undefined,
+    meetingTimes: {
+      ...base.meetingTimes, ...MEETINGS[settings.meetings], votesNeeded: PARTY_VOTES_NEEDED,
+      // The large office: at most three all-hands meetings (department meetings are for the rest).
+      ...(base.scenario.players.length > 20 ? { perMatch: LARGE_ALL_HANDS } : {}),
+    },
   };
 }
